@@ -112,10 +112,10 @@ public class SettingsViewModel extends ViewModel {
 
                         PomodoroSettings currentSettings = state.getCurrentSettings();
                         PomodoroSettings settingsToUpdate = currentSettings;
-                        if (Objects.equals(currentSettings.getFocusSoundUri(), ringtone.getUri())) {
+                        if (Objects.equals(currentSettings.getFocusSoundUri(), ringtone.uri())) {
                             settingsToUpdate = new PomodoroSettings(settingsToUpdate.getWorkDurationMinutes(), settingsToUpdate.getBreakDurationMinutes(), null, settingsToUpdate.getBreakSoundUri(), settingsToUpdate.isVibrationEnabled());
                         }
-                        if (Objects.equals(currentSettings.getBreakSoundUri(), ringtone.getUri())) {
+                        if (Objects.equals(currentSettings.getBreakSoundUri(), ringtone.uri())) {
                             settingsToUpdate = new PomodoroSettings(settingsToUpdate.getWorkDurationMinutes(), settingsToUpdate.getBreakDurationMinutes(), settingsToUpdate.getFocusSoundUri(), null, settingsToUpdate.isVibrationEnabled());
                         }
                         return state.copy(settingsToUpdate, null, updatedCustomRingtones, null, null, null);

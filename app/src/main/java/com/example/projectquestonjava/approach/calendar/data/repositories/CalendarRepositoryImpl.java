@@ -2,6 +2,7 @@ package com.example.projectquestonjava.approach.calendar.data.repositories;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
+import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import com.example.projectquestonjava.core.data.dao.TaskDao;
 import com.example.projectquestonjava.core.data.model.relations.TaskWithTags;
@@ -25,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
@@ -66,10 +68,11 @@ public class CalendarRepositoryImpl implements CalendarRepository {
         logger.debug(TAG, "Getting tasks for day: workspace=" + workspaceId + ", start=" + boundaries.first() + ", end=" + boundaries.second());
 
         return Transformations.switchMap(userSessionManager.getUserIdLiveData(), userId -> {
-            if (userId == UserSessionManager.NO_USER_ID) {
+            if (userId == null || userId == UserSessionManager.NO_USER_ID) {
                 logger.warn(TAG, "No user for getTasksForDay.");
-                return new LiveData<>(Collections.emptyList()) {
-                };
+                MutableLiveData<List<CalendarTaskWithTagsAndPomodoro>> emptyLiveData = new MutableLiveData<>();
+                emptyLiveData.setValue(Collections.emptyList());
+                return emptyLiveData;
             }
             LiveData<List<TaskWithTags>> tasksWithTagsLiveData = taskDao.getTasksWithTagsForWorkspaceInDateRange(workspaceId, userId, boundaries.first(), boundaries.second());
             return combineWithStatsAndParamsLiveData(tasksWithTagsLiveData);
@@ -82,10 +85,11 @@ public class CalendarRepositoryImpl implements CalendarRepository {
         logger.debug(TAG, "Getting tasks for month: workspace=" + workspaceId + ", start=" + boundaries.first() + ", end=" + boundaries.second());
 
         return Transformations.switchMap(userSessionManager.getUserIdLiveData(), userId -> {
-            if (userId == UserSessionManager.NO_USER_ID) {
+            if (userId == null || userId == UserSessionManager.NO_USER_ID) {
                 logger.warn(TAG, "No user for getTasksForMonth.");
-                return new LiveData<>(Collections.emptyList()) {
-                };
+                MutableLiveData<List<CalendarTaskWithTagsAndPomodoro>> emptyLiveData = new MutableLiveData<>();
+                emptyLiveData.setValue(Collections.emptyList());
+                return emptyLiveData;
             }
             LiveData<List<TaskWithTags>> tasksWithTagsLiveData = taskDao.getTasksWithTagsForWorkspaceInDateRange(workspaceId, userId, boundaries.first(), boundaries.second());
             return combineWithStatsAndParamsLiveData(tasksWithTagsLiveData);
@@ -94,48 +98,55 @@ public class CalendarRepositoryImpl implements CalendarRepository {
 
     @Override
     public ListenableFuture<CalendarTaskWithTagsAndPomodoro> getTaskWithTagsAndPomodoroById(long workspaceId, long taskId) {
-        int userId = userSessionManager.getUserIdSync();
-        if (userId == UserSessionManager.NO_USER_ID) {
-            logger.warn(TAG, "Cannot get task " + taskId + ", no user logged in.");
-            return Futures.immediateFuture(null);
-        }
-        logger.debug(TAG, "Getting task details for taskId=" + taskId + ", userId=" + userId);
-
-        ListenableFuture<TaskWithTags> taskWithTagsFuture = taskDao.getTaskWithTagsById(taskId, userId);
-
-        return Futures.transformAsync(taskWithTagsFuture, taskWithTags -> {
-            if (taskWithTags == null) {
-                logger.warn(TAG, "Task " + taskId + " not found for user " + userId + ".");
+        // Получаем userId асинхронно
+        return Futures.submitAsync(() -> { // Обертка для получения userId
+            int userId = userSessionManager.getUserIdSync(); // Блокирующий вызов, но мы на ioExecutor
+            if (userId == UserSessionManager.NO_USER_ID) {
+                logger.warn(TAG, "Cannot get task " + taskId + ", no user logged in.");
                 return Futures.immediateFuture(null);
             }
-            if (taskWithTags.getTask().getWorkspaceId() != workspaceId && workspaceId != -1L) {
-                logger.warn(TAG, "Task " + taskId + " belongs to workspace " + taskWithTags.getTask().getWorkspaceId() + ", but requested for " + workspaceId + ".");
-                return Futures.immediateFuture(null);
-            }
+            logger.debug(TAG, "Getting task details for taskId=" + taskId + ", userId=" + userId);
 
-            ListenableFuture<TaskStatistics> statsFuture = taskStatisticsRepository.getStatisticsForTask(taskId);
-            ListenableFuture<CalendarParams> paramsFuture = calendarParamsRepository.getParamsByTaskId(taskId);
+            ListenableFuture<TaskWithTags> taskWithTagsFuture = taskDao.getTaskWithTagsById(taskId, userId);
 
-            ListenableFuture<List<Object>> combinedFutures = Futures.allAsList(statsFuture, paramsFuture);
-
-            return Futures.transform(combinedFutures, results -> {
-                TaskStatistics stats = (TaskStatistics) results.get(0);
-                CalendarParams params = (CalendarParams) results.get(1);
-
-                if (params == null) {
-                    logger.error(TAG, "CRITICAL: CalendarParams missing for existing task " + taskWithTags.getTask().getId() + ".");
-                    return null;
+            return Futures.transformAsync(taskWithTagsFuture, taskWithTags -> {
+                if (taskWithTags == null) {
+                    logger.warn(TAG, "Task " + taskId + " not found for user " + userId + ".");
+                    return Futures.immediateFuture(null);
                 }
-                int pomodoroCount = (stats != null) ? stats.getCompletedPomodoroFocusSessions() : 0;
-                return new CalendarTaskWithTagsAndPomodoro(taskWithTags.getTask(), params, taskWithTags.getTags(), pomodoroCount);
-            }, MoreExecutors.directExecutor()); // Используем directExecutor, т.к. предыдущие future уже на ioExecutor
+                // Проверка Workspace ID
+                if (taskWithTags.getTask().getWorkspaceId() != workspaceId && workspaceId != -1L) {
+                    logger.warn(TAG, "Task " + taskId + " belongs to workspace " + taskWithTags.getTask().getWorkspaceId() + ", but requested for " + workspaceId + ".");
+                    return Futures.immediateFuture(null);
+                }
 
-        }, ioExecutor); // taskDao.getTaskWithTagsById выполняется на ioExecutor
+                ListenableFuture<TaskStatistics> statsFuture = taskStatisticsRepository.getStatisticsForTask(taskId);
+                ListenableFuture<CalendarParams> paramsFuture = calendarParamsRepository.getParamsByTaskId(taskId);
+
+                // Объединяем ListenableFuture
+                return Futures.whenAllSucceed(statsFuture, paramsFuture)
+                        .call(() -> {
+                            TaskStatistics stats = Futures.getDone(statsFuture); // Безопасно, т.к. whenAllSucceed
+                            CalendarParams params = Futures.getDone(paramsFuture);
+
+                            if (params == null) {
+                                logger.error(TAG, "CRITICAL: CalendarParams missing for existing task " + taskWithTags.getTask().getId() + ".");
+                                return null; // Или бросить исключение
+                            }
+
+                            int pomodoroCount = (stats != null) ? stats.getCompletedPomodoroFocusSessions() : 0;
+                            return new CalendarTaskWithTagsAndPomodoro(taskWithTags.getTask(), params, taskWithTags.getTags(), pomodoroCount);
+                        }, ioExecutor); // Выполняем финальное преобразование на ioExecutor
+            }, ioExecutor); // Выполняем transformAsync для taskWithTagsFuture на ioExecutor
+        }, ioExecutor); // Выполняем submitAsync на ioExecutor
     }
+
 
     private LiveData<List<CalendarTaskWithTagsAndPomodoro>> combineWithStatsAndParamsLiveData(LiveData<List<TaskWithTags>> tasksWithTagsLiveData) {
         MediatorLiveData<List<CalendarTaskWithTagsAndPomodoro>> resultLiveData = new MediatorLiveData<>();
+        resultLiveData.setValue(Collections.emptyList()); // Начальное значение
 
+        // Источник для отслеживания задач
         resultLiveData.addSource(tasksWithTagsLiveData, tasksWithTags -> {
             if (tasksWithTags == null || tasksWithTags.isEmpty()) {
                 resultLiveData.setValue(Collections.emptyList());
@@ -144,62 +155,96 @@ public class CalendarRepositoryImpl implements CalendarRepository {
             List<Long> taskIds = tasksWithTags.stream().map(twt -> twt.getTask().getId()).collect(Collectors.toList());
             logger.debug(TAG, "Combining details for tasks: " + taskIds);
 
+            // Получаем LiveData для статистики и параметров
             LiveData<List<TaskStatistics>> statsLiveData = taskStatisticsRepository.getStatisticsForTasksFlow(taskIds);
             LiveData<List<CalendarParams>> paramsLiveData = calendarParamsRepository.getParamsForTasksFlow(taskIds);
 
-            // Объединяем LiveData
-            MediatorLiveData<CombinedData> tempMediator = new MediatorLiveData<>();
-            final List<TaskStatistics>[] statsHolder = new List[1]; // Массив для хранения значения, т.к. лямбда требует final
-            final List<CalendarParams>[] paramsHolder = new List[1];
+            // Объединяем три LiveData
+            CombinedLiveDataSources combinedSources = new CombinedLiveDataSources(tasksWithTags, statsLiveData, paramsLiveData);
 
-            tempMediator.addSource(statsLiveData, stats -> {
-                statsHolder[0] = stats;
-                if (paramsHolder[0] != null) {
-                    tempMediator.setValue(new CombinedData(statsHolder[0], paramsHolder[0]));
-                }
-            });
-            tempMediator.addSource(paramsLiveData, params -> {
-                paramsHolder[0] = params;
-                if (statsHolder[0] != null) {
-                    tempMediator.setValue(new CombinedData(statsHolder[0], paramsHolder[0]));
-                }
-            });
+            // Удаляем предыдущие источники от statsLiveData и paramsLiveData, если они были
+            // Это важно, чтобы не было утечек и лишних срабатываний от старых подписок
+            // (Этот код должен быть более надежным в реальном приложении, здесь упрощенно)
+            resultLiveData.removeSource(statsLiveData); // Попытка удалить, если был добавлен ранее
+            resultLiveData.removeSource(paramsLiveData);
 
-            // Этот addSource будет внешним для tempMediator, чтобы отписываться от statsLiveData и paramsLiveData
-            resultLiveData.addSource(tempMediator, combinedData -> {
-                if (combinedData == null || combinedData.stats == null || combinedData.params == null) {
-                    resultLiveData.setValue(Collections.emptyList()); // или предыдущее значение, если нужно
-                    return;
+            resultLiveData.addSource(combinedSources, data -> {
+                if (data != null) {
+                    List<CalendarTaskWithTagsAndPomodoro> processedList = processCombinedData(data.tasksWithTags, data.stats, data.params);
+                    resultLiveData.setValue(processedList);
+                } else {
+                    resultLiveData.setValue(Collections.emptyList());
                 }
-
-                Map<Long, TaskStatistics> statsMap = combinedData.stats.stream().collect(Collectors.toMap(TaskStatistics::getTaskId, ts -> ts));
-                Map<Long, CalendarParams> paramsMap = combinedData.params.stream().collect(Collectors.toMap(CalendarParams::getTaskId, cp -> cp));
-
-                List<CalendarTaskWithTagsAndPomodoro> resultList = new ArrayList<>();
-                for (TaskWithTags taskWithTagsItem : tasksWithTags) {
-                    CalendarParams params = paramsMap.get(taskWithTagsItem.getTask().getId());
-                    if (params == null) {
-                        logger.warn(TAG, "CalendarParams missing for task " + taskWithTagsItem.getTask().getId() + " during combine. Skipping.");
-                        continue;
-                    }
-                    TaskStatistics stats = statsMap.get(taskWithTagsItem.getTask().getId());
-                    int pomodoroCount = (stats != null) ? stats.getCompletedPomodoroFocusSessions() : 0;
-                    resultList.add(new CalendarTaskWithTagsAndPomodoro(taskWithTagsItem.getTask(), params, taskWithTagsItem.getTags(), pomodoroCount));
-                }
-                logger.debug(TAG, "Combine result size for tasks " + taskIds + ": " + resultList.size());
-                resultLiveData.setValue(resultList);
             });
         });
         return resultLiveData;
     }
 
-    // Вспомогательный класс для MediatorLiveData
+    // Вспомогательный класс для объединения источников в MediatorLiveData
+    private static class CombinedLiveDataSources extends MediatorLiveData<CombinedData> {
+        private List<TaskWithTags> tasksWithTags;
+        private List<TaskStatistics> stats;
+        private List<CalendarParams> params;
+
+        CombinedLiveDataSources(List<TaskWithTags> initialTasks, LiveData<List<TaskStatistics>> statsSource, LiveData<List<CalendarParams>> paramsSource) {
+            this.tasksWithTags = initialTasks; // Задачи уже есть
+
+            addSource(statsSource, s -> {
+                stats = s;
+                tryUpdateValue();
+            });
+            addSource(paramsSource, p -> {
+                params = p;
+                tryUpdateValue();
+            });
+            // Попытка обновить значение сразу, если все данные уже есть (маловероятно для LiveData из БД)
+            tryUpdateValue();
+        }
+
+        private void tryUpdateValue() {
+            if (tasksWithTags != null && stats != null && params != null) {
+                setValue(new CombinedData(tasksWithTags, stats, params));
+            }
+        }
+    }
+
     private static class CombinedData {
+        final List<TaskWithTags> tasksWithTags;
         final List<TaskStatistics> stats;
         final List<CalendarParams> params;
-        CombinedData(List<TaskStatistics> stats, List<CalendarParams> params) {
+        CombinedData(List<TaskWithTags> tasks, List<TaskStatistics> stats, List<CalendarParams> params) {
+            this.tasksWithTags = tasks;
             this.stats = stats;
             this.params = params;
         }
+    }
+
+    private List<CalendarTaskWithTagsAndPomodoro> processCombinedData(
+            List<TaskWithTags> tasksWithTags,
+            List<TaskStatistics> statsList,
+            List<CalendarParams> paramsList) {
+
+        if (tasksWithTags == null || tasksWithTags.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<Long, TaskStatistics> statsMap = (statsList != null) ?
+                statsList.stream().collect(Collectors.toMap(TaskStatistics::getTaskId, ts -> ts, (ts1, ts2) -> ts1)) : Collections.emptyMap();
+        Map<Long, CalendarParams> paramsMap = (paramsList != null) ?
+                paramsList.stream().collect(Collectors.toMap(CalendarParams::getTaskId, cp -> cp, (cp1, cp2) -> cp1)) : Collections.emptyMap();
+
+        List<CalendarTaskWithTagsAndPomodoro> resultList = new ArrayList<>();
+        for (TaskWithTags taskWithTagsItem : tasksWithTags) {
+            CalendarParams params = paramsMap.get(taskWithTagsItem.getTask().getId());
+            if (params == null) {
+                logger.warn(TAG, "CalendarParams missing for task " + taskWithTagsItem.getTask().getId() + " during combine. Skipping.");
+                continue;
+            }
+            TaskStatistics stats = statsMap.get(taskWithTagsItem.getTask().getId());
+            int pomodoroCount = (stats != null) ? stats.getCompletedPomodoroFocusSessions() : 0;
+            resultList.add(new CalendarTaskWithTagsAndPomodoro(taskWithTagsItem.getTask(), params, taskWithTagsItem.getTags(), pomodoroCount));
+        }
+        logger.debug(TAG, "Combine result size: " + resultList.size());
+        return resultList;
     }
 }

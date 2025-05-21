@@ -4,12 +4,6 @@ import androidx.annotation.Nullable;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-enum TaskCreationEvent {
-    TASK_CREATED,
-    TASK_UPDATED
-}
-
-
 @Data
 @NoArgsConstructor
 public class TaskCreationState {

@@ -1,6 +1,8 @@
 package com.example.projectquestonjava.feature.statistics.domain.repository;
 
 import androidx.lifecycle.LiveData;
+
+import com.example.projectquestonjava.feature.statistics.data.model.GlobalStatistics;
 import com.google.common.util.concurrent.ListenableFuture;
 
 public interface GlobalStatisticsRepository {

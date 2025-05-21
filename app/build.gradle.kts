@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.kotlin.android)
 }
 
 android {
@@ -57,6 +58,9 @@ android {
             excludes += "/META-INF/LICENSE"
         }
     }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
 }
 
 dependencies {
@@ -69,6 +73,7 @@ dependencies {
 
     // Hilt (DI)
     implementation(libs.hilt.android)
+    implementation(libs.core.ktx)
     annotationProcessor(libs.hilt.compiler)
     // Для тестирования Hilt
     androidTestImplementation(libs.hilt.android.testing)
@@ -132,4 +137,8 @@ dependencies {
 
     // Для преобразования Flow в CompletableFuture (если нужно)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.7.3")
+
+    implementation("androidx.concurrent:concurrent-futures:1.1.0")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.7.3")
 }

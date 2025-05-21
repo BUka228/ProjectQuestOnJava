@@ -1,46 +1,26 @@
 package com.example.projectquestonjava.core.managers;
 
-import androidx.lifecycle.LiveData;
-import com.example.projectquestonjava.core.utils.SingleLiveEvent;
-import javax.inject.Inject;
-import javax.inject.Singleton;
-// import kotlinx.coroutines.flow.MutableSharedFlow; // Удаляем
-// import kotlinx.coroutines.flow.SharedFlow; // Удаляем
-// import kotlinx.coroutines.flow.asSharedFlow; // Удаляем
+import com.google.android.material.snackbar.Snackbar;
 
-@Singleton
-public class SnackbarManager {
+public class SnackbarMessage {
+    private final String message;
+    private final int duration; // Теперь int
 
-    // Используем SingleLiveEvent для событий Snackbar
-    private final SingleLiveEvent<SnackbarMessage> _messagesEvent = new SingleLiveEvent<>();
-    public LiveData<SnackbarMessage> getMessagesEvent() {
-        return _messagesEvent;
+    public SnackbarMessage(String message, int duration) {
+        this.message = message;
+        this.duration = duration;
     }
 
-    @Inject
-    public SnackbarManager() {}
-
-    // Этот метод будет вызываться из ViewModel (которые теперь на Java)
-    // Он должен быть синхронным, т.к. SingleLiveEvent.setValue() должен вызываться из MainThread
-    // или postValue() из любого потока.
-    // ViewModel'и будут вызывать его из главного потока после завершения асинхронных операций.
-    public void showMessage(String message) {
-        // Длительность по умолчанию для Material Components Snackbar
-        _messagesEvent.postValue(new SnackbarMessage(message, SnackbarMessage.LENGTH_SHORT));
+    public String getMessage() {
+        return message;
     }
 
-    public void showMessage(String message, int materialDuration) {
-        _messagesEvent.postValue(new SnackbarMessage(message, materialDuration));
+    public int getDuration() {
+        return duration;
     }
 
-    // Если где-то в Kotlin UI (App.kt) все еще ожидается SnackbarDuration из Compose,
-    // можно оставить метод, который принимает его, но внутри он будет конвертироваться.
-    // Но лучше переделать App.kt для работы с int длительностью.
-    /*
-    public void showMessage(String message, androidx.compose.material3.SnackbarDuration composeDuration) {
-        int materialDuration = composeDuration == androidx.compose.material3.SnackbarDuration.Long ?
-                SnackbarMessage.LENGTH_LONG : SnackbarMessage.LENGTH_SHORT;
-        _messagesEvent.postValue(new SnackbarMessage(message, materialDuration));
-    }
-    */
+    // Стандартные длительности для удобства
+    public static final int LENGTH_SHORT = Snackbar.LENGTH_SHORT;
+    public static final int LENGTH_LONG = Snackbar.LENGTH_LONG;
+    public static final int LENGTH_INDEFINITE = Snackbar.LENGTH_INDEFINITE;
 }

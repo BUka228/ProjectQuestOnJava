@@ -1,13 +1,14 @@
 package com.example.projectquestonjava.feature.gamification.data.managers;
 
+import androidx.annotation.NonNull;
 import androidx.datastore.preferences.core.Preferences;
 import androidx.datastore.preferences.core.PreferencesKeys;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.Transformations;
+import androidx.lifecycle.Transformations; // Для Transformations.map
 
 import com.example.projectquestonjava.core.data.converters.Converters;
 import com.example.projectquestonjava.core.managers.DataStoreManager;
-import com.example.projectquestonjava.core.utils.Logger; // Добавим Logger
+import com.example.projectquestonjava.core.utils.Logger;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -34,15 +35,15 @@ public class GamificationDataStoreManager {
 
     private final DataStoreManager dataStoreManager;
     private final Logger logger;
-    private final Executor ioExecutor; // Для getValueFuture и других асинхронных операций DataStore
+    private final Executor directExecutor; // Для коллбэков
 
     @Inject
     public GamificationDataStoreManager(DataStoreManager dataStoreManager,
                                         Logger logger,
-                                        @com.example.projectquestonjava.core.di.IODispatcher Executor ioExecutor) {
+                                        @com.example.projectquestonjava.core.di.IODispatcher Executor ioExecutor) { // IODispatcher используется для DataStoreManager
         this.dataStoreManager = dataStoreManager;
         this.logger = logger;
-        this.ioExecutor = ioExecutor;
+        this.directExecutor = MoreExecutors.directExecutor();
     }
 
     // --- Методы для gamification_id ---
@@ -54,30 +55,40 @@ public class GamificationDataStoreManager {
         return dataStoreManager.saveValueFuture(GAMIFICATION_ID_KEY, id);
     }
 
-    public ListenableFuture<Long> getGamificationId() { // Возвращаем Future
+    public ListenableFuture<Long> getGamificationIdFuture() {
         return dataStoreManager.getValueFuture(GAMIFICATION_ID_KEY, -1L);
     }
-    // Синхронный метод, если нужен (но использовать с осторожностью)
+
     public long getGamificationIdSync() throws IOException {
-        return dataStoreManager.getValue(GAMIFICATION_ID_KEY, -1L);
+        try {
+            return dataStoreManager.getValueFuture(GAMIFICATION_ID_KEY, -1L).get();
+        } catch (Exception e) {
+            logger.error("GamificationDataStoreManager", "Error getting gamification_id sync", e);
+            throw new IOException("Failed to get gamification_id", e);
+        }
     }
 
-
-    public LiveData<Long> getGamificationIdFlow() { // Возвращаем LiveData
-        return dataStoreManager.getFlow(GAMIFICATION_ID_KEY, -1L);
+    public LiveData<Long> getGamificationIdFlow() {
+        return dataStoreManager.getPreferenceLiveData(GAMIFICATION_ID_KEY, -1L);
     }
 
     // --- Методы для selected_plant_id ---
-    public ListenableFuture<Long> getSelectedPlantId() {
+    public ListenableFuture<Long> getSelectedPlantIdFuture() {
         return dataStoreManager.getValueFuture(SELECTED_PLANT_ID_KEY, -1L);
     }
+
     public long getSelectedPlantIdSync() throws IOException {
-        return dataStoreManager.getValue(SELECTED_PLANT_ID_KEY, -1L);
+        try {
+            return dataStoreManager.getValueFuture(SELECTED_PLANT_ID_KEY, -1L).get();
+        } catch (Exception e) {
+            logger.error("GamificationDataStoreManager", "Error getting selected_plant_id sync", e);
+            throw new IOException("Failed to get selected_plant_id", e);
+        }
     }
 
 
     public LiveData<Long> getSelectedPlantIdFlow() {
-        return dataStoreManager.getFlow(SELECTED_PLANT_ID_KEY, -1L);
+        return dataStoreManager.getPreferenceLiveData(SELECTED_PLANT_ID_KEY, -1L);
     }
 
     public ListenableFuture<Void> saveSelectedPlantId(long id) {
@@ -89,25 +100,30 @@ public class GamificationDataStoreManager {
     }
 
     // --- Методы для surprise_task ---
-    public ListenableFuture<LocalDateTime> getStartTimeSurpriseTask() {
+    public ListenableFuture<LocalDateTime> getStartTimeSurpriseTaskFuture() {
         Converters converter = new Converters();
         return Futures.transform(
                 dataStoreManager.getValueFuture(START_TIME_SURPRISE_TASK_KEY, -1L),
-                timestamp -> (timestamp == -1L) ? null : converter.fromTimestamp(timestamp),
-                MoreExecutors.directExecutor()
+                timestamp -> timestamp == -1L ? null : converter.fromTimestamp(timestamp), // Проверка на null для timestamp
+                directExecutor
         );
     }
     public LocalDateTime getStartTimeSurpriseTaskSync() throws IOException {
         Converters converter = new Converters();
-        Long timestamp = dataStoreManager.getValue(START_TIME_SURPRISE_TASK_KEY, -1L);
-        return (timestamp == -1L) ? null : converter.fromTimestamp(timestamp);
+        try {
+            Long timestamp = dataStoreManager.getValueFuture(START_TIME_SURPRISE_TASK_KEY, -1L).get();
+            return timestamp == -1L ? null : converter.fromTimestamp(timestamp);
+        } catch (Exception e) {
+            logger.error("GamificationDataStoreManager", "Error getting start_time_surprise_task sync", e);
+            throw new IOException("Failed to get start_time_surprise_task", e);
+        }
     }
 
 
     public LiveData<LocalDateTime> getStartTimeSurpriseTaskFlow() {
         Converters converter = new Converters();
-        return Transformations.map(dataStoreManager.getFlow(START_TIME_SURPRISE_TASK_KEY, -1L),
-                timestamp -> (timestamp == -1L || timestamp == null) ? null : converter.fromTimestamp(timestamp));
+        return Transformations.map(dataStoreManager.getPreferenceLiveData(START_TIME_SURPRISE_TASK_KEY, -1L),
+                timestamp -> timestamp == -1L ? null : converter.fromTimestamp(timestamp));
     }
 
     public ListenableFuture<Void> saveStartTimeSurpriseTask(LocalDateTime time) {
@@ -125,32 +141,31 @@ public class GamificationDataStoreManager {
 
     public ListenableFuture<Void> hideExpiredTaskId(long taskId) {
         String taskIdString = String.valueOf(taskId);
-        // Асинхронное чтение и затем асинхронная запись
-        return Futures.transformAsync(
-                dataStoreManager.getValueFuture(HIDDEN_EXPIRED_TASK_IDS_KEY, Collections.emptySet()),
-                currentIds -> {
-                    Set<String> newIds = new HashSet<>(currentIds != null ? currentIds : Collections.emptySet());
-                    newIds.add(taskIdString);
-                    return dataStoreManager.saveValueFuture(HIDDEN_EXPIRED_TASK_IDS_KEY, newIds);
-                },
-                ioExecutor // Используем ioExecutor для transformAsync
-        );
+        ListenableFuture<Set<String>> currentIdsFuture = dataStoreManager.getValueFuture(HIDDEN_EXPIRED_TASK_IDS_KEY, Collections.emptySet());
+
+        return Futures.transformAsync(currentIdsFuture, currentIds -> {
+            Set<String> newIds = new HashSet<>(currentIds != null ? currentIds : Collections.emptySet());
+            newIds.add(taskIdString);
+            return dataStoreManager.saveValueFuture(HIDDEN_EXPIRED_TASK_IDS_KEY, newIds);
+        }, directExecutor); // Используем directExecutor, так как логика простая
     }
 
     public LiveData<Set<Long>> getHiddenExpiredTaskIdsFlow() {
-        return Transformations.map(dataStoreManager.getFlow(HIDDEN_EXPIRED_TASK_IDS_KEY, Collections.<String>emptySet()),
+        return Transformations.map(dataStoreManager.getPreferenceLiveData(HIDDEN_EXPIRED_TASK_IDS_KEY, Collections.emptySet()),
                 stringSet -> {
                     if (stringSet == null) return Collections.emptySet();
                     return stringSet.stream()
                             .map(s -> {
                                 try { return Long.parseLong(s); }
-                                catch (NumberFormatException e) { return null; }
+                                catch (NumberFormatException e) {
+                                    logger.warn("GamificationDataStoreManager", "Invalid long string in hiddenExpiredTaskIds: " + s);
+                                    return null;
+                                }
                             })
                             .filter(Objects::nonNull)
                             .collect(Collectors.toSet());
                 });
     }
-
 
     public ListenableFuture<Void> clearHiddenExpiredTaskIds() {
         return dataStoreManager.clearValueFuture(HIDDEN_EXPIRED_TASK_IDS_KEY);

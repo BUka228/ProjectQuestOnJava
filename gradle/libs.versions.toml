@@ -49,6 +49,8 @@ rxandroid3 = "3.0.2"
 rxkotlin3 = "3.0.1"
 lifecycleReactivestreams = "2.8.7"
 datastoreRxJava3 = "1.1.1"
+kotlin = "2.1.21"
+coreKtxVersion = "1.16.0"
 
 
 [libraries]
@@ -116,8 +118,10 @@ hilt-android-testing = { module = "com.google.dagger:hilt-android-testing", vers
 
 rxjava3 = { group = "io.reactivex.rxjava3", name = "rxjava", version.ref = "rxjava3" }
 rxandroid3 = { group = "io.reactivex.rxjava3", name = "rxandroid", version.ref = "rxandroid3" }
+core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtxVersion" }
 
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" } # Оставляем
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" } # Оставляем
