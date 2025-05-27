@@ -1,9 +1,69 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Base.Theme.ProjectQuestOnJava" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+    <style name="Base.Theme.ProgressQuest" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/primaryLight</item>
+        <item name="colorOnPrimary">@color/onPrimaryLight</item>
+        <item name="colorPrimaryContainer">@color/primaryContainerLight</item>
+        <item name="colorOnPrimaryContainer">@color/onPrimaryContainerLight</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/secondaryLight</item>
+        <item name="colorOnSecondary">@color/onSecondaryLight</item>
+        <item name="colorSecondaryContainer">@color/secondaryContainerLight</item>
+        <item name="colorOnSecondaryContainer">@color/onSecondaryContainerLight</item>
+        <!-- Tertiary brand color. -->
+        <item name="colorTertiary">@color/tertiaryLight</item>
+        <item name="colorOnTertiary">@color/onTertiaryLight</item>
+        <item name="colorTertiaryContainer">@color/tertiaryContainerLight</item>
+        <item name="colorOnTertiaryContainer">@color/onTertiaryContainerLight</item>
+        <!-- Error color. -->
+        <item name="colorError">@color/errorLight</item>
+        <item name="colorOnError">@color/onErrorLight</item>
+        <item name="colorErrorContainer">@color/errorContainerLight</item>
+        <item name="colorOnErrorContainer">@color/onErrorContainerLight</item>
+        <!-- Background colors. -->
+        <item name="android:colorBackground">@color/backgroundLight</item>
+        <item name="colorOnBackground">@color/onBackgroundLight</item>
+        <!-- Surface colors. -->
+        <item name="colorSurface">@color/surfaceLight</item>
+        <item name="colorOnSurface">@color/onSurfaceLight</item>
+        <item name="colorSurfaceVariant">@color/surfaceVariantLight</item>
+        <item name="colorOnSurfaceVariant">@color/onSurfaceVariantLight</item>
+        <!-- Outline color. -->
+        <item name="colorOutline">@color/outlineLight</item>
+        <item name="colorOutlineVariant">@color/outlineVariantLight</item> <!-- Added -->
+        <!-- Scrim color. -->
+        <item name="scrimBackground">@color/scrimLight</item> <!-- For scrim -->
+        <!-- Inverse colors. -->
+        <item name="colorSurfaceInverse">@color/inverseSurfaceLight</item>
+        <item name="colorOnSurfaceInverse">@color/inverseOnSurfaceLight</item>
+        <item name="colorPrimaryInverse">@color/inversePrimaryLight</item>
+
+        <!-- New M3 surface roles -->
+        <item name="colorSurfaceDim">@color/surfaceDimLight</item>
+        <item name="colorSurfaceBright">@color/surfaceBrightLight</item>
+        <item name="colorSurfaceContainerLowest">@color/surfaceContainerLowestLight</item>
+        <item name="colorSurfaceContainerLow">@color/surfaceContainerLowLight</item>
+        <item name="colorSurfaceContainer">@color/surfaceContainerLight</item>
+        <item name="colorSurfaceContainerHigh">@color/surfaceContainerHighLight</item>
+        <item name="colorSurfaceContainerHighest">@color/surfaceContainerHighestLight</item>
+
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">?attr/colorSurfaceContainer</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item> <!-- For light theme -->
+        <!-- Navigation bar color (optional) -->
+        <item name="android:navigationBarColor">?attr/colorSurfaceContainer</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+
+        <!-- Customize your theme here. -->
+        <item name="materialCardViewStyle">@style/Widget.App.CardView</item>
+        <item name="materialButtonStyle">@style/Widget.App.Button</item>
+        <item name="extendedFloatingActionButtonStyle">@style/Widget.App.ExtendedFloatingActionButton</item>
+        <item name="floatingActionButtonStyle">@style/Widget.App.FloatingActionButton</item>
+        <item name="chipStyle">@style/Widget.App.Chip</item>
+        <!-- Add other component styles -->
+
     </style>
 
-    <style name="Theme.ProjectQuestOnJava" parent="Base.Theme.ProjectQuestOnJava" />
+    <style name="Theme.ProgressQuest" parent="Base.Theme.ProgressQuest" />
 </resources>

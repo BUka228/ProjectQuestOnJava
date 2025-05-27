@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="24dp"
+    android:background="?attr/colorSurfaceContainerHigh"
+    app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+    <com.google.android.material.bottomsheet.BottomSheetDragHandleView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Сортировка и фильтры"
+        style="@style/TextAppearance.Material3.TitleLarge"
+        android:textColor="?attr/colorPrimary"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- СОРТИРОВКА -->
+    <TextView
+        style="@style/SettingsSectionTitle"
+        android:text="Сортировать по"
+        android:layout_marginBottom="12dp"/>
+
+    <TextView style="@style/SortFilterGroupLabel" android:text="Срок выполнения:"/>
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/toggle_sort_deadline_challenges"
+        style="@style/Widget.App.ButtonToggleGroup">
+        <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_deadline_asc_challenges" android:text="Ближайшие" app:icon="@drawable/keyboard_double_arrow_up"/>
+        <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_deadline_desc_challenges" android:text="Дальние" app:icon="@drawable/keyboard_double_arrow_down"/>
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    <TextView style="@style/SortFilterGroupLabel" android:layout_marginTop="12dp" android:text="Прогресс:"/>
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/toggle_sort_progress_challenges"
+        style="@style/Widget.App.ButtonToggleGroup">
+        <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_progress_desc_challenges" android:text="К завершению" app:icon="@drawable/trending_up"/>
+        <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_progress_asc_challenges" android:text="Меньше всего" app:icon="@drawable/trending_down"/>
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    <TextView style="@style/SortFilterGroupLabel" android:layout_marginTop="12dp" android:text="Ценность награды:"/>
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/toggle_sort_reward_challenges"
+        style="@style/Widget.App.ButtonToggleGroup">
+        <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_reward_desc_challenges" android:text="Больше" app:icon="@drawable/emoji_events"/>
+        <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_reward_asc_challenges" android:text="Меньше" app:icon="@drawable/emoji_events"/> <!-- Иконка может быть другой -->
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    <TextView style="@style/SortFilterGroupLabel" android:layout_marginTop="12dp" android:text="Название:"/>
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/toggle_sort_name_challenges"
+        style="@style/Widget.App.ButtonToggleGroup">
+        <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_name_asc_challenges" android:text="А-Я" app:icon="@drawable/sort_by_alpha"/>
+        <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_name_desc_challenges" android:text="Я-А" app:icon="@drawable/sort_by_alpha"/> <!-- Иконка может быть другой -->
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+
+    <com.google.android.material.divider.MaterialDivider style="@style/SettingsDivider"/>
+
+    <!-- ФИЛЬТРЫ -->
+    <TextView style="@style/SettingsSectionTitle" android:text="Фильтровать по" android:layout_marginBottom="12dp"/>
+
+    <TextView style="@style/SortFilterGroupLabel" android:text="Статус:"/>
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/chipGroup_filters_status_challenges"
+        style="@style/Widget.App.ChipGroup.Filter">
+        <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_all_challenges" android:text="Все"/>
+        <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_active_challenges" android:text="Активные"/>
+        <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_completed_challenges" android:text="Завершенные"/>
+        <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_expired_challenges" android:text="Истекшие"/>
+        <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_missed_challenges" android:text="Пропущенные"/>
+        <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_urgent_challenges" android:text="Срочные"/>
+    </com.google.android.material.chip.ChipGroup>
+
+    <TextView style="@style/SortFilterGroupLabel" android:layout_marginTop="12dp" android:text="Тип награды:"/>
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/chipGroup_filters_reward_type_challenges"
+        style="@style/Widget.App.ChipGroup.Filter">
+        <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_reward_coin_challenges" android:text="Монеты"/>
+        <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_reward_xp_challenges" android:text="Опыт"/>
+        <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_reward_badge_challenges" android:text="Значки"/>
+    </com.google.android.material.chip.ChipGroup>
+
+    <Space android:layout_width="match_parent" android:layout_height="24dp"/>
+
+    <!-- Кнопки Действий -->
+    <LinearLayout style="@style/BottomSheetActionButtonsContainer">
+        <Button
+            android:id="@+id/button_reset_filters_challenges"
+            style="@style/Widget.App.Button.Outlined.Destructive"
+            android:text="Сбросить"/>
+        <Button
+            android:id="@+id/button_apply_filters_challenges"
+            style="@style/Widget.App.Button"
+            android:layout_marginStart="8dp"
+            android:text="Применить"/>
+    </LinearLayout>
+</LinearLayout>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".feature.gamification.presentation.screens.GardenFragment">
+
+    <!-- TopAppBar и FAB из MainActivity -->
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerView_garden_plants"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="112dp"
+            android:clipToPadding="false"
+            app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
+            tools:spanCount="3"
+            tools:listitem="@layout/item_garden_plant"/>
+
+        <!-- Empty State -->
+        <LinearLayout
+            android:id="@+id/layout_empty_garden"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_gravity="center"
+            android:padding="16dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+            <ImageView
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                app:srcCompat="@drawable/grass"
+                app:tint="?attr/colorOnSurface"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="В вашем саду пока пусто"
+                style="@style/TextAppearance.App.HeadlineSmall"
+                android:textAlignment="center"
+                android:textColor="?attr/colorOnSurface"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Получайте новые растения за достижения или ежедневный вход!"
+                style="@style/TextAppearance.App.BodyMedium"
+                android:textAlignment="center"
+                android:textColor="?attr/colorOnSurface"/>
+        </LinearLayout>
+
+        <com.example.projectquestonjava.feature.gamification.presentation.ui_elements.WateringEffectView
+            android:id="@+id/watering_effect_overlay_garden"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone"/>
+
+        <!-- Индикатор загрузки -->
+        <ProgressBar
+            android:id="@+id/progressBar_garden_loading"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone"
+            tools:visibility="visible"/>
+    </FrameLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

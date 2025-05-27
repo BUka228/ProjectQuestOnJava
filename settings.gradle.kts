@@ -1,3 +1,5 @@
+// settings.gradle.kts
+
 pluginManagement {
     repositories {
         google {
@@ -16,9 +18,11 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven { // Для Kotlin DSL
+            url = uri("https://jitpack.io") // Используем uri(...)
+        }
     }
 }
 
 rootProject.name = "ProjectQuestOnJava"
 include(":app")
- 

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardElevation="4dp"
+    app:cardCornerRadius="16dp"
+    app:cardBackgroundColor="?attr/colorPrimaryContainer"
+    android:layout_marginBottom="16dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="100dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="16dp"
+        android:baselineAligned="false">
+        <include layout="@layout/view_info_column_profile" android:id="@+id/stat_item_completed_overview" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
+        <View android:layout_width="1dp" android:layout_height="match_parent" android:background="?attr/colorOnPrimaryContainer" android:alpha="0.2" android:layout_marginHorizontal="4dp"/>
+        <include layout="@layout/view_info_column_profile" android:id="@+id/stat_item_avg_tasks_overview" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
+        <View android:layout_width="1dp" android:layout_height="match_parent" android:background="?attr/colorOnPrimaryContainer" android:alpha="0.2" android:layout_marginHorizontal="4dp"/>
+        <include layout="@layout/view_info_column_profile" android:id="@+id/stat_item_productive_day_overview" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

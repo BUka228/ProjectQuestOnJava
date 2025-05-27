@@ -85,9 +85,10 @@ public class GetDailyRewardsUseCase {
             ListenableFuture<List<StreakRewardDefinition>> definitionsFuture =
                     streakRewardDefinitionRepository.getRewardDefinitionsForStreakRange(currentDisplayWeekStartStreak, currentDisplayWeekEndStreak);
 
+            long finalDaysSinceLastClaim = daysSinceLastClaim;
             return Futures.transformAsync(definitionsFuture, definitions -> {
                 if (definitions == null || definitions.isEmpty()) {
-                    return Futures.immediateFuture(new DailyRewardsInfo(Collections.emptyList(), currentStreak, canClaimToday, todayStreakDay, daysSinceLastClaim));
+                    return Futures.immediateFuture(new DailyRewardsInfo(Collections.emptyList(), currentStreak, canClaimToday, todayStreakDay, finalDaysSinceLastClaim));
                 }
 
                 List<ListenableFuture<Reward>> rewardFutures = new ArrayList<>();
@@ -107,7 +108,7 @@ public class GetDailyRewardsUseCase {
                         StreakRewardDefinition def = definitionMap.get(r.getId());
                         return def != null ? def.getStreakDay() : Integer.MAX_VALUE;
                     }));
-                    return new DailyRewardsInfo(validRewards, currentStreak, canClaimToday, todayStreakDay, daysSinceLastClaim);
+                    return new DailyRewardsInfo(validRewards, currentStreak, canClaimToday, todayStreakDay, finalDaysSinceLastClaim);
                 }, MoreExecutors.directExecutor()); // Преобразование списка наград
             }, ioExecutor); // Преобразование определений наград
         }, ioExecutor); // Преобразование профиля геймификации

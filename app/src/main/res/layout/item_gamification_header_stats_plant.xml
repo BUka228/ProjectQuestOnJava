@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="@dimen/padding_medium"
+    android:baselineAligned="false"
+    android:gravity="center_vertical">
+
+    <!-- MiniStatsWidget -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/card_mini_stats_gamif"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginEnd="16dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="4dp"
+        app:cardBackgroundColor="?attr/colorSurface">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp">
+            <!-- Уровень -->
+            <LinearLayout style="@style/GamificationStatItemStyle">
+                <ImageView style="@style/GamificationStatIconStyle" app:srcCompat="@drawable/star" app:tint="?attr/colorPrimary"/>
+                <TextView style="@style/GamificationStatLabelStyle" android:text="Уровень"/>
+                <TextView android:id="@+id/textView_level_value_gamif" style="@style/GamificationStatValueStyle" tools:text="5"/>
+            </LinearLayout>
+            <Space android:layout_width="match_parent" android:layout_height="12dp"/>
+            <!-- Опыт -->
+            <LinearLayout style="@style/GamificationStatItemStyle">
+                <FrameLayout android:layout_width="36dp" android:layout_height="36dp">
+                    <ProgressBar style="@style/GamificationCircularProgressBgStyle" android:id="@+id/progressBar_xp_background_gamif"/>
+                    <ProgressBar style="@style/GamificationCircularProgressFgStyle" android:id="@+id/progressBar_xp_gamif" tools:progress="75"/>
+                    <ImageView style="@style/GamificationCircularProgressIconStyle" app:srcCompat="@drawable/trending_up" app:tint="?attr/colorPrimary"/>
+                </FrameLayout>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="16dp">
+                    <TextView style="@style/GamificationStatLabelStyle" android:text="Опыт"/>
+                    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="bottom">
+                        <TextView android:id="@+id/textView_xp_value_gamif" tools:text="750" style="@style/GamificationStatValueStyle"/>
+                        <TextView android:id="@+id/textView_xp_max_gamif" tools:text="/ 1000" style="@style/GamificationXpMaxLabelStyle" android:layout_marginStart="4dp"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+            <Space android:layout_width="match_parent" android:layout_height="12dp"/>
+            <!-- Монеты -->
+            <LinearLayout style="@style/GamificationStatItemStyle">
+                <ImageView style="@style/GamificationStatIconStyle" app:srcCompat="@drawable/paid" app:tint="?attr/colorPrimary"/>
+                <TextView style="@style/GamificationStatLabelStyle" android:text="Монеты"/>
+                <TextView android:id="@+id/textView_coins_value_gamif" style="@style/GamificationStatValueStyle" tools:text="123"/>
+            </LinearLayout>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- PlantWidget -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/card_plant_widget_gamif"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="6dp"
+        app:cardBackgroundColor="?attr/colorSurface"
+        android:clickable="true"
+        android:focusable="true">
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+            <ImageView
+                android:id="@+id/imageView_plant_gamif"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="@dimen/padding_medium"
+                android:scaleType="fitCenter"
+                tools:srcCompat="@drawable/sunflower_0_healthy"/>
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/fab_water_plant_gamif"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="8dp"
+                app:fabSize="mini"
+                app:srcCompat="@drawable/water_drop"
+                app:backgroundTint="?attr/colorPrimaryContainer"
+                app:tint="?attr/colorOnPrimaryContainer"
+                app:elevation="4dp" />
+        </FrameLayout>
+    </com.google.android.material.card.MaterialCardView>
+</LinearLayout>

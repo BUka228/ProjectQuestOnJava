@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="@style/Widget.App.SettingsSectionCard"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+    <LinearLayout
+        android:id="@+id/settings_section_content_container"
+        style="@style/SettingsSectionContent"
+        android:orientation="vertical">
+        <TextView
+            android:id="@+id/textView_settings_section_title"
+            style="@style/SettingsSectionTitle"/>
+        <!-- Сюда будут добавляться item_settings_* -->
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

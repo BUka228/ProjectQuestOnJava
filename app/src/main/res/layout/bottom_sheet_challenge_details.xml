@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/layout_challenge_details_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="24dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="32dp"
+    android:background="?attr/colorSurfaceContainerHigh"
+    app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+    <com.google.android.material.bottomsheet.BottomSheetDragHandleView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- Заголовок: Иконка и Название -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <ImageView
+            android:id="@+id/imageView_challenge_details_icon"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            tools:srcCompat="@drawable/check_box"
+            tools:tint="?attr/colorPrimary"/>
+        <TextView
+            android:id="@+id/textView_challenge_details_name"
+            style="@style/TextAppearance.Material3.HeadlineSmall"
+            android:textStyle="bold"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            tools:text="Ежедневный спринт на максимум!"/>
+    </LinearLayout>
+
+    <Space android:layout_width="match_parent" android:layout_height="16dp"/>
+
+    <!-- Описание -->
+    <TextView
+        android:id="@+id/textView_challenge_details_description"
+        style="@style/TextAppearance.Material3.BodyLarge"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        tools:text="Завершите 3 задачи сегодня для получения специальной награды."/>
+
+    <Space android:layout_width="match_parent" android:layout_height="16dp"/>
+
+    <!-- Прогресс -->
+    <TextView
+        android:text="Прогресс:"
+        style="@style/TextAppearance.Material3.TitleMedium"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <ProgressBar
+            android:id="@+id/progressBar_challenge_details"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="12dp"
+            android:layout_weight="1"
+            android:progressDrawable="@drawable/timer_progress_drawable"
+            android:progressBackgroundTint="?attr/colorSurfaceVariant"
+            tools:progress="66"/>
+        <TextView
+            android:id="@+id/textView_challenge_details_progress_text"
+            style="@style/TextAppearance.Material3.BodyLarge"
+            android:textStyle="bold"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            tools:text="2/3 задач"/>
+    </LinearLayout>
+
+    <Space android:layout_width="match_parent" android:layout_height="16dp"/>
+
+    <!-- Детали: Период, Срок, Награда -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/rounded_background_surface_variant_alpha"
+        android:padding="12dp">
+
+        <include layout="@layout/view_challenge_detail_item" android:id="@+id/detail_item_period_bs"/>
+        <include layout="@layout/view_challenge_detail_item" android:id="@+id/detail_item_deadline_bs" android:visibility="gone" tools:visibility="visible"/>
+        <include layout="@layout/view_challenge_detail_item" android:id="@+id/detail_item_reward_bs" android:visibility="gone" tools:visibility="visible"/>
+    </LinearLayout>
+
+</LinearLayout>

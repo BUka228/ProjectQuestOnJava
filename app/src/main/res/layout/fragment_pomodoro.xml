@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/coordinatorLayout_pomodoro"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".feature.pomodoro.presentation.screens.PomodoroFragment">
+
+    <!-- TopAppBar будет управляться из MainActivity/BaseFragment -->
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/nestedScrollView_pomodoro"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="150dp"> <!-- Увеличим отступ для плавающих кнопок -->
+
+            <include layout="@layout/view_error_message_card"
+                android:id="@+id/error_message_card_pomodoro"
+                android:visibility="gone"
+                tools:visibility="visible"/>
+
+            <!-- TaskSelectionComponent -->
+            <FrameLayout
+                android:id="@+id/frameLayout_task_selection_container_pomodoro"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <!-- Сюда будет инфлейтиться либо view_select_task_button, либо view_current_task_card_pomodoro -->
+                <include layout="@layout/view_select_task_button" android:id="@+id/button_select_task_pomodoro_include" />
+                <include layout="@layout/view_current_task_card_pomodoro" android:id="@+id/card_current_task_pomodoro_include" android:visibility="gone"/>
+            </FrameLayout>
+
+            <Space android:layout_width="match_parent" android:layout_height="24dp"/>
+
+            <!-- TimeDisplayAndProgress или EstimatedTimeInput -->
+            <FrameLayout
+                android:id="@+id/frameLayout_timer_or_input_container_pomodoro"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="200dp"
+                android:layout_gravity="center">
+                <include layout="@layout/view_estimated_time_input" android:id="@+id/estimated_time_input_pomodoro" />
+                <include layout="@layout/view_time_display_progress" android:id="@+id/time_display_progress_pomodoro" android:visibility="gone"/>
+                <include layout="@layout/view_no_task_selected_placeholder" android:id="@+id/no_task_selected_placeholder_pomodoro" android:visibility="gone"/>
+            </FrameLayout>
+
+            <!-- PomodoroCycleVisualizer -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerView_pomodoro_cycle_visualizer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="24dp"
+                android:orientation="horizontal"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:listitem="@layout/item_phase_indicator"
+                tools:itemCount="5"
+                android:clipToPadding="false"
+                android:paddingHorizontal="8dp"
+                android:visibility="gone"
+                tools:visibility="visible"/>
+
+            <Space android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Кнопки управления внизу (Fixed) -->
+    <LinearLayout
+        android:id="@+id/layout_pomodoro_controls_container_fixed"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_gravity="bottom"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="24dp"
+        android:background="?attr/colorSurfaceContainer"
+        android:elevation="8dp"> <!-- Тень для контейнера кнопок -->
+
+        <LinearLayout
+            android:id="@+id/layout_secondary_pomodoro_controls"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_skip_break_pomodoro"
+                style="@style/Widget.App.Button.Outlined"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="Фокус"
+                app:icon="@drawable/arrow_forward"
+                android:visibility="gone"
+                tools:visibility="visible"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_complete_early_pomodoro"
+                style="@style/Widget.App.Button.Outlined"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="Готово"
+                app:icon="@drawable/check"
+                app:strokeColor="?attr/colorSecondary"
+                android:textColor="?attr/colorSecondary"
+                android:visibility="gone"
+                tools:visibility="visible"/>
+            <FrameLayout
+                android:id="@+id/frame_complete_early_progress"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:visibility="gone">
+                <com.google.android.material.button.MaterialButton
+                    style="@style/Widget.App.Button.Outlined"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:enabled="false"
+                    android:text="Завершение..."
+                    app:strokeColor="?attr/colorSecondary"
+                    android:textColor="?attr/colorSecondary"/>
+                <ProgressBar
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center_vertical|start"
+                    android:layout_marginStart="16dp"
+                    android:indeterminateTint="?attr/colorSecondary"/>
+            </FrameLayout>
+        </LinearLayout>
+
+        <include layout="@layout/view_timer_controls" android:id="@+id/timer_controls_pomodoro"/>
+    </LinearLayout>
+
+    <!-- TaskSelectorBottomSheet (будет DialogFragment) -->
+    <!-- LongTaskWarningDialog (будет AlertDialog) -->
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

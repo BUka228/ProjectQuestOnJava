@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Внешняя градиентная рамка -->
+    <item>
+        <shape android:shape="oval">
+            <gradient
+                android:type="linear"
+                android:angle="45"
+                android:startColor="?attr/colorPrimary"
+                android:endColor="?attr/colorTertiary" />
+        </shape>
+    </item>
+    <!-- Внутренний фон для перекрытия градиента под изображением -->
+    <item android:top="3dp" android:bottom="3dp" android:left="3dp" android:right="3dp">
+        <shape android:shape="oval">
+            <solid android:color="?attr/colorSurfaceContainer"/> <!-- ИЗМЕНЕНО: цвет фона для экрана редактирования -->
+        </shape>
+    </item>
+</layer-list>

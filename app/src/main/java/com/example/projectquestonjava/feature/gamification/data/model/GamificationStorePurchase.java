@@ -1,18 +1,15 @@
 package com.example.projectquestonjava.feature.gamification.data.model;
 
+import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
+import androidx.room.Ignore;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-import lombok.Getter;
-import lombok.Setter;
-
-@Setter
-@Getter
 @Entity(
         tableName = "gamification_store_purchase",
         foreignKeys = {
@@ -26,7 +23,7 @@ import lombok.Setter;
                         entity = StoreItem.class,
                         parentColumns = {"id"},
                         childColumns = {"store_item_id"},
-                        onDelete = ForeignKey.RESTRICT // Покупка не должна удаляться, если удаляется товар из магазина? Или CASCADE?
+                        onDelete = ForeignKey.RESTRICT
                 )
         },
         indices = {@Index("gamification_id"), @Index("store_item_id")}
@@ -34,29 +31,36 @@ import lombok.Setter;
 public class GamificationStorePurchase {
 
     @PrimaryKey(autoGenerate = true)
-    private long id;
+    public long id;
 
     @ColumnInfo(name = "gamification_id")
-    private long gamificationId;
+    public final long gamificationId;
 
     @ColumnInfo(name = "store_item_id")
-    private long storeItemId;
+    public final long storeItemId;
 
     @ColumnInfo(name = "purchased_at")
-    private LocalDateTime purchasedAt;
+    public final LocalDateTime purchasedAt;
 
+    // Конструктор для Room
     public GamificationStorePurchase(long id, long gamificationId, long storeItemId, LocalDateTime purchasedAt) {
         this.id = id;
         this.gamificationId = gamificationId;
         this.storeItemId = storeItemId;
         this.purchasedAt = purchasedAt != null ? purchasedAt : LocalDateTime.now();
     }
-    // Конструктор для Room
+
+    @Ignore
     public GamificationStorePurchase(long gamificationId, long storeItemId, LocalDateTime purchasedAt) {
         this(0, gamificationId, storeItemId, purchasedAt);
     }
 
+    @Ignore
+    public GamificationStorePurchase(long gamificationId, long storeItemId) {
+        this(0, gamificationId, storeItemId, LocalDateTime.now());
+    }
 
+    // equals, hashCode, toString
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -68,5 +72,16 @@ public class GamificationStorePurchase {
     @Override
     public int hashCode() {
         return Objects.hash(id, gamificationId, storeItemId, purchasedAt);
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return "GamificationStorePurchase{" +
+                "id=" + id +
+                ", gamificationId=" + gamificationId +
+                ", storeItemId=" + storeItemId +
+                ", purchasedAt=" + purchasedAt +
+                '}';
     }
 }

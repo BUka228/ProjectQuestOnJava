@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/card_phase_indicator"
+    android:layout_width="60dp"
+    android:layout_height="70dp"
+    app:cardCornerRadius="12dp"
+    app:cardBackgroundColor="?attr/colorSurfaceVariant"> <!-- Default color -->
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingVertical="8dp"
+        android:paddingHorizontal="4dp">
+
+        <ImageView
+            android:id="@+id/imageView_phase_icon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            tools:srcCompat="@drawable/timer"
+            app:tint="?attr/colorOnSurfaceVariant"/>
+
+        <TextView
+            android:id="@+id/textView_phase_duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            style="@style/TextAppearance.App.LabelMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:maxLines="1"
+            tools:text="25м"/>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

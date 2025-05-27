@@ -1,0 +1,40 @@
+<!-- res/layout/fragment_badges_tab.xml -->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".feature.gamification.presentation.screens.BadgesTabFragment">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView_badges"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="8dp"
+        android:clipToPadding="false"
+        app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
+        tools:spanCount="2"
+        tools:listitem="@layout/item_badge_profile"/>
+
+    <TextView
+        android:id="@+id/textView_no_badges_placeholder"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:text="Нет доступных значков"
+    style="@style/TextAppearance.Material3.TitleMedium"
+    android:textColor="?attr/colorOnSurfaceVariant"
+    android:visibility="gone"
+    tools:visibility="visible"/>
+
+    <ProgressBar
+        android:id="@+id/progressBar_badges_loading"
+    style="?android:attr/progressBarStyle"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:visibility="gone"
+    tools:visibility="visible"/>
+</FrameLayout>

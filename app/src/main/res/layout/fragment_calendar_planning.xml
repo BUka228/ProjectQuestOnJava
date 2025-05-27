@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".approach.calendar.presentation.screens.CalendarPlanningFragment">
+
+    <!-- TopAppBar будет из MainActivity, настроенный этим фрагментом -->
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <!-- CalendarView (ViewPager2 + RecyclerView для дней) -->
+        <FrameLayout
+            android:id="@+id/frameLayout_calendar_view_container_planning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/colorSurfaceContainerLow"> <!-- Фон для календаря -->
+            <!-- Сюда можно инфлейтить или добавлять ViewPager2 и заголовки дней недели -->
+            <include layout="@layout/view_calendar_planning_content" />
+        </FrameLayout>
+
+        <!-- TaskList (RecyclerView) -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerView_planning_tasks"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:paddingHorizontal="@dimen/padding_medium"
+                android:paddingTop="@dimen/padding_medium"
+                android:paddingBottom="16dp"
+                android:clipToPadding="false"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:listitem="@layout/item_task_planning"/>
+
+            <LinearLayout
+                android:id="@+id/layout_empty_planning_tasks"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_centerInParent="true"
+                android:padding="16dp"
+                android:visibility="gone"
+                tools:visibility="visible">
+                <ImageView
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    app:srcCompat="@drawable/assignment"
+                    app:tint="?attr/colorOnSurfaceVariant"/>
+                <TextView
+                    android:id="@+id/textView_empty_planning_message"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    tools:text="Нет задач на выбранный день"
+                    style="@style/TextAppearance.App.BodyMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textAlignment="center"/>
+            </LinearLayout>
+        </RelativeLayout>
+    </LinearLayout>
+
+    <!-- Snackbar будет показан через CoordinatorLayout в MainActivity -->
+    <!-- BottomSheet для перемещения задачи (MoveTaskSheet) будет DialogFragment -->
+    <!-- BottomSheet для сортировки/фильтров (PlanningSortFilterBottomSheet) будет DialogFragment -->
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

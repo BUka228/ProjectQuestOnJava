@@ -1,0 +1,72 @@
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/card_duration_setting_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    style="@style/Widget.App.OutlinedCardView">
+
+<LinearLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:orientation="vertical"
+android:paddingHorizontal="@dimen/padding_large"
+android:paddingTop="@dimen/padding_large"
+android:paddingBottom="8dp">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical">
+    <ImageView
+        android:id="@+id/imageView_duration_icon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        tools:srcCompat="@drawable/timer"
+        tools:tint="?attr/colorPrimary"/>
+    <TextView
+        android:id="@+id/textView_duration_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="12dp"
+        style="@style/TextAppearance.App.TitleMedium"
+        android:textStyle="normal"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        tools:text="Время работы"/>
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/card_duration_value_bg"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:cardCornerRadius="8dp"
+        app:cardBackgroundColor="?attr/colorPrimaryContainer">
+        <TextView
+            android:id="@+id/textView_duration_value"
+            android:layout_width="32dp"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            style="@style/TextAppearance.App.BodyLarge"
+            android:textStyle="bold"
+            android:gravity="center"
+            tools:text="25"
+            android:textColor="?attr/colorOnPrimaryContainer"/>
+    </com.google.android.material.card.MaterialCardView>
+</LinearLayout>
+
+<com.google.android.material.slider.Slider
+    android:id="@+id/slider_duration"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="0dp"
+    tools:value="25"
+    tools:valueFrom="1"
+    tools:valueTo="60"
+    app:thumbColor="?attr/colorPrimary"
+    app:trackColorActive="?attr/colorPrimary"
+    app:trackColorInactive="?attr/colorSurfaceVariant"
+    app:stepSize="1"/>
+</LinearLayout>
+    </com.google.android.material.card.MaterialCardView>

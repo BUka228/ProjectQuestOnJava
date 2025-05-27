@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/coordinatorLayout_statistics"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".feature.statistics.presentation.screens.StatisticsFragment">
+
+    <LinearLayout
+        android:id="@+id/layout_statistics_root_content_visibility_toggle"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <!-- Period Selector -->
+        <LinearLayout
+            android:id="@+id/layout_period_selector_stats"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp"
+            android:gravity="center_vertical"
+            android:background="?attr/colorSurfaceContainer">
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/toggle_button_group_period_stats"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:singleSelection="true"
+                app:selectionRequired="true"
+                app:checkedButton="@+id/button_period_week_stats">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_period_week_stats"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="60dp"
+                    android:text="Нед"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_period_month_stats"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="60dp"
+                    android:text="Мес"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_period_all_time_stats"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="60dp"
+                    android:text="Все"/>
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+            <Space android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_custom_date_range_stats"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:icon="@drawable/edit_calendar"
+                android:text="Диапазон"/>
+        </LinearLayout>
+
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true">
+            <LinearLayout
+                android:id="@+id/layout_statistics_content_scrollable_part"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="8dp">
+                <include layout="@layout/view_stats_overview_card" android:id="@+id/stats_overview_card_stats_include" />
+                <include layout="@layout/view_chart_card" android:id="@+id/chart_card_task_completion_stats" />
+                <include layout="@layout/view_chart_card" android:id="@+id/chart_card_pomodoro_focus_stats" />
+                <include layout="@layout/view_chart_card" android:id="@+id/chart_card_day_of_week_stats" />
+                <include layout="@layout/view_chart_card" android:id="@+id/chart_card_xp_gain_stats" />
+                <include layout="@layout/view_chart_card" android:id="@+id/chart_card_coin_gain_stats" />
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+    </LinearLayout>
+
+    <include layout="@layout/view_statistics_loading_skeleton"
+        android:id="@+id/skeleton_statistics_loading_include"
+        android:visibility="gone"/>
+    <include layout="@layout/view_error_state_statistics"
+        android:id="@+id/error_state_statistics_include"
+        android:visibility="gone"/>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

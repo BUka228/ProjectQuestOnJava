@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".approach.calendar.presentation.screens.DayTasksFragment">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_view_day_tasks"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingBottom="80dp"
+    android:paddingHorizontal="@dimen/padding_medium"
+    android:paddingTop="@dimen/padding_medium"
+    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+    tools:listitem="@layout/item_task_dashboard"/>
+
+    <!-- Placeholder для пустого списка задач -->
+    <LinearLayout
+        android:id="@+id/layout_empty_tasks_placeholder_day"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_gravity="center"
+        android:padding="16dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+        <ImageView
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            app:srcCompat="@drawable/check_box_outline_blank"
+            app:tint="?attr/colorOnSurfaceVariant"
+            android:alpha="0.7"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/no_tasks_today_placeholder"
+            style="@style/TextAppearance.App.HeadlineSmall"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textAlignment="center"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/add_new_task_prompt"
+            style="@style/TextAppearance.App.BodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textAlignment="center"/>
+    </LinearLayout>
+</FrameLayout>

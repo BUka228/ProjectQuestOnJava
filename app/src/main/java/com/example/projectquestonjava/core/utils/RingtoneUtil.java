@@ -24,10 +24,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import android.media.RingtoneManager;
 
-record RingtoneItem(@Getter String uri, @Getter String title,
-                    boolean isCustom) {
 
-}
 
 
 @Singleton

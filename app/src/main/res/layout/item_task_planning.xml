@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/card_task_planning_item"
+    style="@style/Widget.App.OutlinedCardView"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    app:cardElevation="2dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <View
+            android:id="@+id/view_priority_indicator_planning"
+            android:layout_width="6dp"
+            android:layout_height="match_parent"
+            tools:background="@color/priority_critical" /> <!-- Цвет будет установлен программно -->
+
+        <!-- TaskTimeDisplayImproved для планирования -->
+        <LinearLayout
+            android:id="@+id/layout_task_time_display_planning"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="12dp"
+            android:background="?attr/colorSurfaceContainerHighest"> <!-- Легкий фон для временной секции -->
+            <TextView
+                android:id="@+id/text_task_hour_planning"
+                style="@style/TextAppearance.App.HeadlineMedium"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:text="09"/>
+            <View
+                android:layout_width="24dp"
+                android:layout_height="2dp"
+                android:background="?attr/colorOutline"
+                android:layout_marginVertical="2dp"/>
+            <TextView
+                android:id="@+id/text_task_minute_planning"
+                style="@style/TextAppearance.App.HeadlineMedium"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:text="00"/>
+        </LinearLayout>
+
+        <!-- Основной контент -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="16dp"
+            android:paddingVertical="12dp">
+
+            <TextView
+                android:id="@+id/textView_task_title_planning"
+                style="@style/TextAppearance.App.TitleMedium"
+                android:textStyle="bold"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="2"
+                android:ellipsize="end"
+                tools:text="Очень важная задача на утро с длинным описанием"/>
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroup_task_tags_planning"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                app:singleLine="true"
+                app:chipSpacingHorizontal="4dp"
+                android:visibility="gone"
+                tools:visibility="visible"/>
+
+            <Space
+                android:id="@+id/spacer_tags_planning_end"
+                android:layout_width="match_parent"
+                android:layout_height="37dp"
+                android:visibility="visible"
+                tools:visibility="gone"/> <!-- Показываем, если тегов нет -->
+        </LinearLayout>
+
+        <!-- Pomodoro Counter -->
+        <FrameLayout
+            android:id="@+id/pomodoro_counter_container_planning"
+            android:layout_width="48dp"
+            android:layout_height="match_parent"
+            android:background="?attr/colorPrimaryContainer"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone"
+            tools:visibility="visible">
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_gravity="center"
+                android:gravity="center_horizontal">
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    app:srcCompat="@drawable/timer"
+                    app:tint="?attr/colorPrimary"/>
+                <TextView
+                    android:id="@+id/text_pomodoro_count_planning"
+                    style="@style/TextAppearance.App.LabelMedium"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorPrimary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:text="2"/>
+            </LinearLayout>
+        </FrameLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

@@ -51,6 +51,10 @@ public class GamificationDataStoreManager {
         return dataStoreManager.clearValueFuture(GAMIFICATION_ID_KEY);
     }
 
+    public ListenableFuture<Void> clearAllGamificationData() {
+        return dataStoreManager.clearValueFuture(GAMIFICATION_ID_KEY);
+    }
+
     public ListenableFuture<Void> saveGamificationId(long id) {
         return dataStoreManager.saveValueFuture(GAMIFICATION_ID_KEY, id);
     }

@@ -1,0 +1,16 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="oval">
+            <gradient
+                android:type="linear"
+                android:angle="45"
+                android:startColor="?attr/colorPrimary"
+                android:endColor="?attr/colorTertiary" />
+        </shape>
+    </item>
+    <item android:top="3dp" android:bottom="3dp" android:left="3dp" android:right="3dp">
+        <shape android:shape="oval">
+            <solid android:color="?attr/colorSurface"/> <!-- Внутренний фон, чтобы перекрыть градиент под картинкой -->
+        </shape>
+    </item>
+</layer-list>

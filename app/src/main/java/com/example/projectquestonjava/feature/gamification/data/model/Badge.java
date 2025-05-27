@@ -4,35 +4,29 @@ import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 import java.util.Objects;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
 @Entity(tableName = "badge")
+@Data
 public class Badge {
 
-    @Getter
-    @Setter
     @PrimaryKey(autoGenerate = true)
-    private long id;
+    public long id;
 
-    @Getter
-    @Setter
-    private String name;
-    @Setter
-    @Getter
-    private String description;
+    public String name;
+    public String description;
 
     @ColumnInfo(name = "image_url")
-    @DrawableRes
-    private int imageUrl;
+    @DrawableRes // Указываем, что это ID ресурса drawable
+    public int imageUrl;
 
-    @Setter
-    @Getter
-    private String criteria;
+    public String criteria;
 
+    // Основной конструктор для Room
     public Badge(long id, String name, String description, @DrawableRes int imageUrl, String criteria) {
         this.id = id;
         this.name = name;
@@ -41,19 +35,9 @@ public class Badge {
         this.criteria = criteria;
     }
 
-    // Конструктор для Room, если id автогенерируется
+    @Ignore
     public Badge(String name, String description, @DrawableRes int imageUrl, String criteria) {
         this(0, name, description, imageUrl, criteria);
-    }
-
-
-    @DrawableRes
-    public int getImageUrl() {
-        return imageUrl;
-    }
-
-    public void setImageUrl(@DrawableRes int imageUrl) {
-        this.imageUrl = imageUrl;
     }
 
     @Override
@@ -69,15 +53,4 @@ public class Badge {
         return Objects.hash(id, name, description, imageUrl, criteria);
     }
 
-    @NonNull
-    @Override
-    public String toString() {
-        return "Badge{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", description='" + description + '\'' +
-                ", imageUrl=" + imageUrl +
-                ", criteria='" + criteria + '\'' +
-                '}';
-    }
 }

@@ -182,7 +182,7 @@ public class CalendarRepositoryImpl implements CalendarRepository {
 
     // Вспомогательный класс для объединения источников в MediatorLiveData
     private static class CombinedLiveDataSources extends MediatorLiveData<CombinedData> {
-        private List<TaskWithTags> tasksWithTags;
+        private final List<TaskWithTags> tasksWithTags;
         private List<TaskStatistics> stats;
         private List<CalendarParams> params;
 

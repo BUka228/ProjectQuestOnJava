@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/card_mini_stats_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="4dp"
+    app:cardBackgroundColor="?attr/colorSurface"> <!-- Или ?attr/colorSurfaceContainer -->
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="12dp">
+
+        <!-- Уровень -->
+        <LinearLayout
+            android:id="@+id/layout_level_gamif"
+            style="@style/GamificationStatItemStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <ImageView
+                android:id="@+id/imageView_info_icon_level"
+                style="@style/GamificationStatIconStyle"
+                app:srcCompat="@drawable/star"
+                app:tint="?attr/colorPrimary"
+                tools:ignore="ContentDescription" />
+            <TextView
+                style="@style/GamificationStatLabelStyle"
+                android:text="Уровень"/>
+            <TextView
+                android:id="@+id/textView_level_value_gamif"
+                style="@style/GamificationStatValueStyle"
+                tools:text="12"/>
+        </LinearLayout>
+
+        <Space android:layout_width="match_parent" android:layout_height="12dp"/>
+
+        <!-- Опыт -->
+        <LinearLayout
+            android:id="@+id/layout_xp_gamif"
+            style="@style/GamificationStatItemStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <FrameLayout
+                android:layout_width="36dp"
+                android:layout_height="36dp">
+                <ProgressBar
+                    android:id="@+id/progressBar_xp_background_gamif"
+                    style="@style/GamificationCircularProgressBgStyle"/>
+                <ProgressBar
+                    android:id="@+id/progressBar_xp_gamif"
+                    style="@style/GamificationCircularProgressFgStyle"
+                    tools:progress="75"/>
+                <ImageView
+                    android:id="@+id/imageView_xp_icon_container"
+                    style="@style/GamificationCircularProgressIconStyle"
+                    app:srcCompat="@drawable/trending_up"
+                    app:tint="?attr/colorPrimary"/>
+            </FrameLayout>
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="16dp">
+                <TextView
+                    style="@style/GamificationStatLabelStyle"
+                    android:text="Опыт"/>
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="bottom">
+                    <TextView
+                        android:id="@+id/textView_xp_value_gamif"
+                        tools:text="750"
+                        style="@style/GamificationStatValueStyle"/>
+                    <TextView
+                        android:id="@+id/textView_xp_max_gamif"
+                        tools:text="/ 1000"
+                        style="@style/GamificationXpMaxLabelStyle"
+                        android:layout_marginStart="4dp"/>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <Space android:layout_width="match_parent" android:layout_height="12dp"/>
+
+        <!-- Монеты -->
+        <LinearLayout
+            android:id="@+id/layout_coins_gamif"
+            style="@style/GamificationStatItemStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <ImageView
+                android:id="@+id/imageView_info_icon_coins"
+                style="@style/GamificationStatIconStyle"
+                app:srcCompat="@drawable/paid"
+                app:tint="?attr/colorPrimary"/> <!-- Можно использовать colorSecondary или специальный цвет для монет -->
+            <TextView
+                style="@style/GamificationStatLabelStyle"
+                android:text="Монеты"/>
+            <TextView
+                android:id="@+id/textView_coins_value_gamif"
+                style="@style/GamificationStatValueStyle"
+                tools:text="1234"/>
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

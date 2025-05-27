@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_edit_profile"
+        android:icon="@drawable/edit"
+        android:title="Редактировать профиль"
+        app:showAsAction="ifRoom"/>
+    <item
+        android:id="@+id/action_statistics_profile"
+        android:icon="@drawable/trending_up"
+        android:title="Статистика"
+        app:showAsAction="never"/>
+    <item
+        android:id="@+id/action_settings_profile"
+        android:icon="@drawable/settings"
+        android:title="Настройки"
+        app:showAsAction="never"/>
+    <item
+        android:id="@+id/action_logout_profile"
+        android:icon="@drawable/exit_to_app"
+        android:title="Выйти"
+        app:showAsAction="never"/>
+</menu>

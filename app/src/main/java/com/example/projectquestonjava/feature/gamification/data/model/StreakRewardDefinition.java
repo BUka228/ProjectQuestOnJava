@@ -6,9 +6,6 @@ import androidx.room.ForeignKey;
 import androidx.room.Index;
 import java.util.Objects;
 
-import lombok.Getter;
-
-@Getter
 @Entity(
         tableName = "streak_reward_definition",
         primaryKeys = {"streak_day"},
@@ -25,16 +22,35 @@ import lombok.Getter;
 public class StreakRewardDefinition {
 
     @ColumnInfo(name = "streak_day")
-    private final int streakDay;
+    private int streakDay;
 
     @ColumnInfo(name = "reward_id")
-    private final long rewardId;
+    private long rewardId;
 
+    // Основной конструктор для Room
     public StreakRewardDefinition(int streakDay, long rewardId) {
         this.streakDay = streakDay;
         this.rewardId = rewardId;
     }
 
+    // Геттеры и сеттеры
+    public int getStreakDay() {
+        return streakDay;
+    }
+
+    public void setStreakDay(int streakDay) {
+        this.streakDay = streakDay;
+    }
+
+    public long getRewardId() {
+        return rewardId;
+    }
+
+    public void setRewardId(long rewardId) {
+        this.rewardId = rewardId;
+    }
+
+    // equals, hashCode, toString
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

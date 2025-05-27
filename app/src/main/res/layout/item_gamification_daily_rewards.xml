@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="@dimen/padding_medium"
+    android:layout_marginTop="@dimen/padding_small"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="6dp">
+    <LinearLayout
+        android:id="@+id/linearLayout_daily_rewards_background_gamif"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:gravity="center_horizontal">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ежедневные награды"
+            style="@style/TextAppearance.App.HeadlineSmall"
+            android:textColor="?attr/colorOnPrimaryContainer"/>
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="8dp">
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" app:srcCompat="@drawable/local_fire_department" app:tint="?attr/colorPrimary"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:text="Серия:" style="@style/TextAppearance.App.BodyLarge" android:textStyle="bold" android:textColor="?attr/colorOnPrimaryContainer"/>
+            <TextView android:id="@+id/textView_daily_streak_value_gamif" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" style="@style/TextAppearance.App.BodyLarge" android:textStyle="bold" android:textColor="?attr/colorOnPrimaryContainer" tools:text="3"/>
+            <TextView android:id="@+id/textView_daily_streak_days_gamif" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="2dp" style="@style/TextAppearance.App.BodyLarge" android:textStyle="bold" android:textColor="?attr/colorOnPrimaryContainer" tools:text="дня"/>
+        </LinearLayout>
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerView_daily_rewards_gamif"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:listitem="@layout/item_daily_reward"
+            tools:itemCount="7"
+            android:clipToPadding="false"
+            android:paddingHorizontal="4dp"/>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

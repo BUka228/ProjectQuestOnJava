@@ -5,14 +5,14 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
-
 import com.example.projectquestonjava.R;
 import com.example.projectquestonjava.core.di.IODispatcher;
 import com.example.projectquestonjava.core.utils.DateTimeUtils;
 import com.example.projectquestonjava.core.utils.Logger;
-import com.example.projectquestonjava.core.utils.SingleLiveEvent;
+import com.example.projectquestonjava.core.utils.SingleLiveEvent; // Если используешь его
 import com.example.projectquestonjava.feature.gamification.data.managers.GamificationDataStoreManager;
 import com.example.projectquestonjava.feature.gamification.data.model.Badge;
 import com.example.projectquestonjava.feature.gamification.data.model.Challenge;
@@ -44,6 +44,8 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
+import lombok.Getter;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -53,55 +55,83 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 
-
 @HiltViewModel
 public class GamificationViewModel extends ViewModel {
 
     private static final String TAG = "GamificationViewModel";
 
+    // Use Cases
     private final GetDailyRewardsUseCase getDailyRewardsUseCase;
     private final ClaimDailyRewardUseCase claimDailyRewardUseCase;
     private final AcceptSurpriseTaskUseCase acceptSurpriseTaskUseCase;
     private final SelectNewSurpriseTaskUseCase selectNewSurpriseTaskUseCase;
     private final ManuallyWaterPlantUseCase manuallyWaterPlantUseCase;
 
+    // Repositories
+    private final GamificationRepository gamificationRepository;
+    private final VirtualGardenRepository virtualGardenRepository;
+    private final ChallengeRepository challengeRepository;
+    private final SurpriseTaskRepository surpriseTaskRepository;
+    private final BadgeRepository badgeRepository;
+    private final RewardRepository rewardRepository;
+
+    // Managers & Utils
     private final GamificationDataStoreManager gamificationDataStoreManager;
     private final DateTimeUtils dateTimeUtils;
     private final Executor ioExecutor;
-    private final Logger logger;
+    @Getter // Lombok для логгера, если он используется в адаптере
+    public final Logger logger;
 
+
+    // --- LiveData для UI ---
     private final MutableLiveData<Integer> _selectedTab = new MutableLiveData<>(0);
-    public LiveData<Integer> selectedTab = _selectedTab;
+    public final LiveData<Integer> selectedTab = _selectedTab;
 
-    // LiveData для основных данных
+    // Используем SingleLiveEvent или другой механизм для одноразовых событий Snackbar
+    private final SingleLiveEvent<String> _errorMessageEvent = new SingleLiveEvent<>();
+    public final LiveData<String> errorMessageEvent = _errorMessageEvent;
+    private final SingleLiveEvent<String> _successMessageEvent = new SingleLiveEvent<>();
+    public final LiveData<String> successMessageEvent = _successMessageEvent;
+
+    private final MutableLiveData<Boolean> _isLoadingLiveData = new MutableLiveData<>(false);
+    public final LiveData<Boolean> isLoadingLiveData = _isLoadingLiveData;
+
     public final LiveData<Gamification> gamificationState;
     public final LiveData<VirtualGarden> selectedPlantState;
     public final LiveData<PlantHealthState> plantHealthState;
     public final LiveData<Boolean> canWaterToday;
-    public final LiveData<Pair<SurpriseTask, Reward>> surpriseTaskDetailsState; // Reward нужен для отображения имени
+    public final LiveData<GamificationViewModel.Pair<SurpriseTask, Reward>> surpriseTaskDetailsState; // Используем внутренний Pair
     private final MutableLiveData<DailyRewardsInfo> _dailyRewardsInfo = new MutableLiveData<>(null);
     public final LiveData<DailyRewardsInfo> dailyRewardsInfo = _dailyRewardsInfo;
     public final LiveData<ActiveChallengesSectionState> challengesSectionState;
-    public final LiveData<ChallengeCardInfo> challengeToShowDetails = new MutableLiveData<>(null); // Для BottomSheet
+    private final MutableLiveData<ChallengeCardInfo> _challengeToShowDetails = new MutableLiveData<>(null);
+    public final LiveData<ChallengeCardInfo> challengeToShowDetails = _challengeToShowDetails;
 
-    // LiveData для значков (для вкладки "Значки")
     public final LiveData<List<Badge>> allBadgesState;
     public final LiveData<List<GamificationBadgeCrossRef>> earnedBadgesState;
 
-    // Для UI событий
-    private final SingleLiveEvent<String> _errorMessageEvent = new SingleLiveEvent<>();
-    public LiveData<String> errorMessageEvent = _errorMessageEvent;
-    private final SingleLiveEvent<String> _successMessageEvent = new SingleLiveEvent<>();
-    public LiveData<String> successMessageEvent = _successMessageEvent;
-    private final MutableLiveData<Boolean> _isLoadingLiveData = new MutableLiveData<>(false); // Для общих операций
-    public LiveData<Boolean> isLoadingLiveData = _isLoadingLiveData;
+    // Observer'ы для отписки
+    private final Observer<Gamification> gamificationObserverForDependentLoads;
+    private final Observer<Long> selectedPlantIdObserver;
+    private final Observer<List<VirtualGarden>> allPlantsObserver;
+    private final Observer<SurpriseTask> activeSurpriseTaskObserver;
+    private final Observer<Set<Long>> hiddenIdsObserver;
+
+    // Для комбинирования selectedPlantState
+    private final MediatorLiveData<VirtualGarden> selectedPlantMediator = new MediatorLiveData<>();
+    private Long currentSelectedPlantIdFromStore = -1L; // Храним последнее значение из DataStore
+    private List<VirtualGarden> currentAllPlantsFromRepo = Collections.emptyList(); // Храним последние растения
+
+    // Для комбинирования surpriseTaskDetailsState
+    private final MediatorLiveData<GamificationViewModel.Pair<SurpriseTask, Reward>> surpriseTaskDetailsMediator = new MediatorLiveData<>();
+    private SurpriseTask currentActiveSurpriseTask = null;
+    private Set<Long> currentHiddenIds = Collections.emptySet();
 
 
     @Inject
@@ -111,7 +141,7 @@ public class GamificationViewModel extends ViewModel {
             ChallengeRepository challengeRepository,
             SurpriseTaskRepository surpriseTaskRepository,
             BadgeRepository badgeRepository,
-            RewardRepository rewardRepository, // Нужен для surpriseTaskDetailsState
+            RewardRepository rewardRepository,
             GetDailyRewardsUseCase getDailyRewardsUseCase,
             ClaimDailyRewardUseCase claimDailyRewardUseCase,
             AcceptSurpriseTaskUseCase acceptSurpriseTaskUseCase,
@@ -121,7 +151,12 @@ public class GamificationViewModel extends ViewModel {
             DateTimeUtils dateTimeUtils,
             @IODispatcher Executor ioExecutor,
             Logger logger) {
-        // this.rewardRepository = rewardRepository;
+        this.gamificationRepository = gamificationRepository;
+        this.virtualGardenRepository = virtualGardenRepository;
+        this.challengeRepository = challengeRepository;
+        this.surpriseTaskRepository = surpriseTaskRepository;
+        this.badgeRepository = badgeRepository;
+        this.rewardRepository = rewardRepository;
         this.getDailyRewardsUseCase = getDailyRewardsUseCase;
         this.claimDailyRewardUseCase = claimDailyRewardUseCase;
         this.acceptSurpriseTaskUseCase = acceptSurpriseTaskUseCase;
@@ -134,87 +169,61 @@ public class GamificationViewModel extends ViewModel {
 
         logger.info(TAG, "ViewModel initialized.");
 
-        // 1. Gamification Profile
         gamificationState = Transformations.distinctUntilChanged(gamificationRepository.getCurrentUserGamificationFlow());
 
-        // 2. Selected Plant & Health & CanWater
-        // selectedPlantState
-        LiveData<Long> selectedPlantIdFlow = gamificationDataStoreManager.getSelectedPlantIdFlow();
-        LiveData<List<VirtualGarden>> allPlantsFlow = Transformations.switchMap(
+        // Selected Plant Logic
+        LiveData<Long> selectedPlantIdFlowInternal = gamificationDataStoreManager.getSelectedPlantIdFlow();
+        LiveData<List<VirtualGarden>> allPlantsFlowInternal = Transformations.switchMap(
                 gamificationDataStoreManager.getGamificationIdFlow(),
                 gamiId -> (gamiId == null || gamiId == -1L) ?
                         new MutableLiveData<>(Collections.emptyList()) :
                         virtualGardenRepository.getAllPlantsFlow()
         );
 
-        MediatorLiveData<VirtualGarden> plantMediator = new MediatorLiveData<>();
-        final Long[] currentSelectedId = {null};
-        final List<VirtualGarden>[] currentAllPlants = new List[1];
-        plantMediator.addSource(selectedPlantIdFlow, selectedId -> {
-            currentSelectedId[0] = selectedId;
-            updateSelectedPlant(plantMediator, currentSelectedId[0], currentAllPlants[0]);
-        });
-        plantMediator.addSource(allPlantsFlow, plants -> {
-            currentAllPlants[0] = plants;
-            updateSelectedPlant(plantMediator, currentSelectedId[0], currentAllPlants[0]);
-        });
-        selectedPlantState = Transformations.distinctUntilChanged(plantMediator);
+        selectedPlantIdObserver = selectedId -> {
+            currentSelectedPlantIdFromStore = selectedId;
+            updateSelectedPlantMediator();
+        };
+        allPlantsObserver = plants -> {
+            currentAllPlantsFromRepo = plants;
+            updateSelectedPlantMediator();
+        };
+
+        selectedPlantMediator.addSource(selectedPlantIdFlowInternal, selectedPlantIdObserver);
+        selectedPlantMediator.addSource(allPlantsFlowInternal, allPlantsObserver);
+        selectedPlantState = Transformations.distinctUntilChanged(selectedPlantMediator);
 
 
         plantHealthState = Transformations.map(selectedPlantState, this::calculateHealthState);
         canWaterToday = Transformations.map(selectedPlantState, this::calculateCanWaterToday);
 
-        // 3. Surprise Task Details
-        LiveData<SurpriseTask> activeSurpriseTaskFlow = Transformations.switchMap(
+        // Surprise Task Logic
+        LiveData<SurpriseTask> activeSurpriseTaskFlowInternal = Transformations.switchMap(
                 gamificationDataStoreManager.getGamificationIdFlow(),
                 gamiId -> (gamiId == null || gamiId == -1L) ?
                         new MutableLiveData<>(null) :
                         surpriseTaskRepository.getActiveTaskForDateFlow(LocalDate.now())
         );
-        LiveData<Set<Long>> hiddenIdsFlow = gamificationDataStoreManager.getHiddenExpiredTaskIdsFlow();
+        LiveData<Set<Long>> hiddenIdsFlowInternal = gamificationDataStoreManager.getHiddenExpiredTaskIdsFlow();
 
-        MediatorLiveData<SurpriseTask> filteredSurpriseTaskMediator = new MediatorLiveData<>();
-        final SurpriseTask[] currentActiveSurpriseTask = {null};
-        final Set<Long>[] currentHiddenIds = new Set[1];
-
-        filteredSurpriseTaskMediator.addSource(activeSurpriseTaskFlow, task -> {
-            currentActiveSurpriseTask[0] = task;
-            updateFilteredSurpriseTask(filteredSurpriseTaskMediator, currentActiveSurpriseTask[0], currentHiddenIds[0]);
-        });
-        filteredSurpriseTaskMediator.addSource(hiddenIdsFlow, hiddenIds -> {
-            currentHiddenIds[0] = hiddenIds;
-            updateFilteredSurpriseTask(filteredSurpriseTaskMediator, currentActiveSurpriseTask[0], currentHiddenIds[0]);
-        });
-
-        surpriseTaskDetailsState = Transformations.switchMap(filteredSurpriseTaskMediator, filteredTask -> {
-            if (filteredTask == null) {
-                return new MutableLiveData<>(null);
-            }
-            // Асинхронно загружаем Reward
-            ListenableFuture<Reward> rewardFuture = rewardRepository.getRewardById(filteredTask.getRewardId());
-            MutableLiveData<Pair<SurpriseTask, Reward>> resultLiveData = new MutableLiveData<>();
-            Futures.addCallback(rewardFuture, new FutureCallback<Reward>() {
-                @Override
-                public void onSuccess(Reward reward) {
-                    resultLiveData.postValue(new Pair<>(filteredTask, reward));
-                }
-                @Override
-                public void onFailure(@NonNull Throwable t) {
-                    logger.error(TAG, "Error loading reward for surprise task " + filteredTask.getId(), t);
-                    resultLiveData.postValue(new Pair<>(filteredTask, null)); // Отправляем задачу без награды
-                }
-            }, ioExecutor);
-            return resultLiveData;
-        });
+        activeSurpriseTaskObserver = task -> {
+            currentActiveSurpriseTask = task;
+            updateSurpriseDetailsMediator();
+        };
+        hiddenIdsObserver = hiddenIds -> {
+            currentHiddenIds = hiddenIds != null ? hiddenIds : Collections.emptySet();
+            updateSurpriseDetailsMediator();
+        };
+        surpriseTaskDetailsMediator.addSource(activeSurpriseTaskFlowInternal, activeSurpriseTaskObserver);
+        surpriseTaskDetailsMediator.addSource(hiddenIdsFlowInternal, hiddenIdsObserver);
+        surpriseTaskDetailsState = Transformations.distinctUntilChanged(surpriseTaskDetailsMediator);
 
 
-        // 5. Challenges Section State (через репозиторий и маппинг)
         challengesSectionState = Transformations.map(
-                challengeRepository.getChallengesWithDetailsFlow(null), // null для всех статусов, фильтрация в calculate
-                this::calculateChallengesSectionState
+                challengeRepository.getChallengesWithDetailsFlow(null),
+                this::calculateChallengesSectionStateJava
         );
 
-        // 6. Badges (для вкладки "Значки")
         allBadgesState = Transformations.distinctUntilChanged(badgeRepository.getAllBadgesFlow());
         earnedBadgesState = Transformations.switchMap(
                 gamificationDataStoreManager.getGamificationIdFlow(),
@@ -223,106 +232,114 @@ public class GamificationViewModel extends ViewModel {
                         badgeRepository.getEarnedBadgesFlow()
         );
 
-        // Начальная загрузка данных, которые не являются Flow
-        loadNonFlowData();
+        gamificationObserverForDependentLoads = gamificationProfile -> {
+            if (gamificationProfile != null) {
+                logger.debug(TAG, "Gamification state changed/loaded. Reloading dependent data.");
+                loadDailyRewardsInfoInternal();
+                checkAndSelectSurpriseTaskIfNeededInternal();
+            } else {
+                logger.debug(TAG, "Gamification state is null. Resetting dependent data.");
+                _dailyRewardsInfo.postValue(null);
+            }
+        };
+        gamificationState.observeForever(gamificationObserverForDependentLoads);
     }
 
-    private void updateSelectedPlant(MediatorLiveData<VirtualGarden> mediator, Long selectedId, List<VirtualGarden> allPlants) {
-        if (allPlants == null) {
-            mediator.setValue(null);
-            return;
-        }
-        if (allPlants.isEmpty()) {
-            mediator.setValue(null);
-            return;
+    private void updateSelectedPlantMediator() {
+        Long selectedId = currentSelectedPlantIdFromStore;
+        List<VirtualGarden> allPlants = currentAllPlantsFromRepo;
+
+        if (allPlants == null || allPlants.isEmpty()) {
+            selectedPlantMediator.setValue(null); return;
         }
         if (selectedId != null && selectedId != -1L) {
             VirtualGarden found = allPlants.stream().filter(p -> p.getId() == selectedId).findFirst().orElse(null);
-            if (found != null) {
-                mediator.setValue(found);
-                return;
-            }
+            if (found != null) { selectedPlantMediator.setValue(found); return; }
         }
-        // Если не выбран или выбранный не найден, берем последний
-        mediator.setValue(allPlants.stream().max(Comparator.comparingLong(VirtualGarden::getId)).orElse(null));
+        selectedPlantMediator.setValue(allPlants.stream().max(Comparator.comparingLong(VirtualGarden::getId)).orElse(null));
     }
 
-    private void updateFilteredSurpriseTask(MediatorLiveData<SurpriseTask> mediator, SurpriseTask task, Set<Long> hiddenIds) {
+    private void updateSurpriseDetailsMediator() {
+        SurpriseTask task = currentActiveSurpriseTask;
+        Set<Long> hiddenIds = currentHiddenIds;
+
         if (task == null) {
-            mediator.setValue(null);
+            surpriseTaskDetailsMediator.setValue(null);
             return;
         }
         boolean isExpired = LocalDateTime.now().isAfter(task.getExpirationTime());
-        boolean isHidden = hiddenIds != null && hiddenIds.contains(task.getId());
+        boolean isHiddenAndShouldBe = hiddenIds.contains(task.getId()) && isExpired && !task.isCompleted();
 
-        if (isHidden && isExpired && !task.isCompleted()) {
-            logger.debug(TAG, "Task " + task.getId() + " is expired and hidden, filtering out.");
-            mediator.setValue(null);
+        if (isHiddenAndShouldBe) {
+            logger.debug(TAG, "Task " + task.getId() + " is expired and hidden, filtering out for details.");
+            surpriseTaskDetailsMediator.setValue(null);
         } else {
-            mediator.setValue(task);
+            // Загружаем Reward для задачи
+            ListenableFuture<Reward> rewardFuture = rewardRepository.getRewardById(task.getRewardId());
+            Futures.addCallback(rewardFuture, new FutureCallback<Reward>() {
+                @Override
+                public void onSuccess(Reward reward) {
+                    surpriseTaskDetailsMediator.postValue(new Pair<>(task, reward));
+                }
+                @Override
+                public void onFailure(@NonNull Throwable t) {
+                    logger.error(TAG, "Error loading reward for surprise task " + task.getId(), t);
+                    surpriseTaskDetailsMediator.postValue(new Pair<>(task, null));
+                }
+            }, ioExecutor);
         }
     }
 
-
-    private void loadNonFlowData() {
-        _isLoadingLiveData.setValue(true);
-        ListenableFuture<DailyRewardsInfo> dailyRewardsFuture = getDailyRewardsUseCase.execute();
-        Futures.addCallback(dailyRewardsFuture, new FutureCallback<DailyRewardsInfo>() {
-            @Override
-            public void onSuccess(DailyRewardsInfo info) {
+    private void loadDailyRewardsInfoInternal() {
+        _isLoadingLiveData.postValue(true);
+        ListenableFuture<DailyRewardsInfo> future = getDailyRewardsUseCase.execute();
+        Futures.addCallback(future, new FutureCallback<DailyRewardsInfo>() {
+            @Override public void onSuccess(DailyRewardsInfo info) {
                 _dailyRewardsInfo.postValue(info);
-                // Проверяем, нужно ли выбрать новую задачу-сюрприз только после загрузки DailyRewards
-                checkAndSelectSurpriseTaskIfNeeded();
+                logger.debug(TAG, "Daily rewards info loaded.");
                 _isLoadingLiveData.postValue(false);
             }
-            @Override
-            public void onFailure(@NonNull Throwable t) {
+            @Override public void onFailure(@NonNull Throwable t) {
                 logger.error(TAG, "Failed to load daily rewards info", t);
                 _errorMessageEvent.postValue("Ошибка загрузки ежедневных наград.");
-                _dailyRewardsInfo.postValue(null); // Или дефолтное состояние
-                checkAndSelectSurpriseTaskIfNeeded(); // Все равно проверяем сюрприз
+                _dailyRewardsInfo.postValue(null);
                 _isLoadingLiveData.postValue(false);
             }
         }, ioExecutor);
     }
 
-    // --- Методы Действий ---
-    public void selectTab(int tabIndex) {
-        logger.debug(TAG, "Tab selected: " + tabIndex);
-        _selectedTab.setValue(tabIndex);
+    private void checkAndSelectSurpriseTaskIfNeededInternal() {
+        ioExecutor.execute(() -> {
+            logger.debug(TAG, "Checking if a new surprise task needs to be selected...");
+            ListenableFuture<SurpriseTask> future = selectNewSurpriseTaskUseCase.execute(LocalDate.now());
+            Futures.addCallback(future, new FutureCallback<SurpriseTask>() {
+                @Override public void onSuccess(SurpriseTask task) { /* LiveData обновится сам */ }
+                @Override public void onFailure(@NonNull Throwable t) { logger.error(TAG, "Error selecting new surprise task", t); }
+            }, ioExecutor);
+        });
     }
+
+    public void selectTab(int tabIndex) { _selectedTab.setValue(tabIndex); }
+    public void clearErrorMessage() { _errorMessageEvent.setValue(null); }
+    public void clearSuccessMessage() { _successMessageEvent.setValue(null); }
 
     public void waterPlant() {
         Boolean canWater = canWaterToday.getValue();
         Boolean isLoading = _isLoadingLiveData.getValue();
         if (canWater == null || !canWater) {
-            logger.warn(TAG, "Attempted to water plant when not allowed.");
-            _errorMessageEvent.setValue("Вы уже поливали растения сегодня.");
-            return;
+            _errorMessageEvent.postValue("Вы уже поливали растения сегодня."); return;
         }
-        if (isLoading != null && isLoading) {
-            logger.warn(TAG, "Attempted to water plant during another operation.");
-            return;
-        }
-        logger.debug(TAG, "Initiating manual plant watering...");
-        _isLoadingLiveData.setValue(true);
-        _errorMessageEvent.setValue(null);
-        _successMessageEvent.setValue(null);
+        if (isLoading != null && isLoading) return;
 
-        ListenableFuture<Void> waterFuture = manuallyWaterPlantUseCase.execute();
-        Futures.addCallback(waterFuture, new FutureCallback<Void>() {
-            @Override
-            public void onSuccess(Void result) {
-                logger.info(TAG, "Manual watering successful via UseCase.");
+        _isLoadingLiveData.setValue(true);
+        _errorMessageEvent.setValue(null); _successMessageEvent.setValue(null);
+        ListenableFuture<Void> future = manuallyWaterPlantUseCase.execute();
+        Futures.addCallback(future, new FutureCallback<Void>() {
+            @Override public void onSuccess(Void result) {
                 _successMessageEvent.postValue("Растения политы!");
                 _isLoadingLiveData.postValue(false);
-                // Обновление healthState и canWaterToday произойдет через их LiveData,
-                // так как manuallyWaterPlantUseCase обновит lastWatered в БД,
-                // что вызовет обновление selectedPlantState.
             }
-            @Override
-            public void onFailure(@NonNull Throwable t) {
-                logger.error(TAG, "Manual watering failed via UseCase", t);
+            @Override public void onFailure(@NonNull Throwable t) {
                 _errorMessageEvent.postValue("Не удалось полить: " + t.getMessage());
                 _isLoadingLiveData.postValue(false);
             }
@@ -330,20 +347,15 @@ public class GamificationViewModel extends ViewModel {
     }
 
     public void claimTodayReward() {
-        logger.debug(TAG, "Attempting to claim today's reward.");
         _isLoadingLiveData.setValue(true);
-        ListenableFuture<Void> claimFuture = claimDailyRewardUseCase.execute();
-        Futures.addCallback(claimFuture, new FutureCallback<Void>() {
-            @Override
-            public void onSuccess(Void result) {
-                logger.info(TAG, "Daily reward claimed successfully via UseCase.");
+        ListenableFuture<Void> future = claimDailyRewardUseCase.execute();
+        Futures.addCallback(future, new FutureCallback<Void>() {
+            @Override public void onSuccess(Void result) {
                 _successMessageEvent.postValue("Награда получена!");
-                loadNonFlowData(); // Перезагружаем DailyRewardsInfo
+                loadDailyRewardsInfoInternal();
                 _isLoadingLiveData.postValue(false);
             }
-            @Override
-            public void onFailure(@NonNull Throwable t) {
-                logger.error(TAG, "Failed to claim daily reward via UseCase", t);
+            @Override public void onFailure(@NonNull Throwable t) {
                 _errorMessageEvent.postValue("Не удалось получить награду: " + t.getMessage());
                 _isLoadingLiveData.postValue(false);
             }
@@ -351,20 +363,14 @@ public class GamificationViewModel extends ViewModel {
     }
 
     public void acceptSurpriseTask(SurpriseTask task) {
-        logger.debug(TAG, "Attempting to accept surprise task: " + task.getId());
         _isLoadingLiveData.setValue(true);
-        ListenableFuture<Void> acceptFuture = acceptSurpriseTaskUseCase.execute(task);
-        Futures.addCallback(acceptFuture, new FutureCallback<Void>() {
-            @Override
-            public void onSuccess(Void result) {
-                logger.info(TAG, "Surprise task " + task.getId() + " accepted successfully via UseCase.");
+        ListenableFuture<Void> future = acceptSurpriseTaskUseCase.execute(task);
+        Futures.addCallback(future, new FutureCallback<Void>() {
+            @Override public void onSuccess(Void result) {
                 _successMessageEvent.postValue("Награда за сюрприз получена!");
-                // Перезагрузка не нужна, т.к. activeSurpriseTaskFlow должен обновиться сам
                 _isLoadingLiveData.postValue(false);
             }
-            @Override
-            public void onFailure(@NonNull Throwable t) {
-                logger.error(TAG, "Failed to accept surprise task " + task.getId() + " via UseCase", t);
+            @Override public void onFailure(@NonNull Throwable t) {
                 _errorMessageEvent.postValue("Не удалось получить награду: " + t.getMessage());
                 _isLoadingLiveData.postValue(false);
             }
@@ -372,57 +378,28 @@ public class GamificationViewModel extends ViewModel {
     }
 
     public void hideExpiredSurpriseTask(long taskId) {
-        logger.debug(TAG, "Requesting to hide expired task ID: " + taskId);
-        // gamificationDataStoreManager.hideExpiredTaskId возвращает ListenableFuture<Void>
-        ListenableFuture<Void> hideFuture = gamificationDataStoreManager.hideExpiredTaskId(taskId);
-        Futures.addCallback(hideFuture, new FutureCallback<Void>() {
-            @Override public void onSuccess(Void result) {}
-            @Override public void onFailure(@NonNull Throwable t) {
-                logger.error(TAG, "Failed to hide task ID " + taskId + " in DataStore", t);
-                _errorMessageEvent.postValue("Не удалось скрыть задачу.");
-            }
-        }, ioExecutor);
-    }
-
-    private void checkAndSelectSurpriseTaskIfNeeded() {
-        ioExecutor.execute(() -> { // Используем ioExecutor
-            logger.debug(TAG, "Checking if a new surprise task needs to be selected for today...");
-            ListenableFuture<SurpriseTask> selectFuture = selectNewSurpriseTaskUseCase.execute(LocalDate.now());
-            Futures.addCallback(selectFuture, new FutureCallback<SurpriseTask>() {
-                @Override
-                public void onSuccess(SurpriseTask selectedTask) {
-                    if (selectedTask != null) {
-                        logger.info(TAG, "SelectNewSurpriseTaskUseCase returned task " + selectedTask.getId() + ".");
-                    } else {
-                        logger.debug(TAG, "SelectNewSurpriseTaskUseCase returned null.");
+        Futures.addCallback(gamificationDataStoreManager.hideExpiredTaskId(taskId),
+                new FutureCallback<Void>() {
+                    @Override public void onSuccess(Void result) {}
+                    @Override public void onFailure(@NonNull Throwable t) {
+                        _errorMessageEvent.postValue("Не удалось скрыть задачу.");
                     }
-                }
-                @Override
-                public void onFailure(@NonNull Throwable t) {
-                    logger.error(TAG, "Error during selectNewSurpriseTaskUseCase execution", t);
-                }
-            }, ioExecutor);
-        });
+                }, ioExecutor);
     }
 
     public void showChallengeDetails(ChallengeCardInfo challengeInfo) {
-        logger.debug(TAG, "Showing details for challenge: " + challengeInfo.name());
-        ((MutableLiveData<ChallengeCardInfo>)challengeToShowDetails).postValue(challengeInfo);
+        _challengeToShowDetails.setValue(challengeInfo);
     }
     public void clearChallengeDetails() {
-        logger.debug(TAG, "Clearing challenge details view.");
-        ((MutableLiveData<ChallengeCardInfo>)challengeToShowDetails).postValue(null);
+        _challengeToShowDetails.setValue(null);
     }
 
-
-    // --- Вспомогательные функции ---
     private PlantHealthState calculateHealthState(VirtualGarden plant) {
         if (plant == null) return PlantHealthState.HEALTHY;
         LocalDate lastWateredDate = dateTimeUtils.utcToLocalLocalDateTime(plant.getLastWatered()).toLocalDate();
-        LocalDate today = LocalDate.now();
-        long daysSinceWatered = ChronoUnit.DAYS.between(lastWateredDate, today);
+        long daysSinceWatered = ChronoUnit.DAYS.between(lastWateredDate, LocalDate.now());
         if (daysSinceWatered <= 1) return PlantHealthState.HEALTHY;
-        if (daysSinceWatered == 2L) return PlantHealthState.NEEDSWATER;
+        if (daysSinceWatered == 2) return PlantHealthState.NEEDSWATER;
         return PlantHealthState.WILTED;
     }
 
@@ -432,183 +409,178 @@ public class GamificationViewModel extends ViewModel {
         return lastWateredDate.isBefore(LocalDate.now());
     }
 
-    private ActiveChallengesSectionState calculateChallengesSectionState(List<ChallengeProgressFullDetails> allDetailsList) {
+    private ActiveChallengesSectionState calculateChallengesSectionStateJava(List<ChallengeProgressFullDetails> allDetailsList) {
         if (allDetailsList == null || allDetailsList.isEmpty()) {
-            return new ActiveChallengesSectionState(0, Collections.emptyList(), 0,0,0,0,0,0);
+            return new ActiveChallengesSectionState();
         }
-
         int dailyCompleted = 0; int dailyTotal = 0;
         int weeklyCompleted = 0; int weeklyTotal = 0;
-        int urgentCount = 0; int nearCompletionCount = 0;
+        int urgent = 0; int nearCompletion = 0;
         LocalDateTime now = dateTimeUtils.currentLocalDateTime();
         LocalDate today = now.toLocalDate();
         LocalDate tomorrow = today.plusDays(1);
-        int currentWeek = now.get(WeekFields.ISO.weekOfWeekBasedYear()); // ISO стандарт недели
+        int currentWeek = now.get(WeekFields.ISO.weekOfWeekBasedYear());
         int currentYear = now.getYear();
+        List<ChallengeCardInfo> challengeInfos = new ArrayList<>();
 
-        List<ChallengeCardInfo> challengeInfosToShow = new ArrayList<>();
+        Map<Long, List<ChallengeProgressFullDetails>> grouped = allDetailsList.stream()
+                .collect(Collectors.groupingBy(d -> d.getChallengeAndReward().getChallenge().getId()));
 
-        Map<Long, List<ChallengeProgressFullDetails>> groupedByChallengeId = allDetailsList.stream()
-                .collect(Collectors.groupingBy(details -> details.getChallengeAndReward().getChallenge().getId()));
+        for (List<ChallengeProgressFullDetails> detailsForOneChallenge : grouped.values()) {
+            if (detailsForOneChallenge.isEmpty()) continue;
+            Challenge challenge = detailsForOneChallenge.get(0).getChallengeAndReward().getChallenge();
+            Reward reward = detailsForOneChallenge.get(0).getChallengeAndReward().getReward();
+            float overallProgress = calculateOverallChallengeProgress(detailsForOneChallenge);
+            boolean isChallengeCompletedByStatus = challenge.getStatus() == ChallengeStatus.COMPLETED;
 
-        for (Map.Entry<Long, List<ChallengeProgressFullDetails>> entry : groupedByChallengeId.entrySet()) {
-            List<ChallengeProgressFullDetails> detailsForChallenge = entry.getValue();
-            if (detailsForChallenge.isEmpty()) continue;
-
-            Challenge challenge = detailsForChallenge.get(0).getChallengeAndReward().getChallenge();
-            Reward reward = detailsForChallenge.get(0).getChallengeAndReward().getReward();
-
-            float totalProgressValue = 0;
-            float totalTargetValue = 0;
-            for(ChallengeProgressFullDetails detail : detailsForChallenge){
-                totalProgressValue += detail.getProgress().getProgress();
-                totalTargetValue += detail.getRule().getTarget();
-            }
-            float overallProgress = (totalTargetValue > 0) ? (totalProgressValue / totalTargetValue) : 0f;
-            overallProgress = Math.max(0f, Math.min(1f, overallProgress)); // Ограничиваем 0..1
-            boolean isChallengeCompletedByProgress = overallProgress >= 1.0f;
-
-
-            boolean actualIsCompleted = challenge.getStatus() == ChallengeStatus.COMPLETED;
-            boolean isActive = challenge.getStatus() == ChallengeStatus.ACTIVE;
-
-            LocalDateTime lastUpdateTime = detailsForChallenge.stream()
+            LocalDateTime lastUpdateTime = detailsForOneChallenge.stream()
                     .map(d -> d.getProgress().getLastUpdated())
-                    .max(LocalDateTime::compareTo)
-                    .orElse(challenge.getStartDate());
-            LocalDate lastUpdateDate = lastUpdateTime.toLocalDate();
-            int lastUpdateWeek = lastUpdateTime.get(WeekFields.ISO.weekOfWeekBasedYear());
-            int lastUpdateYear = lastUpdateTime.getYear();
-
+                    .max(LocalDateTime::compareTo).orElse(challenge.getStartDate());
             boolean shouldShowCard = false;
 
             if (challenge.getPeriod() == ChallengePeriod.DAILY) {
                 dailyTotal++;
-                if (actualIsCompleted && lastUpdateDate.isEqual(today)) {
+                if (isChallengeCompletedByStatus && lastUpdateTime.toLocalDate().isEqual(today)) {
                     dailyCompleted++; shouldShowCard = true;
-                } else if (isActive) {
+                } else if (challenge.getStatus() == ChallengeStatus.ACTIVE) {
                     shouldShowCard = true;
                 }
             } else if (challenge.getPeriod() == ChallengePeriod.WEEKLY) {
                 weeklyTotal++;
-                if (actualIsCompleted && lastUpdateYear == currentYear && lastUpdateWeek == currentWeek) {
+                if (isChallengeCompletedByStatus && lastUpdateTime.getYear() == currentYear && lastUpdateTime.get(WeekFields.ISO.weekOfWeekBasedYear()) == currentWeek) {
                     weeklyCompleted++; shouldShowCard = true;
-                } else if (isActive) {
+                } else if (challenge.getStatus() == ChallengeStatus.ACTIVE) {
                     shouldShowCard = true;
                 }
-            } else if (isActive) { // ONCE, EVENT, MONTHLY - показываем если активны
+            } else if (challenge.getStatus() == ChallengeStatus.ACTIVE) {
                 shouldShowCard = true;
             }
 
-            if (isActive) {
-                LocalDate deadlineDate = challenge.getEndDate().toLocalDate();
-                boolean isCurrentlyUrgent = deadlineDate.isEqual(today) || deadlineDate.isEqual(tomorrow);
-                if (isCurrentlyUrgent) urgentCount++;
-                if (overallProgress >= 0.8f && overallProgress < 1.0f) nearCompletionCount++;
-                shouldShowCard = true; // Активные всегда показываем в пейджере
+            if (challenge.getStatus() == ChallengeStatus.ACTIVE) {
+                boolean isCurrentlyUrgent = challenge.getEndDate().toLocalDate().isEqual(today) ||
+                        challenge.getEndDate().toLocalDate().isEqual(tomorrow);
+                if (isCurrentlyUrgent) urgent++;
+                if (overallProgress >= 0.8f && overallProgress < 1.0f) nearCompletion++;
             }
 
-
             if (shouldShowCard) {
-                boolean isUrgentForCard = isActive && (challenge.getEndDate().toLocalDate().isEqual(today) || challenge.getEndDate().toLocalDate().isEqual(tomorrow));
-                String progressText = formatProgressText(detailsForChallenge);
-                challengeInfosToShow.add(new ChallengeCardInfo(
+                boolean isUrgentForCard = (challenge.getStatus() == ChallengeStatus.ACTIVE) &&
+                        (challenge.getEndDate().toLocalDate().isEqual(today) || challenge.getEndDate().toLocalDate().isEqual(tomorrow));
+                challengeInfos.add(new ChallengeCardInfo(
                         challenge.getId(),
-                        getIconForChallengeType(detailsForChallenge.get(0).getRule().getType()),
-                        challenge.getName(),
-                        challenge.getDescription(),
-                        overallProgress,
-                        progressText,
-                        actualIsCompleted ? null : formatDeadlineText(challenge.getEndDate(), isUrgentForCard),
-                        reward != null ? getIconForRewardType(reward.getRewardType()) : null,
+                        getIconResForChallengeType(detailsForOneChallenge.get(0).getRule().getType()),
+                        challenge.getName(), challenge.getDescription(), overallProgress,
+                        formatProgressTextJava(detailsForOneChallenge),
+                        isChallengeCompletedByStatus ? null : formatDeadlineTextJava(challenge.getEndDate(), isUrgentForCard),
+                        reward != null ? getIconResForRewardType(reward.getRewardType()) : null,
                         reward != null ? reward.getName() : null,
-                        isUrgentForCard,
-                        challenge.getPeriod()
+                        isUrgentForCard, challenge.getPeriod()
                 ));
             }
         }
-
-        challengeInfosToShow.sort(
-                Comparator.comparing((ChallengeCardInfo c) -> !c.isUrgent()) // Сначала срочные (false придет первым)
-                        .thenComparing(c -> !(c.progress() < 1.0f && c.progress() >= 0.8f)) // Затем близкие к завершению
-                        .thenComparing(c -> !(c.progress() < 1.0f)) // Затем остальные активные
-                        .thenComparing(Comparator.comparingDouble(ChallengeCardInfo::progress).reversed()) // Среди активных - по убыванию прогресса
+        challengeInfos.sort(
+                Comparator.comparing((ChallengeCardInfo c) -> !c.isUrgent()) // Срочные вначале
+                        .thenComparing(c -> !(c.progress() < 1.0f && c.progress() >= 0.8f)) // Близкие к завершению
+                        .thenComparing(c -> !(c.progress() < 1.0f)) // Остальные активные
+                        .thenComparing(Comparator.comparingDouble(ChallengeCardInfo::progress).reversed()) // Затем по убыванию прогресса
         );
-
-
         return new ActiveChallengesSectionState(
-                (int)allDetailsList.stream().filter(d -> d.getChallengeAndReward().getChallenge().getStatus() == ChallengeStatus.ACTIVE).count(),
-                challengeInfosToShow,
-                dailyCompleted, dailyTotal, weeklyCompleted, weeklyTotal,
-                urgentCount, nearCompletionCount
+                (int) allDetailsList.stream().filter(d -> d.getChallengeAndReward().getChallenge().getStatus() == ChallengeStatus.ACTIVE).count(),
+                challengeInfos, dailyCompleted, dailyTotal, weeklyCompleted, weeklyTotal, urgent, nearCompletion
         );
     }
 
+    private float calculateOverallChallengeProgress(List<ChallengeProgressFullDetails> details) {
+        if (details.isEmpty()) return 0f;
+        // Если челлендж выполнен по статусу, считаем прогресс 100%
+        if (details.get(0).getChallengeAndReward().getChallenge().getStatus() == ChallengeStatus.COMPLETED) {
+            return 1.0f;
+        }
+        float totalProgressVal = 0; float totalTargetVal = 0;
+        for (ChallengeProgressFullDetails detail : details) {
+            totalProgressVal += detail.getProgress().getProgress();
+            totalTargetVal += detail.getRule().getTarget();
+        }
+        float progress = (totalTargetVal > 0) ? (totalProgressVal / totalTargetVal) : 0f;
+        return Math.max(0f, Math.min(1f, progress));
+    }
 
-    private String formatProgressText(List<ChallengeProgressFullDetails> details) {
+
+    private String formatProgressTextJava(List<ChallengeProgressFullDetails> details) {
         if (details.isEmpty()) return "?/?";
-        // Если правил несколько, отображение прогресса может быть сложным.
-        // Пока возьмем сумму прогресса и сумму таргетов по всем правилам.
         int currentSum = details.stream().mapToInt(d -> d.getProgress().getProgress()).sum();
         int targetSum = details.stream().mapToInt(d -> d.getRule().getTarget()).sum();
         ChallengeType firstType = details.get(0).getRule().getType();
-
-        String unit = switch (firstType) {
-            case TASK_COMPLETION -> " задач";
-            case POMODORO_SESSION -> " Pomodoro";
-            case DAILY_STREAK -> " дн. стрика";
-            default -> "";
-            // Добавить другие типы
-        };
+        String unit = "";
+        if (firstType != null) {
+            unit = switch (firstType) {
+                case TASK_COMPLETION -> " задач";
+                case POMODORO_SESSION -> " Pomodoro";
+                case DAILY_STREAK -> " дн. стрика";
+                default -> "";
+            };
+        }
         return currentSum + "/" + targetSum + unit;
     }
 
-    private String formatDeadlineText(LocalDateTime deadline, boolean isUrgent) {
-        LocalDateTime now = dateTimeUtils.currentLocalDateTime(); // Используем dateTimeUtils
+    private String formatDeadlineTextJava(LocalDateTime deadline, boolean isUrgent) {
+        LocalDateTime now = dateTimeUtils.currentLocalDateTime();
         long daysLeft = ChronoUnit.DAYS.between(now.toLocalDate(), deadline.toLocalDate());
+        daysLeft = Math.max(0, daysLeft);
 
-        if (daysLeft < 0) return "Просрочено"; // Если уже прошло
         if (daysLeft == 0) return "Сегодня до " + deadline.format(DateTimeFormatter.ofPattern("HH:mm"));
         if (daysLeft == 1) return "Завтра до " + deadline.format(DateTimeFormatter.ofPattern("HH:mm"));
-        if (isUrgent || daysLeft < 7) return "Ост. " + daysLeft + " " + getDaysStringSimple((int)daysLeft);
-        return deadline.format(DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("ru")));
+        // Для Compose было: if (isUrgent || daysLeft < 7)
+        // Для XML, возможно, лучше всегда показывать дни, если не сегодня/завтра
+        return "Ост. " + daysLeft + " " + getDaysStringSimpleJava((int)daysLeft);
     }
-
-    private String getDaysStringSimple(int days) {
+    private String getDaysStringSimpleJava(int days) {
         if (days % 10 == 1 && days % 100 != 11) return "день";
         if (days % 10 >= 2 && days % 10 <= 4 && (days % 100 < 10 || days % 100 >= 20)) return "дня";
         return "дней";
     }
 
-    @DrawableRes
-    private int getIconForChallengeType(ChallengeType type) {
+    @DrawableRes private int getIconResForChallengeType(ChallengeType type) {
         if (type == null) return R.drawable.help;
         return switch (type) {
             case TASK_COMPLETION -> R.drawable.check_box;
             case POMODORO_SESSION -> R.drawable.timer;
             case DAILY_STREAK -> R.drawable.local_fire_department;
-            // Добавить другие типы
+            case STATISTIC_REACHED -> R.drawable.trending_up;
             default -> R.drawable.help;
         };
     }
-
     @DrawableRes
-    private Integer getIconForRewardType(RewardType type) { // Возвращаем Integer, т.к. может быть null
+    private Integer getIconResForRewardType(RewardType type) {
         if (type == null) return null;
         return switch (type) {
             case COINS -> R.drawable.paid;
-            case EXPERIENCE -> R.drawable.star; // Используем векторную иконку
+            case EXPERIENCE -> R.drawable.star;
             case BADGE -> R.drawable.badge;
             case PLANT -> R.drawable.grass;
             case THEME -> R.drawable.palette;
-            default -> null;
         };
     }
 
-    // Вспомогательный класс Pair для surpriseTaskDetailsState
-    private static class Pair<F, S> {
-        final F first;
-        final S second;
-        Pair(F f, S s) { first = f; second = s; }
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+        // Отписка от всех LiveData, на которые была подписка с observeForever
+        gamificationState.removeObserver(gamificationObserverForDependentLoads);
+        // Для selectedPlantMediator и surpriseTaskDetailsMediator отписка от источников произойдет автоматически,
+        // если их источники (selectedPlantIdFlowInternal, allPlantsFlowInternal, activeSurpriseTaskFlowInternal, hiddenIdsFlowInternal)
+        // корректно управляются Lifecycle'ом (например, если они сами LiveData или Flow, преобразованные в LiveData с Lifecycle).
+        // Но если они были созданы через gamificationDataStoreManager.getPreferenceLiveData(...).observeForever(...),
+        // то нужно отписаться от них явно.
+        // Поскольку мы использовали Transformations.switchMap и Transformations.map для LiveData из DataStore,
+        // они должны управляться Lifecycle'ом нормально.
+        logger.debug(TAG, "GamificationViewModel cleared.");
+    }
+
+    /**
+     * @param first Оставляем final для неизменяемости после создания
+     */ // Вспомогательный класс Pair, если он не доступен глобально
+        public record Pair<F, S>(@Getter F first, @Getter S second) {
+
     }
 }

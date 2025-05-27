@@ -6,10 +6,10 @@ import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
-
 import com.example.projectquestonjava.core.data.model.core.UserAuth;
 import com.example.projectquestonjava.core.di.IODispatcher;
 import com.example.projectquestonjava.core.domain.repository.UserAuthRepository;
+import com.example.projectquestonjava.core.managers.SnackbarManager;
 import com.example.projectquestonjava.core.managers.UserSessionManager;
 import com.example.projectquestonjava.core.managers.WorkspaceSessionManager;
 import com.example.projectquestonjava.core.utils.Logger;
@@ -38,50 +38,7 @@ import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 
-// Data class ProfileUiState (если еще не создан глобально)
-class ProfileUiState { // Убираем public, если используется только здесь
-    public final boolean isLoading;
-    public final boolean isUpdatingAvatar; // Оставляем, если обновление аватара происходит здесь
-    public final UserAuth user;
-    public final Gamification gamification;
-    public final int earnedBadgesCount;
-    public final List<Badge> recentBadges;
-    public final List<GamificationHistory> recentHistory;
-    public final String error;
-
-    public ProfileUiState(boolean isLoading, boolean isUpdatingAvatar, UserAuth user, Gamification gamification,
-                          int earnedBadgesCount, List<Badge> recentBadges, List<GamificationHistory> recentHistory, String error) {
-        this.isLoading = isLoading;
-        this.isUpdatingAvatar = isUpdatingAvatar;
-        this.user = user;
-        this.gamification = gamification;
-        this.earnedBadgesCount = earnedBadgesCount;
-        this.recentBadges = recentBadges != null ? recentBadges : Collections.emptyList();
-        this.recentHistory = recentHistory != null ? recentHistory : Collections.emptyList();
-        this.error = error;
-    }
-
-    // Конструктор по умолчанию
-    public ProfileUiState() {
-        this(true, false, null, null, 0, Collections.emptyList(), Collections.emptyList(), null);
-    }
-    // Метод copy для удобства обновления
-    public ProfileUiState copy(Boolean isLoading, Boolean isUpdatingAvatar, UserAuth user, Gamification gamification,
-                               Integer earnedBadgesCount, List<Badge> recentBadges, List<GamificationHistory> recentHistory,
-                               String error, boolean clearError) { // clearError для явного сброса ошибки
-        return new ProfileUiState(
-                isLoading != null ? isLoading : this.isLoading,
-                isUpdatingAvatar != null ? isUpdatingAvatar : this.isUpdatingAvatar,
-                user != null ? user : this.user,
-                gamification != null ? gamification : this.gamification,
-                earnedBadgesCount != null ? earnedBadgesCount : this.earnedBadgesCount,
-                recentBadges != null ? recentBadges : this.recentBadges,
-                recentHistory != null ? recentHistory : this.recentHistory,
-                clearError ? null : (error != null ? error : this.error)
-        );
-    }
-}
-
+// ProfileUiState data class (как был определен ранее)
 
 @HiltViewModel
 public class ProfileViewModel extends ViewModel {
@@ -90,12 +47,17 @@ public class ProfileViewModel extends ViewModel {
     private static final int RECENT_BADGES_LIMIT = 5;
     private static final int RECENT_HISTORY_LIMIT = 5;
 
+    private final UserAuthRepository userAuthRepository;
+    private final GamificationRepository gamificationRepository;
+    private final BadgeRepository badgeRepository;
+    private final GamificationHistoryRepository gamificationHistoryRepository;
     private final UserSessionManager userSessionManager;
-    private final WorkspaceSessionManager workspaceSessionManager; // Для logout
-    private final GamificationDataStoreManager gamificationDataStoreManager; // Для logout
-    // updateUsernameUseCase был в Kotlin, но здесь не используется напрямую в public API
+    private final WorkspaceSessionManager workspaceSessionManager;
+    private final GamificationDataStoreManager gamificationDataStoreManager;
     private final Executor ioExecutor;
     private final Logger logger;
+    private final SnackbarManager snackbarManager;
+
 
     private final MutableLiveData<ProfileUiState> _uiStateLiveData = new MutableLiveData<>(new ProfileUiState());
     public LiveData<ProfileUiState> uiStateLiveData = _uiStateLiveData;
@@ -107,7 +69,6 @@ public class ProfileViewModel extends ViewModel {
     private final LiveData<List<Badge>> allBadgesLiveData;
     private final LiveData<List<GamificationHistory>> recentHistoryLiveData;
 
-
     @Inject
     public ProfileViewModel(
             UserAuthRepository userAuthRepository,
@@ -117,49 +78,47 @@ public class ProfileViewModel extends ViewModel {
             UserSessionManager userSessionManager,
             WorkspaceSessionManager workspaceSessionManager,
             GamificationDataStoreManager gamificationDataStoreManager,
-            // UpdateUsernameUseCase updateUsernameUseCase, // Не нужен здесь, если нет прямого вызова
             @IODispatcher Executor ioExecutor,
-            Logger logger) {
+            Logger logger,
+            SnackbarManager snackbarManager) {
+        this.userAuthRepository = userAuthRepository;
+        this.gamificationRepository = gamificationRepository;
+        this.badgeRepository = badgeRepository;
+        this.gamificationHistoryRepository = gamificationHistoryRepository;
         this.userSessionManager = userSessionManager;
         this.workspaceSessionManager = workspaceSessionManager;
         this.gamificationDataStoreManager = gamificationDataStoreManager;
         this.ioExecutor = ioExecutor;
         this.logger = logger;
+        this.snackbarManager = snackbarManager;
 
         logger.debug(TAG, "Initializing ProfileViewModel.");
 
-        // Инициализация LiveData источников
         userLiveData = Transformations.switchMap(userSessionManager.getUserIdLiveData(), userId -> {
-            if (userId == null || userId == UserSessionManager.NO_USER_ID) {
-                return new MutableLiveData<>(null);
-            }
-            // UserAuthRepository.getUserById возвращает ListenableFuture
-            // Преобразуем его в LiveData
-            MutableLiveData<UserAuth> userAuthLd = new MutableLiveData<>();
+            if (userId == null || userId == UserSessionManager.NO_USER_ID) return new MutableLiveData<>(null);
+            MutableLiveData<UserAuth> liveData = new MutableLiveData<>();
             Futures.addCallback(userAuthRepository.getUserById(userId), new FutureCallback<UserAuth>() {
-                @Override public void onSuccess(UserAuth user) { userAuthLd.postValue(user); }
+                @Override public void onSuccess(UserAuth user) { liveData.postValue(user); }
                 @Override public void onFailure(@NonNull Throwable t) {
-                    logger.error(TAG, "Error loading user data in switchMap", t);
-                    userAuthLd.postValue(null);
-                    updateUiState(s -> s.copy(null, null, null, null, null, null, null, "Ошибка загрузки пользователя", false));
+                    logger.error(TAG, "Error loading user data", t);
+                    liveData.postValue(null);
+                    updateUiStateError("Ошибка загрузки пользователя");
                 }
             }, ioExecutor);
-            return userAuthLd;
+            return liveData;
         });
 
-        gamificationLiveData = gamificationRepository.getCurrentUserGamificationFlow(); // Уже LiveData
-        earnedBadgesRefsLiveData = badgeRepository.getEarnedBadgesFlow(); // Уже LiveData
-        allBadgesLiveData = badgeRepository.getAllBadgesFlow(); // Уже LiveData
-
+        gamificationLiveData = gamificationRepository.getCurrentUserGamificationFlow();
+        earnedBadgesRefsLiveData = badgeRepository.getEarnedBadgesFlow();
+        allBadgesLiveData = badgeRepository.getAllBadgesFlow();
         recentHistoryLiveData = Transformations.map(
-                gamificationHistoryRepository.getHistoryFlow(), // Уже LiveData
+                gamificationHistoryRepository.getHistoryFlow(),
                 historyList -> {
                     if (historyList == null) return Collections.emptyList();
                     return historyList.stream().limit(RECENT_HISTORY_LIMIT).collect(Collectors.toList());
                 }
         );
 
-        // Объединяем все источники для формирования _uiStateLiveData
         MediatorLiveData<Object> combinator = new MediatorLiveData<>();
         combinator.addSource(userLiveData, value -> combineAndSetUiState());
         combinator.addSource(gamificationLiveData, value -> combineAndSetUiState());
@@ -167,16 +126,8 @@ public class ProfileViewModel extends ViewModel {
         combinator.addSource(allBadgesLiveData, value -> combineAndSetUiState());
         combinator.addSource(recentHistoryLiveData, value -> combineAndSetUiState());
 
-        // Изначально isLoading = true (установлено в конструкторе ProfileUiState)
-        // Сбрасываем isLoading, когда все основные LiveData получили начальные значения
-        // Это упрощенный подход; в идеале нужно отслеживать загрузку каждого источника.
-        // Для простоты, сбросим isLoading после первой комбинации.
-        _uiStateLiveData.addSource(combinator, combinedValue -> {
-            // Этот коллбэк вызывается, когда любой из источников изменился.
-            // Мы уже обновили uiState в combineAndSetUiState.
-            // Здесь можно просто залогировать или ничего не делать, если combineAndSetUiState
-            // уже правильно обновляет uiState.
-        });
+        // Первоначальная установка isLoading, сбрасывается в combineAndSetUiState
+        _uiStateLiveData.setValue(new ProfileUiState(true, false, null, null, 0, Collections.emptyList(), Collections.emptyList(), null));
     }
 
     private void combineAndSetUiState() {
@@ -185,13 +136,14 @@ public class ProfileViewModel extends ViewModel {
         List<GamificationBadgeCrossRef> earnedRefs = earnedBadgesRefsLiveData.getValue();
         List<Badge> allBadges = allBadgesLiveData.getValue();
         List<GamificationHistory> history = recentHistoryLiveData.getValue();
-        ProfileUiState currentState = _uiStateLiveData.getValue(); // Для сохранения isUpdatingAvatar
+        ProfileUiState currentState = _uiStateLiveData.getValue(); // Для сохранения isUpdatingAvatar и error
 
-        // Устанавливаем isLoading в false, только если все источники уже имеют значения
-        // (хотя бы начальные, например, null или пустые списки)
-        boolean stillLoadingSources = user == null && gamification == null && earnedRefs == null && allBadges == null && history == null;
-        // Если какой-то источник еще не проэмитил значение, считаем, что грузимся.
-        // Более точная проверка - если все источники были хоть раз вызваны.
+        // Определяем, завершилась ли загрузка всех основных источников
+        boolean stillLoadingSources = (user == null && userLiveData.hasActiveObservers()) ||
+                (gamification == null && gamificationLiveData.hasActiveObservers()) ||
+                (earnedRefs == null && earnedBadgesRefsLiveData.hasActiveObservers()) ||
+                (allBadges == null && allBadgesLiveData.hasActiveObservers()) ||
+                (history == null && recentHistoryLiveData.hasActiveObservers());
 
 
         List<Badge> recentEarnedBadges = Collections.emptyList();
@@ -207,14 +159,13 @@ public class ProfileViewModel extends ViewModel {
                     .collect(Collectors.toList());
         }
 
-        String errorMsg = (user == null && gamification == null && (currentState == null || currentState.error == null) && !stillLoadingSources) ?
-                "Не удалось загрузить данные профиля" :
-                (currentState != null ? currentState.error : null);
-
+        String currentError = currentState != null ? currentState.getError() : null;
+        String errorMsg = (user == null && gamification == null && currentError == null && !stillLoadingSources) ?
+                "Не удалось загрузить данные профиля" : currentError;
 
         _uiStateLiveData.postValue(new ProfileUiState(
-                stillLoadingSources, // isLoading
-                currentState != null ? currentState.isUpdatingAvatar : false,
+                stillLoadingSources,
+                currentState != null ? currentState.isUpdatingAvatar() : false,
                 user,
                 gamification,
                 earnedCount,
@@ -222,48 +173,72 @@ public class ProfileViewModel extends ViewModel {
                 history != null ? history : Collections.emptyList(),
                 errorMsg
         ));
-        logger.debug(TAG, "ProfileUiState combined and posted.");
+        if (!stillLoadingSources) {
+            logger.debug(TAG, "ProfileUiState combined and posted.");
+        }
     }
-
-    // avatarSelected не используется в этой ViewModel, он в ProfileEditViewModel
-    // public void onAvatarSelected(Uri uri) { ... }
 
     public void logout() {
         logger.info(TAG, "Performing logout...");
-        updateUiState(s -> s.copy(true, null, null, null, null, null, null, null, false));
+        updateUiStateLoading(true);
         ioExecutor.execute(() -> {
             try {
-                // Используем ListenableFuture и get() на фоновом потоке
                 Futures.getDone(userSessionManager.clearUserIdAsync());
                 Futures.getDone(workspaceSessionManager.clearWorkspaceIdAsync());
                 Futures.getDone(gamificationDataStoreManager.clearGamificationId());
                 Futures.getDone(gamificationDataStoreManager.clearSelectedPlantId());
                 Futures.getDone(gamificationDataStoreManager.clearHiddenExpiredTaskIds());
-                logger.info(TAG, "User session cleared.");
-                // Навигация на экран входа должна произойти в UI на основе изменения состояния (например, userIdFlow)
+                logger.info(TAG, "User session data cleared successfully.");
+                // Навигация на экран входа должна произойти в UI (например, через Activity.finish() или NavController)
+                // Здесь мы просто сигнализируем об успехе, если нужно
+                // _uiStateLiveData.postValue(_uiStateLiveData.getValue().copy(false, ..., "Выход выполнен", false));
             } catch (Exception e) {
                 logger.error(TAG, "Error during logout data clearing", e);
-                updateUiState(s -> s.copy(null, null, null, null, null, null, null, "Ошибка выхода.", false));
+                updateUiStateError("Ошибка выхода из аккаунта.");
             } finally {
-                // Сбрасываем isLoading уже после того, как UI среагирует на очистку сессии (например, через userIdFlow)
-                // Здесь можно не сбрасывать, так как после logout обычно происходит навигация.
-                updateUiState(s -> s.copy(false, null, null, null, null, null, null, null, false));
+                updateUiStateLoading(false);
             }
         });
     }
 
     public void clearError() {
-        updateUiState(s -> s.copy(null, null, null, null, null, null, null, null, true));
-    }
-
-    // Вспомогательный интерфейс для обновления UI State
-    @FunctionalInterface
-    private interface UiStateUpdaterProfile {
-        ProfileUiState update(ProfileUiState currentState);
-    }
-
-    private void updateUiState(UiStateUpdaterProfile updater) {
         ProfileUiState current = _uiStateLiveData.getValue();
-        _uiStateLiveData.postValue(updater.update(current != null ? current : new ProfileUiState()));
+        if (current != null && current.getError() != null) {
+            _uiStateLiveData.postValue(new ProfileUiState(
+                    current.isLoading(), current.isUpdatingAvatar(), current.getUser(), current.getGamification(),
+                    current.getEarnedBadgesCount(), current.getRecentBadges(), current.getRecentHistory(),
+                    null // Очищаем ошибку
+            ));
+        }
+    }
+
+    private void updateUiStateLoading(boolean isLoading) {
+        ProfileUiState current = _uiStateLiveData.getValue();
+        if (current != null) {
+            _uiStateLiveData.postValue(new ProfileUiState(
+                    isLoading, current.isUpdatingAvatar(), current.getUser(), current.getGamification(),
+                    current.getEarnedBadgesCount(), current.getRecentBadges(), current.getRecentHistory(),
+                    isLoading ? null : current.getError() // Сбрасываем ошибку при начале загрузки
+            ));
+        }
+    }
+    private void updateUiStateError(String errorMsg) {
+        ProfileUiState current = _uiStateLiveData.getValue();
+        if (current != null) {
+            _uiStateLiveData.postValue(new ProfileUiState(
+                    false, current.isUpdatingAvatar(), current.getUser(), current.getGamification(),
+                    current.getEarnedBadgesCount(), current.getRecentBadges(), current.getRecentHistory(),
+                    errorMsg
+            ));
+        }
+    }
+
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+        // Отписываемся от LiveData, если использовали observeForever
+        // В данном случае, LiveData из репозиториев скорее всего привязаны к Lifecycle фрагмента
+        // и не требуют явной отписки здесь. Но если бы были прямые подписки observeForever, их нужно отменить.
+        logger.debug(TAG, "ProfileViewModel cleared.");
     }
 }

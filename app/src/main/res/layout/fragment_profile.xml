@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/coordinatorLayout_profile"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurfaceContainerLow"
+    tools:context=".feature.profile.presentation.screens.ProfileFragment">
+
+    <!-- TopAppBar из MainActivity/BaseFragment -->
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/nestedScrollView_profile"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="16dp">
+
+            <!-- ProfileHeader -->
+            <LinearLayout
+                android:id="@+id/layout_profile_header_content"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:paddingTop="24dp"
+                android:paddingBottom="24dp"
+                android:background="?attr/colorSurface">
+
+                <FrameLayout
+                    android:layout_width="140dp"
+                    android:layout_height="140dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:id="@+id/frame_avatar_clickable_profile">
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/imageView_profile_avatar_main"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearance.App.CircleImageView"
+                        tools:src="@drawable/person"
+                        android:background="@drawable/avatar_gradient_border_background"/>
+                    <ImageView
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_gravity="bottom|end"
+                        android:background="@drawable/circle_background_primary"
+                        android:padding="6dp"
+                        app:srcCompat="@drawable/edit"
+                        app:tint="?attr/colorOnPrimary"
+                        android:elevation="2dp"/>
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/textView_profile_username_main"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    style="@style/TextAppearance.Material3.HeadlineMedium"
+                    android:textStyle="bold"
+                    android:textAlignment="center"
+                    tools:text="Искатель Прогресса"/>
+
+                <TextView
+                    android:id="@+id/textView_profile_email_main"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    style="@style/TextAppearance.Material3.BodyMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textAlignment="center"
+                    tools:text="preview@example.com"/>
+
+                <Space android:layout_width="match_parent" android:layout_height="20dp"/>
+
+                <!-- LevelExperienceIndicator -->
+                <LinearLayout
+                    android:id="@+id/layout_level_xp_indicator_profile"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
+                    android:layout_marginHorizontal="40dp"> <!-- Немного шире -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+                        <ImageView
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            app:srcCompat="@drawable/star"
+                            app:tint="?attr/colorPrimary"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="Уровень "
+                            style="@style/TextAppearance.Material3.TitleLarge"/>
+                        <TextView
+                            android:id="@+id/textView_profile_level_value_main"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            style="@style/TextAppearance.Material3.TitleLarge"
+                            android:textStyle="bold"
+                            android:textColor="?attr/colorPrimary"
+                            tools:text="5"/>
+                    </LinearLayout>
+                    <ProgressBar
+                        android:id="@+id/progressBar_profile_xp_main"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="10dp"
+                        android:layout_marginTop="10dp"
+                        android:progressDrawable="@drawable/timer_progress_drawable"
+                        android:background="@drawable/timer_progress_track_drawable"
+                        tools:progress="75"/>
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="6dp">
+                        <TextView
+                            android:id="@+id/textView_profile_xp_current_max_main"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            style="@style/TextAppearance.Material3.BodySmall"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            tools:text="750 / 1000 XP"/>
+                        <TextView
+                            android:id="@+id/textView_profile_xp_to_next_main"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            style="@style/TextAppearance.Material3.BodySmall"
+                            android:textColor="?attr/colorPrimary"
+                            tools:text="Еще 250 XP"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout> <!-- Конец ProfileHeader -->
+
+            <Space android:layout_width="match_parent" android:layout_height="24dp"/>
+
+            <!-- GamificationInfoCard -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_gamification_info_profile_main"
+                style="@style/Widget.App.CardView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainer">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="20dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:baselineAligned="false">
+                        <include layout="@layout/view_info_column_profile" android:id="@+id/info_column_coins_profile" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"/>
+                        <View android:layout_width="1dp" android:layout_height="match_parent" android:background="?attr/colorOutlineVariant" android:layout_marginHorizontal="8dp"/>
+                        <include layout="@layout/view_info_column_profile" android:id="@+id/info_column_streak_profile" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"/>
+                    </LinearLayout>
+                    <com.google.android.material.divider.MaterialDivider
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="12dp"/>
+                    <!-- RecentBadgesRow -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Недавние значки"
+                                style="@style/TextAppearance.Material3.TitleMedium"/>
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/button_all_badges_profile"
+                                style="?attr/materialButtonOutlinedStyle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:minHeight="0dp"
+                                android:paddingVertical="4dp"
+                                android:paddingHorizontal="8dp"
+                                tools:text="Все (12)"
+                                app:icon="@drawable/arrow_forward"
+                                app:iconGravity="end"
+                                app:iconPadding="4dp"
+                                android:visibility="gone"
+                                tools:visibility="visible"/>
+                        </LinearLayout>
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/recyclerView_recent_badges_profile"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:orientation="horizontal"
+                            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                            tools:listitem="@layout/item_small_badge"
+                            tools:itemCount="3"
+                            android:clipToPadding="false"/>
+                        <TextView
+                            android:id="@+id/textView_no_recent_badges_profile"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="У вас пока нет значков."
+                            style="@style/TextAppearance.Material3.BodyMedium"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:layout_marginTop="8dp"
+                            android:visibility="gone"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <Space android:layout_width="match_parent" android:layout_height="24dp"/>
+
+            <!-- QuickAccessSection -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Быстрый доступ"
+                    style="@style/TextAppearance.Material3.TitleLarge"
+                    android:layout_marginBottom="8dp"/>
+                <include layout="@layout/item_quick_access" android:id="@+id/quick_access_garden_profile"/>
+                <include layout="@layout/item_quick_access" android:id="@+id/quick_access_statistics_profile"/>
+                <include layout="@layout/item_quick_access" android:id="@+id/quick_access_settings_profile" />
+            </LinearLayout>
+
+            <Space android:layout_width="match_parent" android:layout_height="24dp"/>
+
+            <!-- ActivityFeedSection -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Недавняя активность"
+                    style="@style/TextAppearance.Material3.TitleLarge"
+                    android:layout_marginBottom="8dp"/>
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/Widget.App.CardView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardBackgroundColor="?attr/colorSurfaceContainer">
+                    <LinearLayout
+                        android:id="@+id/layout_activity_feed_items_profile"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingVertical="8dp">
+                        <!-- HistoryItem-ы будут добавлены через RecyclerView -->
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/recyclerView_activity_feed"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                            tools:listitem="@layout/item_history_profile"
+                            tools:itemCount="3"/>
+                        <TextView
+                            android:id="@+id/textView_no_activity_profile"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Пока нет записей об активности."
+                            style="@style/TextAppearance.Material3.BodyMedium"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:padding="16dp"
+                            android:gravity="center"
+                            android:visibility="gone"
+                            tools:visibility="visible"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+
+            <Space android:layout_width="match_parent" android:layout_height="24dp"/>
+
+            <!-- Кнопка Выхода -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_logout_profile"
+                style="@style/Widget.App.Button.Outlined"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="16dp"
+                android:text="Выйти из аккаунта"
+                app:icon="@drawable/exit_to_app"
+                app:strokeColor="?attr/colorError"
+                android:textColor="?attr/colorError"/>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <ProgressBar
+        android:id="@+id/progressBar_profile_main_loading"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone"
+        tools:visibility="visible"/>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

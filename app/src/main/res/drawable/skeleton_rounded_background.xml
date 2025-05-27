@@ -1,0 +1,5 @@
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="12dp" /> <!-- Такое же скругление, как у карточек -->
+    <solid android:color="?attr/colorSurfaceVariant" /> <!-- Цвет скелета -->
+</shape>

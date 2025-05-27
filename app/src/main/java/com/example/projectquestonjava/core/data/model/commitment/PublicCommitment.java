@@ -4,14 +4,13 @@ import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
+import androidx.room.Ignore;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
 import com.example.projectquestonjava.core.data.model.core.Task;
 import com.example.projectquestonjava.core.data.model.core.UserAuth;
 import java.time.LocalDateTime;
 import java.util.Objects;
-
-import lombok.Setter;
 
 @Entity(
         tableName = "public_commitment",
@@ -33,26 +32,25 @@ import lombok.Setter;
 )
 public class PublicCommitment {
 
-    // Сеттер для id, если Room его требует для autoGenerate
-    @Setter
     @PrimaryKey(autoGenerate = true)
-    private int id;
+    public int id;
 
     @ColumnInfo(name = "user_id")
-    private final int userId;
+    public final int userId;
 
     @ColumnInfo(name = "task_id")
-    private final long taskId;
+    public final long taskId;
 
     @ColumnInfo(name = "commitment_text")
-    private final String commitmentText;
+    public final String commitmentText;
 
     @ColumnInfo(name = "created_at")
-    private final LocalDateTime createdAt;
+    public final LocalDateTime createdAt;
 
     @ColumnInfo(name = "updated_at")
-    private final LocalDateTime updatedAt;
+    public final LocalDateTime updatedAt;
 
+    // Основной конструктор для Room
     public PublicCommitment(int id, int userId, long taskId, String commitmentText, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.userId = userId;
@@ -61,34 +59,15 @@ public class PublicCommitment {
         this.createdAt = createdAt != null ? createdAt : LocalDateTime.now();
         this.updatedAt = updatedAt != null ? updatedAt : LocalDateTime.now();
     }
-    // Конструктор без id для Room
+
+    @Ignore
     public PublicCommitment(int userId, long taskId, String commitmentText, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this(0, userId, taskId, commitmentText, createdAt, updatedAt);
     }
 
-
-    public int getId() {
-        return id;
-    }
-
-    public int getUserId() {
-        return userId;
-    }
-
-    public long getTaskId() {
-        return taskId;
-    }
-
-    public String getCommitmentText() {
-        return commitmentText;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
+    @Ignore
+    public PublicCommitment(int userId, long taskId, String commitmentText) {
+        this(0, userId, taskId, commitmentText, LocalDateTime.now(), LocalDateTime.now());
     }
 
     @Override

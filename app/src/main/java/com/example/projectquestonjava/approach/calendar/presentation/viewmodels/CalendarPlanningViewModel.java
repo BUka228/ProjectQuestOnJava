@@ -86,6 +86,9 @@ public class CalendarPlanningViewModel extends ViewModel {
 
     private final MutableLiveData<Long> _taskToMoveIdLiveData = new MutableLiveData<>(null);
 
+    private final MutableLiveData<CalendarTaskSummary> _taskDetailsForBottomSheet = new MutableLiveData<>(null);
+    public LiveData<CalendarTaskSummary> taskDetailsForBottomSheetLiveData = _taskDetailsForBottomSheet;
+
     // LiveData для CalendarMonthData, который будет результатом switchMap
     private final LiveData<CalendarMonthData> calendarDataLiveData;
 
@@ -217,6 +220,18 @@ public class CalendarPlanningViewModel extends ViewModel {
     public void updateSortOption(TaskSortOption option) {
         logger.debug(TAG, "Updating sort option to: " + option);
         _sortOptionLiveData.setValue(option);
+    }
+
+    public void showTaskDetails(CalendarTaskSummary task) {
+        _taskDetailsForBottomSheet.setValue(task);
+    }
+
+    public void clearTaskDetails() {
+        _taskDetailsForBottomSheet.setValue(null);
+    }
+
+    public void onMoveSheetShown() { // Если нужно сбрасывать флаг после показа
+        _showMoveTaskSheetLiveData.setValue(false);
     }
 
     public void toggleFilterOption(TaskFilterOption option) {

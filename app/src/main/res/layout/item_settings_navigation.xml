@@ -1,0 +1,15 @@
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <include layout="@layout/item_settings_base"/>
+    <!-- Переопределяем FrameLayout для добавления стрелки -->
+    <FrameLayout
+        android:id="@+id/frameLayout_settings_item_trailing_content"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:srcCompat="@drawable/arrow_forward"
+            app:tint="?attr/colorOnSurfaceVariant"/>
+    </FrameLayout>
+</merge>

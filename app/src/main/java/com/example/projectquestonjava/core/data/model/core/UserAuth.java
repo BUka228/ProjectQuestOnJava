@@ -71,4 +71,13 @@ public class UserAuth {
     public void setAvatarUrl(String avatarUrl) {
         this.avatarUrl = avatarUrl;
     }
+
+    public UserAuth copyAvatarUrl(String newAvatarUrl) {
+        return new UserAuth(id, email, passwordHash, username, newAvatarUrl);
+    }
+
+    public UserAuth copyUsername(String newUsername) {
+        return new UserAuth(id, email, passwordHash, newUsername, avatarUrl);
+
+    }
 }

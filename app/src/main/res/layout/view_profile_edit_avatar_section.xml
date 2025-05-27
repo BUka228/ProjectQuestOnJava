@@ -1,0 +1,78 @@
+<!-- res/layout/view_profile_edit_avatar_section.xml -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center_horizontal">
+
+    <FrameLayout
+        android:layout_width="150dp"
+        android:layout_height="150dp">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/imageView_avatar_preview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.App.CircleImageView"
+            android:background="@drawable/avatar_gradient_border_background_edit"
+            tools:srcCompat="@drawable/person"/>
+
+        <FrameLayout
+            android:id="@+id/overlay_avatar_loading"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#80000000"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.App.CircleImageView"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <ProgressBar
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center"
+            android:indeterminate="true"
+            android:indeterminateTint="?attr/colorOnPrimary"
+            android:indeterminateTintMode="src_in" />
+    </FrameLayout>
+</FrameLayout>
+
+<Space
+android:layout_width="match_parent"
+android:layout_height="16dp"/>
+
+<LinearLayout
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:orientation="horizontal">
+
+<com.google.android.material.button.MaterialButton
+    android:id="@+id/button_edit_avatar_action"
+    style="@style/Widget.App.Button.Outlined"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Изменить"
+    app:icon="@drawable/photo_camera"
+    android:paddingHorizontal="20dp"
+    android:paddingVertical="10dp"/>
+
+<com.google.android.material.button.MaterialButton
+    android:id="@+id/button_remove_avatar_action"
+    style="@style/Widget.App.Button.TextButton"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="12dp"
+    android:text="Удалить"
+    app:icon="@drawable/delete"
+    android:textColor="?attr/colorError"
+    app:iconTint="?attr/colorError"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="10dp"
+    android:visibility="gone"
+    tools:visibility="visible"/>
+</LinearLayout>
+    </LinearLayout>

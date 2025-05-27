@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="?attr/colorSurfaceContainerLow"
+    android:paddingBottom="8dp">
+
+    <!-- Заголовки дней недели -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:paddingHorizontal="4dp">
+        <TextView style="@style/CalendarDayHeader" android:text="Пн"/>
+        <TextView style="@style/CalendarDayHeader" android:text="Вт"/>
+        <TextView style="@style/CalendarDayHeader" android:text="Ср"/>
+        <TextView style="@style/CalendarDayHeader" android:text="Чт"/>
+        <TextView style="@style/CalendarDayHeader" android:text="Пт"/>
+        <TextView style="@style/CalendarDayHeader" android:text="Сб"/>
+        <TextView style="@style/CalendarDayHeader" android:text="Вс"/>
+    </LinearLayout>
+
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/viewPager_calendar_months_planning"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/> <!-- Высота будет зависеть от содержимого (кол-ва недель) -->
+</LinearLayout>

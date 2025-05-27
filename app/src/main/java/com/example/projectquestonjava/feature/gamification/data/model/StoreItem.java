@@ -1,33 +1,31 @@
 package com.example.projectquestonjava.feature.gamification.data.model;
 
+import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 import com.example.projectquestonjava.feature.gamification.domain.model.StoreItemCategory;
 import java.util.Objects;
 
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
 @Entity(tableName = "store_item")
 public class StoreItem {
 
     @PrimaryKey(autoGenerate = true)
-    private long id;
+    public long id;
 
-    private String name;
-    private String description;
-    private int cost;
-    private StoreItemCategory category;
+    public String name;
+    public String description;
+    public int cost;
+    public StoreItemCategory category;
 
     @ColumnInfo(name = "item_value")
-    private String itemValue; // Например, "Rose" для растения или "DarkTheme" для темы
+    public String itemValue;
 
-    @ColumnInfo(name = "image_url") // В Kotlin был String, предполагаю URL или путь к файлу
-    private String imageUrl;
+    @ColumnInfo(name = "image_url")
+    public String imageUrl;
 
+    // Основной конструктор для Room
     public StoreItem(long id, String name, String description, int cost, StoreItemCategory category, String itemValue, String imageUrl) {
         this.id = id;
         this.name = name;
@@ -37,11 +35,13 @@ public class StoreItem {
         this.itemValue = itemValue;
         this.imageUrl = imageUrl;
     }
-    // Конструктор для Room
+
+    @Ignore
     public StoreItem(String name, String description, int cost, StoreItemCategory category, String itemValue, String imageUrl) {
         this(0, name, description, cost, category, itemValue, imageUrl);
     }
 
+    // equals, hashCode, toString
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -53,5 +53,19 @@ public class StoreItem {
     @Override
     public int hashCode() {
         return Objects.hash(id, name, description, cost, category, itemValue, imageUrl);
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return "StoreItem{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", description='" + description + '\'' +
+                ", cost=" + cost +
+                ", category=" + category +
+                ", itemValue='" + itemValue + '\'' +
+                ", imageUrl='" + imageUrl + '\'' +
+                '}';
     }
 }

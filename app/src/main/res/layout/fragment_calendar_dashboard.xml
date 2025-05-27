@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/coordinatorLayout_dashboard"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".approach.calendar.presentation.screens.CalendarDashboardFragment">
+
+    <!-- AppBarLayout и Toolbar будут предоставлены MainActivity -->
+    <!-- Если нужен сложный TopBar, его можно включить сюда через <include>
+         и управлять им из фрагмента, скрывая Toolbar MainActivity.
+         Но для стандартного подхода, Toolbar в MainActivity. -->
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <ProgressBar
+            android:id="@+id/progressBar_dashboard_tasks"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:indeterminate="false"
+            android:paddingVertical="4dp"
+            tools:progress="60"/>
+
+        <HorizontalScrollView
+            android:id="@+id/horizontalScrollView_filter_tags_dashboard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:paddingHorizontal="@dimen/padding_medium"
+            android:paddingVertical="8dp">
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_clear_all_tags_dashboard"
+                    style="?attr/materialIconButtonFilledStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:icon="@drawable/close"
+                    android:visibility="gone"
+                    tools:visibility="visible"
+                    android:layout_marginEnd="@dimen/padding_small"/>
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipGroup_filter_tags_dashboard"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:singleLine="true"
+                    app:chipSpacingHorizontal="6dp"/>
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- WormPagerIndicator - Заглушка. Заменить на кастомный View или библиотеку -->
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tabLayout_pager_indicator_dashboard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:tabGravity="center"
+            app:tabIndicatorHeight="0dp"
+            app:tabBackground="@drawable/pager_dot_selector"
+            app:tabRippleColor="@null"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="8dp"/>
+
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/viewPager_dashboard_days"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"/>
+        <!-- Placeholder для пустого ViewPager вынесен в DayTasksFragment -->
+    </LinearLayout>
+
+    <!-- FAB будет добавлен и управляться из MainActivity -->
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

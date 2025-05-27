@@ -1,5 +1,148 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <!-- Light Theme Colors from Color.kt -->
+    <color name="primaryLight">#FF2A3E52</color>          <!-- Глубокий синий -->
+    <color name="onPrimaryLight">#FFFFFFFF</color>
+    <color name="primaryContainerLight">#FFBBDEFB</color>   <!-- Светло-синий контейнер -->
+    <color name="onPrimaryContainerLight">#FF0D47A1</color>
+
+    <color name="secondaryLight">#FF4CAF50</color>          <!-- Стандартный зелёный -->
+    <color name="onSecondaryLight">#FFFFFFFF</color>
+    <color name="secondaryContainerLight">#FFC8E6C9</color> <!-- Светло-зелёный контейнер -->
+    <color name="onSecondaryContainerLight">#FF1B5E20</color>
+
+    <color name="tertiaryLight">#FFFF5722</color>           <!-- Яркий оранжевый -->
+    <color name="onTertiaryLight">#FFFFFFFF</color>
+    <color name="tertiaryContainerLight">#FFFFCCBC</color>  <!-- Светло-оранжевый контейнер -->
+    <color name="onTertiaryContainerLight">#FFBF360C</color>
+
+    <color name="errorLight">#FFF44336</color>              <!-- Красный для ошибок -->
+    <color name="onErrorLight">#FFFFFFFF</color>
+    <color name="errorContainerLight">#FFFFCDD2</color>
+    <color name="onErrorContainerLight">#FFD32F2F</color>
+
+    <color name="backgroundLight">#FFF4F4F4</color>         <!-- Светлый фон -->
+    <color name="onBackgroundLight">#FF212121</color>
+    <color name="surfaceLight">#FFFFFFFF</color>            <!-- Белые поверхности -->
+    <color name="onSurfaceLight">#FF212121</color>
+    <color name="surfaceVariantLight">#FFE0E0E0</color>
+    <color name="onSurfaceVariantLight">#FF757575</color>
+    <color name="outlineLight">#FFBDBDBD</color>
+    <color name="outlineVariantLight">#FFE0E0E0</color>     <!-- Added -->
+    <color name="scrimLight">#FF000000</color>
+    <color name="inverseSurfaceLight">#FF303030</color>
+    <color name="inverseOnSurfaceLight">#FFFFFFFF</color>
+    <color name="inversePrimaryLight">#FF90CAF9</color>
+
+    <color name="surfaceDimLight">#FFF0F0F0</color>
+    <color name="surfaceBrightLight">#FFFFFFFF</color>
+    <color name="surfaceContainerLowestLight">#FFFFFFFF</color>
+    <color name="surfaceContainerLowLight">#FFF9F9F9</color>
+    <color name="surfaceContainerLight">#FFF4F4F4</color>
+    <color name="surfaceContainerHighLight">#FFE0E0E0</color>
+    <color name="surfaceContainerHighestLight">#FFCCCCCC</color>
+
+    <!-- Dark Theme Colors from Color.kt -->
+    <color name="primaryDark">#FF90CAF9</color>
+    <color name="onPrimaryDark">#FF0D47A1</color>
+    <color name="primaryContainerDark">#FF1E3A5F</color>
+    <color name="onPrimaryContainerDark">#FFBBDEFB</color>
+
+    <color name="secondaryDark">#FFA5D6A7</color>
+    <color name="onSecondaryDark">#FF1B5E20</color>
+    <color name="secondaryContainerDark">#FF2E7D32</color>
+    <color name="onSecondaryContainerDark">#FFC8E6C9</color>
+
+    <color name="tertiaryDark">#FFFFAB91</color>
+    <color name="onTertiaryDark">#FFBF360C</color>
+    <color name="tertiaryContainerDark">#FFD84315</color>
+    <color name="onTertiaryContainerDark">#FFFFCCBC</color>
+
+    <color name="errorDark">#FFFFB4AB</color>
+    <color name="onErrorDark">#FFB00020</color>
+    <color name="errorContainerDark">#FF93000A</color>
+    <color name="onErrorContainerDark">#FFFFCDD2</color>
+
+    <color name="backgroundDark">#FF212121</color>
+    <color name="onBackgroundDark">#FFECEFF1</color>
+    <color name="surfaceDark">#FF121212</color>
+    <color name="onSurfaceDark">#FFECEFF1</color>
+    <color name="surfaceVariantDark">#FF424242</color>
+    <color name="onSurfaceVariantDark">#FFBDBDBD</color>
+    <color name="outlineDark">#FF757575</color>
+    <color name="outlineVariantDark">#FF616161</color>      <!-- Added -->
+    <color name="scrimDark">#FF000000</color>
+    <color name="inverseSurfaceDark">#FFECEFF1</color>
+    <color name="inverseOnSurfaceDark">#FF212121</color>
+    <color name="inversePrimaryDark">#FF2A3E52</color>
+
+    <color name="surfaceDimDark">#FF1C1C1C</color>
+    <color name="surfaceBrightDark">#FF2C2C2C</color>
+    <color name="surfaceContainerLowestDark">#FF121212</color>
+    <color name="surfaceContainerLowDark">#FF1C1C1C</color>
+    <color name="surfaceContainerDark">#FF242424</color>
+    <color name="surfaceContainerHighDark">#FF2C2C2C</color>
+    <color name="surfaceContainerHighestDark">#FF343434</color>
+
+    <!-- Custom Colors (e.g., for priority, if not directly from theme) -->
+    <color name="priority_critical">#FFB00020</color> <!-- Пример -->
+    <color name="priority_high">#FFF44336</color>    <!-- Пример -->
+    <color name="priority_medium">#FFFF9800</color>   <!-- Пример -->
+    <color name="priority_low">#FF4CAF50</color>     <!-- Пример -->
+
+    <color name="chip_background_color">@color/secondaryContainerLight</color> <!-- Пример -->
+    <color name="chip_text_color">@color/onSecondaryContainerLight</color> <!-- Пример -->
+
+
+    <color name="colorPrimaryAlpha07">#B32A3E52</color> <!-- Пример для ?attr/colorPrimary с alpha 0.7 -->
+    <color name="colorSurfaceVariantAlpha05">#80E0E0E0</color>
+
+    <color name="onPrimaryContainerLightAlpha07">#B30D47A1</color>
+    <color name="onPrimaryContainerLightAlpha08">#CC0D47A1</color>
+    <color name="colorPrimaryContainerLightAlpha08">#CCBBDEFB</color>
+
+    <color name="colorOnSurfaceVariantAlpha07">#B3757575</color> <!-- 70% alpha от onSurfaceVariantLight -->
+    <color name="colorOnSurfaceVariantAlpha08">#CC757575</color> <!-- 80% alpha от onSurfaceVariantLight -->
+    <color name="colorOnSurfaceVariantAlpha05">#80757575</color> <!-- 50% alpha от onSurfaceVariantLight -->
+    <color name="colorOutlineVariantAlpha05">#80E0E0E0</color> <!-- 50% alpha от outlineVariantLight -->
+    <color name="colorSurfaceVariantAlpha03">#4DE0E0E0</color> <!-- 30% alpha от surfaceVariantLight -->
+    <color name="colorSurfaceVariantAlpha04">#66E0E0E0</color> <!-- 40% alpha от surfaceVariantLight -->
+
+    <!-- Dark Theme Alpha Colors -->
+    <color name="onPrimaryContainerDarkAlpha07">#B3BBDEFB</color> <!-- 70% alpha от onPrimaryContainerDark -->
+    <color name="onPrimaryContainerDarkAlpha08">#CCBBDEFB</color> <!-- 80% alpha от onPrimaryContainerDark -->
+    <color name="colorPrimaryContainerDarkAlpha08">#CC1E3A5F</color> <!-- 80% alpha от primaryContainerDark -->
+
+    <color name="colorOnSurfaceVariantDarkAlpha07">#B3BDBDBD</color> <!-- 70% alpha от onSurfaceVariantDark -->
+    <color name="colorOnSurfaceVariantDarkAlpha08">#CCBDBDBD</color> <!-- 80% alpha от onSurfaceVariantDark -->
+    <color name="colorOnSurfaceVariantDarkAlpha05">#80BDBDBD</color> <!-- 50% alpha от onSurfaceVariantDark -->
+    <color name="colorOutlineVariantDarkAlpha05">#80616161</color> <!-- 50% alpha от outlineVariantDark -->
+    <color name="colorPrimaryDarkAlpha07">#B390CAF9</color> <!-- 70% alpha от primaryDark -->
+    <color name="colorSurfaceVariantDarkAlpha03">#4D424242</color> <!-- 30% alpha от surfaceVariantDark -->
+    <color name="colorSurfaceVariantDarkAlpha04">#66424242</color>
+
+    <color name="swipe_action_complete">#FF66BB6A</color> <!-- Зеленый -->
+    <color name="swipe_action_undo">#FFFFA726</color>    <!-- Оранжевый -->
+    <color name="swipe_action_delete">#FFEF5350</color>   <!-- Красный -->
+
+    <color name="swipe_action_move">#FF4CAF50</color> <!-- Зеленый для перемещения -->
+
+
+    <color name="priority_critical_container_bg">#33F44336</color> <!-- Красный с альфой -->
+    <color name="priority_high_container_bg">#33FF9800</color>    <!-- Оранжевый с альфой -->
+    <color name="priority_medium_container_bg">#33FFEB3B</color>  <!-- Желтый с альфой -->
+    <color name="priority_low_container_bg">#334CAF50</color>     <!-- Зеленый с альфой -->
+
+
+    <color name="coins_color">#FFC107</color> <!-- Желтый/Золотой для монет -->
+    <color name="streak_color">#FF5722</color> <!-- Оранжевый/Красный для стрика -->
+
+
+    <color name="plant_healthy_border">#4CAF50</color> <!-- Зеленый (можно с альфа, например #B34CAF50) -->
+    <color name="plant_needs_water_border">#FFC107</color> <!-- Желтый/Оранжевый (можно с альфа, например #CCFFC107) -->
+    <color name="plant_wilted_border">#F44336</color>
+
+
+
+    
 </resources>

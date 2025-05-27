@@ -97,8 +97,8 @@ dependencies {
     // DataStore Preferences
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.datastore.rxjava3)
-    implementation("io.reactivex.rxjava3:rxandroid:3.0.2")
-    implementation("androidx.datastore:datastore-preferences-guava:1.1.1")
+    implementation("androidx.datastore:datastore-preferences-rxjava3:1.0.0")
+
 
     // Timber (Логгирование)
     implementation(libs.timber)
@@ -141,4 +141,13 @@ dependencies {
     implementation("androidx.concurrent:concurrent-futures:1.1.0")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.7.3")
+
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-rx3:1.7.3")
+
+    // Также тебе, вероятно, понадобится сама RxJava 3, если ее еще нет
+    implementation("io.reactivex.rxjava3:rxjava:3.1.6")
+    implementation("io.reactivex.rxjava3:rxandroid:3.0.2")
+
 }

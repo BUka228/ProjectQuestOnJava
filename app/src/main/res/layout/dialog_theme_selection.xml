@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="22dp"
+    android:paddingBottom="8dp"
+    android:paddingHorizontal="24dp"> <!-- Стандартные отступы для диалога Material 3 -->
+
+    <!-- Заголовок и иконка (можно убрать и использовать стандартный title AlertDialog) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            app:srcCompat="@drawable/palette"
+            app:tint="?attr/colorPrimary"
+            android:layout_marginEnd="16dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Тема приложения"
+            style="@style/TextAppearance.Material3.TitleLarge"/>
+    </LinearLayout>
+
+    <RadioGroup
+        android:id="@+id/radioGroup_theme_selection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.google.android.material.radiobutton.MaterialRadioButton
+            android:id="@+id/radioButton_theme_system"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Как в системе"
+            style="@style/Widget.App.RadioButton"
+            android:paddingVertical="12dp"/>
+
+        <com.google.android.material.radiobutton.MaterialRadioButton
+            android:id="@+id/radioButton_theme_light"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Светлая"
+            style="@style/Widget.App.RadioButton"
+            android:paddingVertical="12dp"/>
+
+        <com.google.android.material.radiobutton.MaterialRadioButton
+            android:id="@+id/radioButton_theme_dark"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Темная"
+            style="@style/Widget.App.RadioButton"
+            android:paddingVertical="12dp"/>
+    </RadioGroup>
+    <!-- Кнопки будут добавлены через AlertDialog.Builder -->
+</LinearLayout>

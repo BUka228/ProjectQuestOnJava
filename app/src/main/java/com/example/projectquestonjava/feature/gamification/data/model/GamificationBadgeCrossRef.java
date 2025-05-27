@@ -3,13 +3,13 @@ package com.example.projectquestonjava.feature.gamification.data.model;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
+import androidx.room.Ignore;
 import androidx.room.Index;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
 import lombok.Getter;
 
-@Getter
 @Entity(
         tableName = "gamification_badge_cross_ref",
         primaryKeys = {"gamification_id", "badge_id"},
@@ -29,23 +29,26 @@ import lombok.Getter;
         },
         indices = {@Index("gamification_id"), @Index("badge_id")}
 )
+@Getter
 public class GamificationBadgeCrossRef {
 
     @ColumnInfo(name = "gamification_id")
-    private final long gamificationId;
+    public final long gamificationId;
 
     @ColumnInfo(name = "badge_id")
-    private final long badgeId;
+    public final long badgeId;
 
     @ColumnInfo(name = "earned_at")
-    private final LocalDateTime earnedAt;
+    public final LocalDateTime earnedAt;
 
+    // Основной конструктор для Room
     public GamificationBadgeCrossRef(long gamificationId, long badgeId, LocalDateTime earnedAt) {
         this.gamificationId = gamificationId;
         this.badgeId = badgeId;
         this.earnedAt = earnedAt != null ? earnedAt : LocalDateTime.now();
     }
-    // Конструктор без earnedAt для удобства
+
+    @Ignore
     public GamificationBadgeCrossRef(long gamificationId, long badgeId) {
         this(gamificationId, badgeId, LocalDateTime.now());
     }

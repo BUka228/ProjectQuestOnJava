@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="8dp" /> <!-- Или другое значение скругления, как у вас в chipStyle -->
+    <solid android:color="#4CAF50" /> <!-- Зеленый цвет (можете заменить на ?attr/colorSecondary или @color/...) -->
+</shape>

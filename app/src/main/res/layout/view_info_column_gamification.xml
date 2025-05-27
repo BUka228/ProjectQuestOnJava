@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_weight="1"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:paddingHorizontal="6dp">
+    <ImageView
+        android:id="@+id/imageView_info_icon_gamification"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        tools:srcCompat="@drawable/paid"
+        tools:tint="#FB8C00"/> <!-- Placeholder -->
+    <TextView
+        android:id="@+id/textView_info_value_gamification"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        style="@style/TextAppearance.App.TitleLarge"
+        android:textStyle="bold"
+        tools:text="1250"/>
+    <TextView
+        android:id="@+id/textView_info_subvalue_gamification"
+        android:layout_width="wrap_content"
+        android:layout_height="18dp"
+        style="@style/TextAppearance.App.LabelSmall"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:gravity="center"
+        tools:text="(макс. 1500)"/>
+    <TextView
+        android:id="@+id/textView_info_label_gamification"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        style="@style/TextAppearance.App.BodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        tools:text="Монеты"/>
+</LinearLayout>

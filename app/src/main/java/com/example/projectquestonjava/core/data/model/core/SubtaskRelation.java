@@ -34,7 +34,7 @@ public class SubtaskRelation {
     @ColumnInfo(name = "child_task_id")
     private final long childTaskId;
 
-    @ColumnInfo(name = "`order`") // `order` - зарезервированное слово, нужно экранировать для SQL
+    @ColumnInfo(name = "order") // `order` - зарезервированное слово, нужно экранировать для SQL
     private final int order;
 
     public SubtaskRelation(long parentTaskId, long childTaskId, int order) {

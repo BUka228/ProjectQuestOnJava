@@ -1,3 +1,39 @@
+<!-- res/values/strings.xml -->
 <resources>
-    <string name="app_name">ProjectQuestOnJava</string>
+    <string name="app_name">Progress Quest</string>
+
+    <string name="add_task_fab_description">Добавить новую задачу</string>
+    <string name="no_tasks_today_placeholder">Сегодня нет запланированных задач</string>
+    <string name="add_new_task_prompt">Нажмите +, чтобы создать новую задачу</string>
+    <string-array name="weekday_abbreviations">
+        <item>ПН</item>
+        <item>ВТ</item>
+        <item>СР</item>
+        <item>ЧТ</item>
+        <item>ПТ</item>
+        <item>СБ</item>
+        <item>ВС</item>
+    </string-array>
+
+    <string name="bottom_nav_dashboard">Главная</string>
+    <string name="bottom_nav_planning">План</string>
+    <string name="bottom_nav_pomodoro">Pomodoro</string>
+    <string name="bottom_nav_gamification">Игра</string>
+    <string name="bottom_nav_profile">Профиль</string>
+
+    <string name="title_dashboard">Дашборд</string>
+    <string name="title_planning">Планирование</string>
+    <string name="title_pomodoro">Pomodoro</string>
+    <string name="title_gamification">Игра</string>
+    <string name="title_profile">Профиль</string>
+    <string name="title_task_creation_edit">Задача</string> <!-- Заголовок для создания/редактирования -->
+    <string name="title_timer_settings">Настройки Таймера</string>
+    <string name="title_garden">Мой Сад</string>
+    <string name="title_challenges">Испытания</string>
+    <string name="title_profile_edit">Редактор Профиля</string>
+    <string name="title_statistics">Статистика</string>
+    <string name="title_settings">Настройки</string>
+
+
+
 </resources>

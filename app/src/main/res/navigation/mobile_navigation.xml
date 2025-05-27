@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@+id/navigation_dashboard">
+
+    <!-- Основные экраны BottomNavigationView -->
+    <fragment
+        android:id="@+id/navigation_dashboard"
+        android:name="com.example.projectquestonjava.approach.calendar.presentation.screens.CalendarDashboardFragment"
+        android:label="@string/title_dashboard"
+        tools:layout="@layout/fragment_calendar_dashboard" />
+
+    <fragment
+        android:id="@+id/navigation_calendar_planning"
+        android:name="com.example.projectquestonjava.approach.calendar.presentation.screens.CalendarPlanningFragment"
+        android:label="@string/title_planning"
+        tools:layout="@layout/fragment_calendar_planning" />
+
+    <fragment
+        android:id="@+id/navigation_pomodoro"
+        android:name="com.example.projectquestonjava.feature.pomodoro.presentation.screens.PomodoroFragment"
+        android:label="@string/title_pomodoro"
+        tools:layout="@layout/fragment_pomodoro">
+        <argument
+            android:name="taskId"
+            app:argType="long"
+            android:defaultValue="-1L" /> <!-- -1L означает, что задача не выбрана -->
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_gamification"
+        android:name="com.example.projectquestonjava.feature.gamification.presentation.screens.GamificationFragment"
+        android:label="@string/title_gamification"
+        tools:layout="@layout/fragment_gamification_host" />
+
+    <fragment
+        android:id="@+id/navigation_profile"
+        android:name="com.example.projectquestonjava.feature.profile.presentation.screens.ProfileFragment"
+        android:label="@string/title_profile"
+        tools:layout="@layout/fragment_profile" />
+
+    <!-- Вспомогательные экраны -->
+    <fragment
+        android:id="@+id/calendarTaskCreationFragment"
+        android:name="com.example.projectquestonjava.approach.calendar.presentation.screens.CalendarTaskCreationFragment"
+        android:label="@string/title_task_creation_edit"
+        tools:layout="@layout/fragment_calendar_task_creation" >
+        <argument
+            android:name="taskId"
+            app:argType="long"
+            android:defaultValue="-1L" /> <!-- -1L для создания новой задачи -->
+        <!-- Заголовок будет меняться в фрагменте в зависимости от taskId -->
+    </fragment>
+
+    <fragment
+        android:id="@+id/timerSettingsFragment"
+        android:name="com.example.projectquestonjava.feature.pomodoro.presentation.screens.TimerSettingsFragment"
+        android:label="@string/title_timer_settings"
+        tools:layout="@layout/fragment_timer_settings" />
+
+    <fragment
+        android:id="@+id/gardenFragment"
+        android:name="com.example.projectquestonjava.feature.gamification.presentation.screens.GardenFragment"
+        android:label="@string/title_garden"
+        tools:layout="@layout/fragment_garden" />
+
+    <fragment
+        android:id="@+id/challengesFragment"
+        android:name="com.example.projectquestonjava.feature.gamification.presentation.screens.ChallengesFragment"
+        android:label="@string/title_challenges"
+        tools:layout="@layout/fragment_challenges" /> <!-- Предполагаем такой макет -->
+
+    <fragment
+        android:id="@+id/profileEditFragment"
+        android:name="com.example.projectquestonjava.feature.profile.presentation.screens.ProfileEditFragment"
+        android:label="@string/title_profile_edit"
+        tools:layout="@layout/fragment_profile_edit" />
+
+    <fragment
+        android:id="@+id/statisticsFragment"
+        android:name="com.example.projectquestonjava.feature.statistics.presentation.screens.StatisticsFragment"
+        android:label="@string/title_statistics"
+        tools:layout="@layout/fragment_statistics" />
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.example.projectquestonjava.feature.profile.presentation.screens.SettingsFragment"
+        android:label="@string/title_settings"
+        tools:layout="@layout/fragment_settings_main" />
+
+
+    <!-- Глобальные Actions (для переходов с любого экрана) -->
+    <action
+        android:id="@+id/action_global_to_calendarTaskCreationFragment"
+        app:destination="@id/calendarTaskCreationFragment" />
+    <action
+        android:id="@+id/action_global_to_pomodoroFragment"
+        app:destination="@id/navigation_pomodoro"/>
+
+    <!-- Actions из Дашборда -->
+    <!-- action_navigation_dashboard_to_calendarTaskCreationFragment (для кнопки +) уже не нужен, используем глобальный -->
+    <!-- action_navigation_dashboard_to_pomodoroFragment (для запуска Pomodoro из карточки) уже не нужен, используем глобальный -->
+
+    <!-- Actions из Экрана Планирования -->
+    <!-- action_navigation_calendar_planning_to_calendarTaskCreationFragment -->
+    <!-- action_navigation_calendar_planning_to_pomodoroFragment -->
+
+    <!-- Actions из Pomodoro -->
+    <action
+        android:id="@+id/action_pomodoroFragment_to_timerSettingsFragment"
+        app:destination="@id/timerSettingsFragment" />
+
+    <!-- Actions из Геймификации -->
+    <action
+        android:id="@+id/action_navigation_gamification_to_gardenFragment"
+        app:destination="@id/gardenFragment" />
+    <action
+        android:id="@+id/action_navigation_gamification_to_challengesFragment"
+        app:destination="@id/challengesFragment" />
+
+    <!-- Actions из Профиля -->
+    <action
+        android:id="@+id/action_navigation_profile_to_gardenFragment"
+        app:destination="@id/gardenFragment" />
+    <action
+        android:id="@+id/action_navigation_profile_to_statisticsFragment"
+        app:destination="@id/statisticsFragment" />
+    <action
+        android:id="@+id/action_navigation_profile_to_settingsFragment"
+        app:destination="@id/settingsFragment" />
+    <action
+        android:id="@+id/action_navigation_profile_to_profileEditFragment"
+        app:destination="@id/profileEditFragment" />
+
+    <!-- Actions из Общих Настроек -->
+    <action
+        android:id="@+id/action_settingsFragment_to_timerSettingsFragment"
+        app:destination="@id/timerSettingsFragment" />
+
+</navigation>

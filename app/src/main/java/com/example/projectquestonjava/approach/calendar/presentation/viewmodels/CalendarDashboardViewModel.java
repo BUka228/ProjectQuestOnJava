@@ -4,8 +4,10 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
+
 import com.example.projectquestonjava.core.data.model.core.Tag;
 import com.example.projectquestonjava.core.data.model.enums.Priority;
 import com.example.projectquestonjava.core.data.model.enums.TaskStatus;
@@ -14,9 +16,10 @@ import com.example.projectquestonjava.core.domain.usecases.DeleteTaskUseCase;
 import com.example.projectquestonjava.core.managers.SnackbarManager;
 import com.example.projectquestonjava.core.utils.DateTimeUtils;
 import com.example.projectquestonjava.core.utils.Logger;
-import com.example.projectquestonjava.core.utils.SingleLiveEvent; // Для Snackbar
+import com.example.projectquestonjava.core.utils.SingleLiveEvent;
 import com.example.projectquestonjava.approach.calendar.domain.model.CalendarDashboardData;
 import com.example.projectquestonjava.approach.calendar.domain.model.CalendarTaskSummary;
+// import com.example.projectquestonjava.approach.calendar.domain.model.SortOptionData; // Не используется напрямую здесь
 import com.example.projectquestonjava.approach.calendar.domain.model.TaskFilterOption;
 import com.example.projectquestonjava.approach.calendar.domain.model.TaskSortOption;
 import com.example.projectquestonjava.approach.calendar.domain.usecases.GetDashboardDataUseCase;
@@ -25,11 +28,8 @@ import com.example.projectquestonjava.feature.gamification.domain.usecases.Proce
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
-import lombok.Getter;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -42,7 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap; // Для pagerDataCache
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -54,68 +54,72 @@ public class CalendarDashboardViewModel extends ViewModel {
 
     public enum SwipeDirection { LEFT, RIGHT }
 
-    public static abstract class SwipeActionState { // Эмуляция sealed class
+    public static abstract class SwipeActionState {
         private SwipeActionState() {}
         public static final class Idle extends SwipeActionState {
             private static final Idle INSTANCE = new Idle();
             public static Idle getInstance() { return INSTANCE; }
         }
-        @Getter
         public static final class ConfirmingDelete extends SwipeActionState {
             private final CalendarTaskSummary taskSummary;
             public ConfirmingDelete(CalendarTaskSummary taskSummary) { this.taskSummary = taskSummary; }
+            public CalendarTaskSummary getTaskSummary() { return taskSummary; }
         }
     }
 
     public static final int DATE_RANGE = 30;
-    private static final int INITIAL_PAGE = DATE_RANGE;
-    private static final int PREFETCH_DISTANCE = 3; // Оставляем для логики pagerData
+    public static final int INITIAL_PAGE = DATE_RANGE;
+    private static final int PREFETCH_DISTANCE = 3;
     private static final String TAG = "CalendarDashboardVM";
 
+    private final GetDashboardDataUseCase getDashboardDataUseCase;
     private final ProcessTaskCompletionUseCase processTaskCompletionUseCase;
     private final MarkTaskAsIncompleteUseCase markTaskAsIncompleteUseCase;
     private final DeleteTaskUseCase deleteTaskUseCase;
     private final DateTimeUtils dateTimeUtils;
     private final SnackbarManager snackbarManager;
     private final Logger logger;
+    private final Executor ioExecutor;
 
-    private final MutableLiveData<LocalDateTime> _selectedDateLiveData = new MutableLiveData<>();
-    public LiveData<LocalDateTime> selectedDateLiveData = _selectedDateLiveData;
+    private final MutableLiveData<LocalDateTime> _selectedDateLiveData;
+    public final LiveData<LocalDateTime> selectedDateLiveData;
 
-    private final MutableLiveData<Integer> _currentPageLiveData = new MutableLiveData<>(INITIAL_PAGE);
-    public LiveData<Integer> currentPageLiveData = _currentPageLiveData;
+    private final MutableLiveData<Integer> _currentPageLiveData;
+    public final LiveData<Integer> currentPageLiveData;
 
-    private final MutableLiveData<TaskSortOption> _sortOptionLiveData = new MutableLiveData<>(TaskSortOption.TIME_ASC);
-    public LiveData<TaskSortOption> sortOptionLiveData = _sortOptionLiveData;
+    private final MutableLiveData<TaskSortOption> _sortOptionLiveData;
+    public final LiveData<TaskSortOption> sortOptionLiveData;
 
-    private final MutableLiveData<Set<TaskFilterOption>> _filterOptionsLiveData = new MutableLiveData<>(Collections.singleton(TaskFilterOption.ALL));
-    public LiveData<Set<TaskFilterOption>> filterOptionsLiveData = _filterOptionsLiveData;
+    private final MutableLiveData<Set<TaskFilterOption>> _filterOptionsLiveData;
+    public final LiveData<Set<TaskFilterOption>> filterOptionsLiveData;
 
-    private final SingleLiveEvent<String> _snackbarMessageEvent = new SingleLiveEvent<>();
-    public LiveData<String> snackbarMessageEvent = _snackbarMessageEvent;
+    private final SingleLiveEvent<String> _snackbarMessageEvent;
+    public final LiveData<String> snackbarMessageEvent;
 
-    private final MutableLiveData<Set<Tag>> _selectedTagsLiveData = new MutableLiveData<>(Collections.emptySet());
-    public LiveData<Set<Tag>> selectedTagsLiveData = _selectedTagsLiveData;
+    private final MutableLiveData<Set<Tag>> _selectedTagsLiveData;
+    public final LiveData<Set<Tag>> selectedTagsLiveData;
 
-    private final MutableLiveData<Boolean> _showCalendarDialogLiveData = new MutableLiveData<>(false);
-    public LiveData<Boolean> showCalendarDialogLiveData = _showCalendarDialogLiveData;
+    private final MutableLiveData<Boolean> _showCalendarDialogLiveData;
+    public final LiveData<Boolean> showCalendarDialogLiveData;
 
-    private final MutableLiveData<SwipeActionState> _swipeActionStateLiveData = new MutableLiveData<>(SwipeActionState.Idle.getInstance());
-    public LiveData<SwipeActionState> swipeActionStateLiveData = _swipeActionStateLiveData;
+    private final MutableLiveData<SwipeActionState> _swipeActionStateLiveData;
+    public final LiveData<SwipeActionState> swipeActionStateLiveData;
 
-    // --- LiveData для данных пейджера ---
-    // Это будет сложнее, чем StateFlow.flatMapLatest.
-    // Используем MediatorLiveData и Transformations.switchMap.
-    private final MediatorLiveData<CombinedPagerTrigger> pagerTrigger = new MediatorLiveData<>();
+    private final MediatorLiveData<CombinedPagerTrigger> pagerTriggerMediator;
     public final LiveData<Map<LocalDate, CalendarDashboardData>> pagerDataLiveData;
-
-    // --- LiveData для данных текущей страницы ---
     public final LiveData<CalendarDashboardData> dashboardDataLiveData;
-
-    // --- LiveData для прогресса ---
     public final LiveData<Float> currentProgressLiveData;
 
-    private final List<LocalDateTime> pageDates; // Для быстрого доступа к датам страниц
+    private final List<LocalDateTime> pageDates;
+
+    private final MutableLiveData<Long> _requestedTaskIdForDetails; // Сделаем его private
+    public final LiveData<CalendarTaskSummary> taskDetailsForBottomSheetLiveData; // Публичный LiveData
+
+    private final SingleLiveEvent<Long> _navigateToEditTaskEvent;
+    public LiveData<Long> navigateToEditTaskEvent;
+    private final SingleLiveEvent<Long> _navigateToPomodoroEvent;
+    public LiveData<Long> navigateToPomodoroEvent;
+
 
     @Inject
     public CalendarDashboardViewModel(
@@ -127,74 +131,97 @@ public class CalendarDashboardViewModel extends ViewModel {
             SnackbarManager snackbarManager,
             Logger logger,
             @IODispatcher Executor ioExecutor) {
+
+        this.getDashboardDataUseCase = getDashboardDataUseCase;
         this.processTaskCompletionUseCase = processTaskCompletionUseCase;
         this.markTaskAsIncompleteUseCase = markTaskAsIncompleteUseCase;
         this.deleteTaskUseCase = deleteTaskUseCase;
         this.dateTimeUtils = dateTimeUtils;
         this.snackbarManager = snackbarManager;
         this.logger = logger;
+        this.ioExecutor = ioExecutor;
 
-        _selectedDateLiveData.setValue(dateTimeUtils.currentLocalDateTime());
+        _selectedDateLiveData = new MutableLiveData<>(dateTimeUtils.currentLocalDateTime());
+        selectedDateLiveData = _selectedDateLiveData;
+
+        _currentPageLiveData = new MutableLiveData<>(INITIAL_PAGE);
+        currentPageLiveData = _currentPageLiveData;
+
+        _sortOptionLiveData = new MutableLiveData<>(TaskSortOption.TIME_ASC);
+        sortOptionLiveData = _sortOptionLiveData;
+
+        _filterOptionsLiveData = new MutableLiveData<>(Collections.singleton(TaskFilterOption.ALL));
+        filterOptionsLiveData = _filterOptionsLiveData;
+
+        _snackbarMessageEvent = new SingleLiveEvent<>();
+        snackbarMessageEvent = _snackbarMessageEvent;
+
+        _selectedTagsLiveData = new MutableLiveData<>(Collections.emptySet());
+        selectedTagsLiveData = _selectedTagsLiveData;
+
+        _showCalendarDialogLiveData = new MutableLiveData<>(false);
+        showCalendarDialogLiveData = _showCalendarDialogLiveData;
+
+        _swipeActionStateLiveData = new MutableLiveData<>(SwipeActionState.Idle.getInstance());
+        swipeActionStateLiveData = _swipeActionStateLiveData;
 
         pageDates = IntStream.range(0, DATE_RANGE * 2 + 1)
                 .mapToObj(offset -> dateTimeUtils.currentLocalDateTime().plusDays((long) offset - INITIAL_PAGE))
                 .collect(Collectors.toList());
 
-        pagerTrigger.addSource(_currentPageLiveData, value -> pagerTrigger.setValue(buildTrigger()));
-        pagerTrigger.addSource(_selectedTagsLiveData, value -> pagerTrigger.setValue(buildTrigger()));
-        pagerTrigger.addSource(_sortOptionLiveData, value -> pagerTrigger.setValue(buildTrigger()));
-        pagerTrigger.addSource(_filterOptionsLiveData, value -> pagerTrigger.setValue(buildTrigger()));
-        // Инициализируем триггер начальными значениями
-        pagerTrigger.setValue(buildTrigger());
+        pagerTriggerMediator = new MediatorLiveData<>();
+        pagerTriggerMediator.addSource(_currentPageLiveData, value -> pagerTriggerMediator.setValue(buildTrigger()));
+        pagerTriggerMediator.addSource(_selectedTagsLiveData, value -> pagerTriggerMediator.setValue(buildTrigger()));
+        pagerTriggerMediator.addSource(_sortOptionLiveData, value -> pagerTriggerMediator.setValue(buildTrigger()));
+        pagerTriggerMediator.addSource(_filterOptionsLiveData, value -> pagerTriggerMediator.setValue(buildTrigger()));
+        pagerTriggerMediator.setValue(buildTrigger());
 
-
-        pagerDataLiveData = Transformations.switchMap(pagerTrigger, trigger -> {
+        pagerDataLiveData = Transformations.switchMap(pagerTriggerMediator, trigger -> {
             if (trigger == null) {
                 MutableLiveData<Map<LocalDate, CalendarDashboardData>> emptyData = new MutableLiveData<>();
                 emptyData.setValue(Collections.emptyMap());
                 return emptyData;
             }
-            // Логика загрузки данных для диапазона дат вокруг текущей страницы
-            LocalDate centerDate = getDateForPageInternal(trigger.page).toLocalDate();
+            LocalDate centerDate = getDateForPageInternal(trigger.page()).toLocalDate();
             int range = PREFETCH_DISTANCE;
             List<LocalDate> datesToObserve = new ArrayList<>();
             for (int i = -range; i <= range; i++) {
                 datesToObserve.add(centerDate.plusDays(i));
             }
-            logger.debug(TAG, "PagerTrigger changed. Observing data for dates: " + datesToObserve + " based on page " + trigger.page);
+            logger.debug(TAG, "PagerTrigger changed. Observing data for dates: " + datesToObserve + " based on page " + trigger.page());
 
-            // Объединяем LiveData для каждой даты
-            MediatorLiveData<Map<LocalDate, CalendarDashboardData>> combinedData = new MediatorLiveData<>();
-            Map<LocalDate, CalendarDashboardData> resultMap = new ConcurrentHashMap<>(); // Потокобезопасная мапа
+            MediatorLiveData<Map<LocalDate, CalendarDashboardData>> combinedLiveData = new MediatorLiveData<>();
+            Map<LocalDate, CalendarDashboardData> resultMap = new ConcurrentHashMap<>();
+            AtomicInteger sourcesToLoadCount = new AtomicInteger(datesToObserve.size()); // Сколько источников ожидаем
 
-            // Для отслеживания, все ли источники LiveData ответили
-            AtomicInteger sourcesPending = new AtomicInteger(datesToObserve.size());
+            // Инициализируем resultMap пустыми значениями, чтобы избежать NPE при первом обращении
+            for (LocalDate date : datesToObserve) {
+                resultMap.put(date, CalendarDashboardData.EMPTY);
+            }
+            combinedLiveData.setValue(new ConcurrentHashMap<>(resultMap)); // Устанавливаем начальное значение
 
             for (LocalDate date : datesToObserve) {
-                // getDashboardDataUseCase.execute(date.atStartOfDay()) возвращает LiveData
                 LiveData<CalendarDashboardData> singleDateLiveData = getDashboardDataUseCase.execute(date.atStartOfDay());
+                // Добавляем источник и немедленно удаляем после первого ответа, чтобы избежать многократных обновлений от одного источника.
+                // Это упрощенная эмуляция flatMapLatest + combine для LiveData.
+                combinedLiveData.addSource(singleDateLiveData, new Observer<CalendarDashboardData>() {
+                    @Override
+                    public void onChanged(CalendarDashboardData rawData) {
+                        combinedLiveData.removeSource(singleDateLiveData); // Удаляем источник после первого получения данных
+                        ioExecutor.execute(() -> {
+                            CalendarDashboardData processedData = (rawData != null)
+                                    ? applyFiltersAndSorting(rawData, trigger.tags(), trigger.sort(), trigger.filters())
+                                    : CalendarDashboardData.EMPTY;
+                            resultMap.put(date, processedData);
 
-                combinedData.addSource(singleDateLiveData, rawData -> {
-                    if (rawData != null) {
-                        // Фильтрация и сортировка должны выполняться в фоновом потоке
-                        // Здесь для простоты синхронно, но в реальном приложении это может быть проблемой
-                        CalendarDashboardData processedData = applyFiltersAndSorting(rawData, trigger.tags, trigger.sort, trigger.filters);
-                        resultMap.put(date, processedData);
-                    } else {
-                        resultMap.put(date, CalendarDashboardData.EMPTY);
-                        logger.warn(TAG, "Received null rawData for date: " + date);
-                    }
-
-                    // Этот механизм не идеален, т.к. sourcesPending будет уменьшаться при каждом обновлении любого LiveData.
-                    // Правильнее было бы отслеживать, для каких дат данные уже загружены.
-                    // Но для демонстрации пока оставим так.
-                    if (sourcesPending.decrementAndGet() <= 0 || resultMap.size() == datesToObserve.size()) {
-                        combinedData.setValue(new ConcurrentHashMap<>(resultMap)); // Отправляем копию
-                        sourcesPending.set(datesToObserve.size()); // Сбрасываем для следующего обновления
+                            if (sourcesToLoadCount.decrementAndGet() == 0) { // Если все источники ответили
+                                combinedLiveData.postValue(new ConcurrentHashMap<>(resultMap));
+                            }
+                        });
                     }
                 });
             }
-            return combinedData;
+            return combinedLiveData;
         });
 
         dashboardDataLiveData = Transformations.switchMap(_selectedDateLiveData, selectedDateTime ->
@@ -208,39 +235,55 @@ public class CalendarDashboardViewModel extends ViewModel {
             if (data == null || data.getTasks() == null || data.getTasks().isEmpty()) return 0f;
             List<CalendarTaskSummary> tasks = data.getTasks();
             long completedCount = tasks.stream().filter(t -> t.getStatus() == TaskStatus.DONE).count();
-            return (float) completedCount / tasks.size();
+            return tasks.isEmpty() ? 0f : (float) completedCount / tasks.size();
         });
+
+        _requestedTaskIdForDetails = new MutableLiveData<>(null); // Инициализация
+        taskDetailsForBottomSheetLiveData = Transformations.switchMap(_requestedTaskIdForDetails, taskId -> {
+            if (taskId == null || taskId == -1L) {
+                return new MutableLiveData<>(null);
+            }
+            // Ищем задачу в pagerDataLiveData для выбранной даты. Это гарантирует, что мы берем
+            // уже отфильтрованную и отсортированную версию, если пользователь применил фильтры/сортировку.
+            return Transformations.map(dashboardDataLiveData, currentDayData -> {
+                if (currentDayData == null || currentDayData.getTasks() == null) return null;
+                return currentDayData.getTasks().stream()
+                        .filter(task -> task.getId() == taskId)
+                        .findFirst()
+                        .orElse(null);
+            });
+        });
+
+        _navigateToEditTaskEvent = new SingleLiveEvent<>();
+        navigateToEditTaskEvent = _navigateToEditTaskEvent;
+        _navigateToPomodoroEvent = new SingleLiveEvent<>();
+        navigateToPomodoroEvent = _navigateToPomodoroEvent;
     }
 
     private CombinedPagerTrigger buildTrigger() {
-        return new CombinedPagerTrigger(
-                Objects.requireNonNull(_currentPageLiveData.getValue()),
-                Objects.requireNonNull(_selectedTagsLiveData.getValue()),
-                Objects.requireNonNull(_sortOptionLiveData.getValue()),
-                Objects.requireNonNull(_filterOptionsLiveData.getValue())
-        );
+        Integer page = _currentPageLiveData.getValue();
+        Set<Tag> tags = _selectedTagsLiveData.getValue();
+        TaskSortOption sort = _sortOptionLiveData.getValue();
+        Set<TaskFilterOption> filters = _filterOptionsLiveData.getValue();
+
+        if (page == null || tags == null || sort == null || filters == null) {
+            // Возвращаем дефолтный триггер или null, если какие-то значения еще не установлены
+            // Это важно, чтобы избежать NPE при первой инициализации MediatorLiveData
+            return new CombinedPagerTrigger(INITIAL_PAGE, Collections.emptySet(), TaskSortOption.TIME_ASC, Collections.singleton(TaskFilterOption.ALL));
+        }
+        return new CombinedPagerTrigger(page, tags, sort, filters);
     }
 
-    private static class CombinedPagerTrigger {
-        final int page;
-        final Set<Tag> tags;
-        final TaskSortOption sort;
-        final Set<TaskFilterOption> filters;
-        CombinedPagerTrigger(int p, Set<Tag> t, TaskSortOption s, Set<TaskFilterOption> f) {
-            page = p; tags = t; sort = s; filters = f;
-        }
-        // equals и hashCode важны для distinctUntilChanged в LiveData/Flow
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            CombinedPagerTrigger that = (CombinedPagerTrigger) o;
-            return page == that.page && Objects.equals(tags, that.tags) && sort == that.sort && Objects.equals(filters, that.filters);
-        }
-        @Override
-        public int hashCode() {
-            return Objects.hash(page, tags, sort, filters);
-        }
+    public void clearRequestedTaskDetails() {
+        _requestedTaskIdForDetails.setValue(-1L); // Или null
+    }
+
+    public void clearNavigateToEditTask() {
+        _navigateToEditTaskEvent.setValue(null);
+    }
+
+    public void clearNavigateToPomodoro() {
+        _navigateToPomodoroEvent.setValue(null);
     }
 
 
@@ -251,32 +294,42 @@ public class CalendarDashboardViewModel extends ViewModel {
             Set<TaskFilterOption> filterOptions) {
         if (data == null || data.getTasks() == null) return CalendarDashboardData.EMPTY;
 
-        boolean hasTagFilter = selectedTags != null && !selectedTags.isEmpty();
-        boolean isAllFilter = filterOptions != null && filterOptions.contains(TaskFilterOption.ALL);
+        List<CalendarTaskSummary> tasksToProcess = new ArrayList<>(data.getTasks());
 
-        List<CalendarTaskSummary> filteredTasks = data.getTasks().stream()
+        final boolean hasTagFilter = selectedTags != null && !selectedTags.isEmpty();
+        final boolean isAllFilterSelected = filterOptions.contains(TaskFilterOption.ALL);
+        final boolean onlyComplete = filterOptions.contains(TaskFilterOption.COMPLETE);
+        final boolean onlyIncomplete = filterOptions.contains(TaskFilterOption.INCOMPLETE);
+        final boolean criticalPriorityFilter = filterOptions.contains(TaskFilterOption.CRITICAL_PRIORITY);
+        final boolean highPriorityFilter = filterOptions.contains(TaskFilterOption.HIGH_PRIORITY);
+        // Добавьте фильтры TODAY и OVERDUE если они релевантны для этого экрана
+        // final boolean todayFilter = filterOptions.contains(TaskFilterOption.TODAY);
+        // final boolean overdueFilter = filterOptions.contains(TaskFilterOption.OVERDUE);
+        // final LocalDate todayDate = dateTimeUtils.currentLocalDate();
+
+        List<CalendarTaskSummary> filteredTasks = tasksToProcess.stream()
                 .filter(task -> {
-                    boolean passesTagFilter = !hasTagFilter || task.getTags().stream().anyMatch(selectedTags::contains);
-                    if (!passesTagFilter) return false;
-
-                    if (isAllFilter) return true; // Если "Все", то остальные фильтры статуса/приоритета не применяем так строго
-
-                    boolean passesCompletionFilter = true;
-                    if (filterOptions.contains(TaskFilterOption.COMPLETE) != filterOptions.contains(TaskFilterOption.INCOMPLETE)) { // Если выбран только один из них
-                        if (filterOptions.contains(TaskFilterOption.COMPLETE)) passesCompletionFilter = task.getStatus() == TaskStatus.DONE;
-                        else if (filterOptions.contains(TaskFilterOption.INCOMPLETE)) passesCompletionFilter = task.getStatus() != TaskStatus.DONE;
+                    if (hasTagFilter && task.getTags().stream().noneMatch(selectedTags::contains)) {
+                        return false;
                     }
-                    if (!passesCompletionFilter) return false;
+                    if (isAllFilterSelected) return true;
 
-                    boolean passesPriorityFilter = true;
-                    if (filterOptions.contains(TaskFilterOption.CRITICAL_PRIORITY)) passesPriorityFilter = task.getPriority() == Priority.CRITICAL;
-                    else if (filterOptions.contains(TaskFilterOption.HIGH_PRIORITY)) passesPriorityFilter = task.getPriority() == Priority.HIGH || task.getPriority() == Priority.CRITICAL;
-                    // Если не выбраны фильтры по приоритету, то passesPriorityFilter остается true
-                    return passesPriorityFilter;
+                    boolean passesCompletion = true;
+                    if (onlyComplete != onlyIncomplete) {
+                        passesCompletion = onlyComplete ? (task.getStatus() == TaskStatus.DONE) : (task.getStatus() != TaskStatus.DONE);
+                    }
+                    if (!passesCompletion) return false;
+
+                    if (criticalPriorityFilter && task.getPriority() != Priority.CRITICAL) return false;
+                    if (highPriorityFilter && task.getPriority() != Priority.HIGH && task.getPriority() != Priority.CRITICAL) return false;
+
+                    // if (todayFilter && !task.getDueDate().toLocalDate().isEqual(todayDate)) return false;
+                    // if (overdueFilter && (!task.getDueDate().toLocalDate().isBefore(todayDate) || task.getStatus() == TaskStatus.DONE)) return false;
+
+                    return true;
                 })
                 .collect(Collectors.toList());
 
-        // Сортировка
         switch (sortOption) {
             case TIME_ASC: filteredTasks.sort(Comparator.comparing(CalendarTaskSummary::getDueDate)); break;
             case TIME_DESC: filteredTasks.sort(Comparator.comparing(CalendarTaskSummary::getDueDate).reversed()); break;
@@ -284,7 +337,7 @@ public class CalendarDashboardViewModel extends ViewModel {
             case CREATED_OLDEST: filteredTasks.sort(Comparator.comparingLong(CalendarTaskSummary::getId)); break;
             case PRIORITY_DESC: filteredTasks.sort(Comparator.comparing((CalendarTaskSummary t) -> t.getPriority().ordinal()).reversed()); break;
             case PRIORITY_ASC: filteredTasks.sort(Comparator.comparing((CalendarTaskSummary t) -> t.getPriority().ordinal())); break;
-            case STATUS: filteredTasks.sort(Comparator.comparing(t -> t.getStatus() == TaskStatus.DONE)); break; // false (не DONE) будет раньше
+            case STATUS: filteredTasks.sort(Comparator.comparing(t -> t.getStatus() == TaskStatus.DONE)); break;
         }
         return new CalendarDashboardData(filteredTasks, data.getGamification());
     }
@@ -302,7 +355,7 @@ public class CalendarDashboardViewModel extends ViewModel {
             currentOptions.remove(option);
             newOptions = currentOptions.isEmpty() ? Collections.singleton(TaskFilterOption.ALL) : currentOptions;
         } else {
-            currentOptions.remove(TaskFilterOption.ALL); // Удаляем ALL, если он был
+            currentOptions.remove(TaskFilterOption.ALL);
             currentOptions.add(option);
             newOptions = currentOptions;
         }
@@ -323,15 +376,14 @@ public class CalendarDashboardViewModel extends ViewModel {
         _selectedTagsLiveData.setValue(currentTags);
     }
     public void clearTagFilters() { _selectedTagsLiveData.setValue(Collections.emptySet()); }
-    public void clearSnackbarMessage() { _snackbarMessageEvent.setValue(null); }
 
+    public void clearSnackbarMessage() { _snackbarMessageEvent.setValue(null); }
 
     public void onPageChanged(int page) {
         if (Objects.equals(_currentPageLiveData.getValue(), page)) return;
-        if (page >= 0 && page < (DATE_RANGE * 2 + 1)) {
+        if (page >= 0 && page < pageDates.size()) {
             _currentPageLiveData.setValue(page);
             _selectedDateLiveData.setValue(getDateForPageInternal(page));
-            logger.debug(TAG, "Page changed to " + page + ", date set to " + Objects.requireNonNull(_selectedDateLiveData.getValue()).toLocalDate());
         } else {
             logger.warn(TAG, "Attempted to change to invalid page index: " + page);
         }
@@ -341,16 +393,14 @@ public class CalendarDashboardViewModel extends ViewModel {
         LocalDate today = dateTimeUtils.currentLocalDate();
         LocalDate targetDate = newDate.toLocalDate();
         long daysDifference = ChronoUnit.DAYS.between(today, targetDate);
-        int targetPage = INITIAL_PAGE + (int) daysDifference;
+        int targetPage = INITIAL_PAGE + (int)daysDifference;
 
-        if (targetPage >= 0 && targetPage < (DATE_RANGE * 2 + 1)) {
-            if (Objects.equals(targetDate, Objects.requireNonNull(_selectedDateLiveData.getValue()).toLocalDate())) {
-                logger.debug(TAG, "Date " + targetDate + " already selected.");
-                return;
-            }
-            _selectedDateLiveData.setValue(newDate.with(LocalTime.NOON)); // Установка на полдень
-            _currentPageLiveData.setValue(targetPage);
-            logger.debug(TAG, "Date selected via calendar: " + targetDate + ", scrolling to page " + targetPage);
+        if (targetPage >= 0 && targetPage < pageDates.size()) {
+            LocalDateTime currentSelected = _selectedDateLiveData.getValue();
+            if (currentSelected != null && Objects.equals(targetDate, currentSelected.toLocalDate())) return;
+
+            _selectedDateLiveData.setValue(newDate.with(LocalTime.NOON));
+            _currentPageLiveData.setValue(targetPage); // Обновляем страницу, чтобы пейджер тоже среагировал
         } else {
             logger.warn(TAG, "Selected date " + targetDate + " is outside the pager range (" + targetPage + ").");
             showSnackbar("Выбранная дата вне доступного диапазона.");
@@ -361,15 +411,14 @@ public class CalendarDashboardViewModel extends ViewModel {
         if (page >= 0 && page < pageDates.size()) {
             return pageDates.get(page);
         }
-        logger.warn(TAG, "Requested page " + page + " is outside pre-generated range. Calculating dynamically.");
-        return dateTimeUtils.currentLocalDateTime().plusDays((long) page - INITIAL_PAGE);
+        return dateTimeUtils.currentLocalDateTime().plusDays((long)page - INITIAL_PAGE);
     }
     public LocalDateTime getDateForPage(int page) { return getDateForPageInternal(page); }
 
     public void showCalendarDialog() { _showCalendarDialogLiveData.setValue(true); }
     public void hideCalendarDialog() { _showCalendarDialogLiveData.setValue(false); }
 
-    private void updateTaskStatusInternal(long taskId, List<Tag> tags, boolean isDone) {
+    public void updateTaskStatus(long taskId, List<Tag> tags, boolean isDone) {
         logger.debug(TAG, "Updating task status: taskId=" + taskId + ", isDone=" + isDone);
         ListenableFuture<Void> future;
         if (isDone) {
@@ -379,14 +428,14 @@ public class CalendarDashboardViewModel extends ViewModel {
         }
         Futures.addCallback(future, new FutureCallback<Void>() {
             @Override
-            public void onSuccess(Void result) { /* Данные обновятся через LiveData */ }
+            public void onSuccess(Void result) { /* UI обновится через LiveData */ }
             @Override
             public void onFailure(@NonNull Throwable t) {
                 String message = "Ошибка обновления статуса: " + t.getMessage();
                 showSnackbar(message);
                 logger.error(TAG, "Failed to update task status for " + taskId, t);
             }
-        }, MoreExecutors.directExecutor()); // Коллбэк на том же потоке (UI), если операция быстрая
+        }, ioExecutor);
     }
 
     private void requestDeleteConfirmation(CalendarTaskSummary taskSummary) {
@@ -398,15 +447,12 @@ public class CalendarDashboardViewModel extends ViewModel {
         _swipeActionStateLiveData.setValue(SwipeActionState.Idle.getInstance());
         ListenableFuture<Void> future = deleteTaskUseCase.execute(taskId);
         Futures.addCallback(future, new FutureCallback<Void>() {
-            @Override
-            public void onSuccess(Void result) { showSnackbar("Задача удалена"); }
-            @Override
-            public void onFailure(@NonNull Throwable t) {
-                String message = "Ошибка удаления задачи: " + t.getMessage();
-                showSnackbar(message);
+            @Override public void onSuccess(Void result) { showSnackbar("Задача удалена"); }
+            @Override public void onFailure(@NonNull Throwable t) {
+                showSnackbar("Ошибка удаления: " + t.getMessage());
                 logger.error(TAG, "Failed to delete task " + taskId, t);
             }
-        }, MoreExecutors.directExecutor());
+        }, ioExecutor);
     }
 
     public void clearSwipeActionState() {
@@ -414,40 +460,52 @@ public class CalendarDashboardViewModel extends ViewModel {
     }
 
     public void handleSwipeAction(long taskId, SwipeDirection direction) {
-        // Получение актуальных данных задачи перед действием.
-        // Это может быть сложно с LiveData без блокировки.
-        // Проще всего, если dashboardDataLiveData содержит актуальные данные.
         CalendarDashboardData currentData = dashboardDataLiveData.getValue();
         if (currentData == null || currentData.getTasks() == null) {
-            logger.error(TAG, "Cannot handle swipe for task " + taskId + ": dashboard data not available.");
+            logger.error(TAG, "Cannot handle swipe: dashboard data not available.");
             return;
         }
         CalendarTaskSummary taskToActOn = currentData.getTasks().stream()
-                .filter(t -> t.getId() == taskId)
-                .findFirst()
-                .orElse(null);
-
+                .filter(t -> t.getId() == taskId).findFirst().orElse(null);
         if (taskToActOn == null) {
-            logger.error(TAG, "Cannot handle swipe for task " + taskId + ": task not found in current data.");
+            logger.error(TAG, "Cannot handle swipe: task " + taskId + " not found.");
             return;
         }
 
         if (direction == SwipeDirection.RIGHT) {
-            logger.debug(TAG, "Handling RIGHT swipe for task " + taskId + ", actual current status " + taskToActOn.getStatus());
             boolean targetStatusIsDone = taskToActOn.getStatus() != TaskStatus.DONE;
-            updateTaskStatusInternal(taskId, taskToActOn.getTags(), targetStatusIsDone);
+            updateTaskStatus(taskId, taskToActOn.getTags(), targetStatusIsDone);
         } else if (direction == SwipeDirection.LEFT) {
-            logger.debug(TAG, "Handling LEFT swipe for task " + taskId + ", requesting delete confirmation.");
             requestDeleteConfirmation(taskToActOn);
         }
     }
 
-    private void showSnackbar(String message) {
-        // Теперь вызываем Java-метод, который не suspend
-        snackbarManager.showMessage(message); // Использует длительность по умолчанию (LENGTH_SHORT)
+    // --- Методы для BottomSheet ---
+    public void showTaskDetailsBottomSheet(CalendarTaskSummary task) {
+        _requestedTaskIdForDetails.setValue(task.getId());
+        // Показ BottomSheet будет управляться из Fragment'а, наблюдающего за taskDetailsForBottomSheetLiveData
     }
 
-    private void showSnackbar(String message, int duration) { // Перегруженный метод, если нужна другая длительность
-        snackbarManager.showMessage(message, duration);
+    /**
+     * Получает LiveData для задачи, детали которой нужно показать в BottomSheet.
+     * Fragment подписывается на это LiveData.
+     */
+    public LiveData<CalendarTaskSummary> getTaskDetailsForBottomSheet(long taskId) {
+        _requestedTaskIdForDetails.setValue(taskId); // Устанавливаем ID запрашиваемой задачи
+        return taskDetailsForBottomSheetLiveData; // Возвращаем LiveData, которое обновится
+    }
+
+    public void startPomodoroForTask(long taskId) {
+        logger.debug(TAG, "Requesting Pomodoro start for task ID: " + taskId);
+        _navigateToPomodoroEvent.setValue(taskId);
+    }
+
+    public void editTask(long taskId) {
+        logger.debug(TAG, "Requesting edit for task ID: " + taskId);
+        _navigateToEditTaskEvent.setValue(taskId);
+    }
+
+    private void showSnackbar(String message) {
+        snackbarManager.showMessage(message);
     }
 }

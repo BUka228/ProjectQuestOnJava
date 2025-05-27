@@ -16,4 +16,20 @@ public class PomodoroSettings {
     @Nullable
     private String breakSoundUri;
     private boolean vibrationEnabled = true;
+
+    public PomodoroSettings copyWorkDurationMinutes(int workDurationMinutes) {
+        return new PomodoroSettings(workDurationMinutes, this.breakDurationMinutes, this.focusSoundUri, this.breakSoundUri, this.vibrationEnabled);
+    }
+    public PomodoroSettings copyBreakDurationMinutes(int breakDurationMinutes) {
+        return new PomodoroSettings(this.workDurationMinutes, breakDurationMinutes, this.focusSoundUri, this.breakSoundUri, this.vibrationEnabled);
+    }
+    public PomodoroSettings copyFocusSoundUri(@Nullable String focusSoundUri) {
+        return new PomodoroSettings(this.workDurationMinutes, this.breakDurationMinutes, focusSoundUri, this.breakSoundUri, this.vibrationEnabled);
+    }
+    public PomodoroSettings copyBreakSoundUri(@Nullable String breakSoundUri) {
+        return new PomodoroSettings(this.workDurationMinutes, this.breakDurationMinutes, this.focusSoundUri, breakSoundUri, this.vibrationEnabled);
+    }
+    public PomodoroSettings copyVibrationEnabled(boolean vibrationEnabled) {
+        return new PomodoroSettings(this.workDurationMinutes, this.breakDurationMinutes, this.focusSoundUri, this.breakSoundUri, vibrationEnabled);
+    }
 }

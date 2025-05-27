@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/card_stats_overview"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardElevation="4dp"
+    app:cardCornerRadius="@dimen/card_corner_radius_large"
+    app:cardBackgroundColor="?attr/colorPrimaryContainer"> <!-- Цвет фона как в Compose -->
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="100dp"
+    android:orientation="horizontal"
+    android:paddingHorizontal="8dp"
+    android:paddingVertical="16dp"
+    android:baselineAligned="false"> <!-- Важно для корректного weight -->
+
+    <!-- StatItem 1: Выполнено -->
+    <LinearLayout
+        android:id="@+id/stat_item_completed"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingHorizontal="6dp">
+
+        <ImageView
+            android:id="@+id/icon_stat_completed"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            app:srcCompat="@drawable/check_box"
+            app:tint="?attr/colorPrimary"
+            tools:ignore="ContentDescription" />
+
+        <TextView
+            android:id="@+id/value_stat_completed"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            style="@style/TextAppearance.App.HeadlineSmall"
+            android:textStyle="bold"
+            android:maxLines="1"
+            tools:text="105" />
+
+        <TextView
+            android:id="@+id/subvalue_stat_completed"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            style="@style/TextAppearance.App.BodySmall"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:gravity="center"
+            tools:text="75%" />
+
+        <TextView
+            android:id="@+id/label_stat_completed"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Выполнено"
+            style="@style/TextAppearance.App.LabelMedium"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:gravity="center"/>
+    </LinearLayout>
+
+    <View
+        android:layout_width="1dp"
+        android:layout_height="match_parent"
+        android:background="?attr/colorOnPrimaryContainer"
+        android:layout_marginHorizontal="4dp"/>
+
+    <!-- StatItem 2: Ср. в день -->
+    <LinearLayout
+        android:id="@+id/stat_item_avg_daily"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingHorizontal="6dp">
+
+        <ImageView
+            android:id="@+id/icon_stat_avg_daily"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            app:srcCompat="@drawable/avg_pace"
+            app:tint="?attr/colorPrimary"
+            tools:ignore="ContentDescription" />
+
+        <TextView
+            android:id="@+id/value_stat_avg_daily"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            style="@style/TextAppearance.App.HeadlineSmall"
+            android:textStyle="bold"
+            android:maxLines="1"
+            tools:text="2.5" />
+
+        <TextView
+            android:id="@+id/subvalue_stat_avg_daily"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            style="@style/TextAppearance.App.BodySmall"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:gravity="center"
+            tools:text="задач" />
+
+        <TextView
+            android:id="@+id/label_stat_avg_daily"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ср. в день"
+            style="@style/TextAppearance.App.LabelMedium"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:gravity="center"/>
+    </LinearLayout>
+
+    <View
+        android:layout_width="1dp"
+        android:layout_height="match_parent"
+        android:background="?attr/colorOnPrimaryContainer"
+        android:layout_marginHorizontal="4dp"/>
+
+    <!-- StatItem 3: Лучший день -->
+    <LinearLayout
+        android:id="@+id/stat_item_best_day"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingHorizontal="6dp">
+
+        <ImageView
+            android:id="@+id/icon_stat_best_day"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            app:srcCompat="@drawable/calendar_today"
+            app:tint="?attr/colorPrimary"
+            tools:ignore="ContentDescription" />
+
+        <TextView
+            android:id="@+id/value_stat_best_day"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            style="@style/TextAppearance.App.HeadlineSmall"
+            android:textStyle="bold"
+            android:maxLines="1"
+            tools:text="Ср" />
+        <!-- Пустой TextView для выравнивания по subValue других элементов -->
+        <TextView
+            android:id="@+id/subvalue_stat_best_day"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            style="@style/TextAppearance.App.BodySmall"
+            android:minHeight="18dp"/> <!-- Задаем минимальную высоту, как у других subValue -->
+
+        <TextView
+            android:id="@+id/label_stat_best_day"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Лучший день"
+            style="@style/TextAppearance.App.LabelMedium"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:gravity="center"/>
+    </LinearLayout>
+</LinearLayout>
+    </com.google.android.material.card.MaterialCardView>

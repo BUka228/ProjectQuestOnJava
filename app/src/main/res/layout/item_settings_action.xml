@@ -1,0 +1,4 @@
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+    <include layout="@layout/item_settings_base"/>
+    <!-- FrameLayout пустой, если нет специального trailing content для action -->
+</merge>

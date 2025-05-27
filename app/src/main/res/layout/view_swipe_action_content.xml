@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/layout_swipe_content_root"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="20dp">
+
+    <ImageView
+        android:id="@+id/imageView_swipe_content_icon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        tools:srcCompat="@drawable/edit_calendar"
+        app:tint="@android:color/white"/>
+
+    <TextView
+        android:id="@+id/textView_swipe_content_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        tools:text="Переместить"
+        android:textColor="@android:color/white"
+        style="@style/TextAppearance.Material3.BodyMedium"
+        android:textStyle="bold"/>
+</LinearLayout>

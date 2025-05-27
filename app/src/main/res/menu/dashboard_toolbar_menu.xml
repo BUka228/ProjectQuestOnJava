@@ -1,0 +1,13 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_open_calendar_dialog_dashboard"
+        android:icon="@drawable/calendar_month"
+        android:title="Выбрать дату"
+        app:showAsAction="ifRoom"/>
+    <item
+        android:id="@+id/action_filter_sort_dashboard"
+        android:icon="@drawable/filter_list"
+        android:title="Фильтр/Сортировка"
+        app:showAsAction="ifRoom"/>
+</menu>

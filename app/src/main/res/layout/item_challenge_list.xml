@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/card_challenge_list_item"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="16dp"
+    app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+    app:strokeWidth="1dp"
+    android:layout_marginBottom="12dp"
+    android:clickable="true"
+    android:focusable="true">
+
+<LinearLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:orientation="vertical"
+android:padding="16dp">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="top">
+    <ImageView
+        android:id="@+id/imageView_challenge_list_icon"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        tools:srcCompat="@drawable/check_box"
+        app:tint="?attr/colorPrimary"/>
+    <TextView
+        android:id="@+id/textView_challenge_list_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="8dp"
+        style="@style/TextAppearance.Material3.TitleLarge"
+        android:textStyle="bold"
+        android:maxLines="2"
+        android:ellipsize="end"
+        tools:text="Ежедневный спринт"/>
+    <!-- Статус иконкой (чек, часы, предупреждение) -->
+    <ImageView
+        android:id="@+id/imageView_challenge_list_status_indicator"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        tools:srcCompat="@drawable/check_circle"
+        tools:tint="?attr/colorSecondary"/>
+</LinearLayout>
+
+<TextView
+    android:id="@+id/textView_challenge_list_description"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="10dp"
+    style="@style/TextAppearance.Material3.BodyMedium"
+    android:textColor="?attr/colorOnSurfaceVariant"
+    android:maxLines="3"
+    android:ellipsize="end"
+    tools:text="Завершите 3 задачи сегодня, чтобы получить специальную награду."/>
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:layout_marginTop="10dp">
+    <ProgressBar
+        android:id="@+id/progressBar_challenge_list"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="0dp"
+        android:layout_height="10dp"
+        android:layout_weight="1"
+        android:progressDrawable="@drawable/timer_progress_drawable"
+        android:progressBackgroundTint="?attr/colorSurfaceVariant"
+        tools:progress="66"/>
+    <TextView
+        android:id="@+id/textView_challenge_list_progress_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        style="@style/TextAppearance.Material3.BodyMedium"
+        android:textStyle="bold"
+        tools:text="2/3 задач"/>
+</LinearLayout>
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical|end"
+    android:layout_marginTop="10dp">
+    <LinearLayout
+        android:id="@+id/layout_challenge_list_deadline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="start|center_vertical"
+        android:layout_marginEnd="16dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+        <ImageView
+            android:id="@+id/imageView_challenge_list_deadline_icon"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            app:srcCompat="@drawable/schedule"/>
+        <TextView
+            android:id="@+id/textView_challenge_list_deadline_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            style="@style/TextAppearance.Material3.BodyMedium"
+            android:maxLines="1"
+            android:ellipsize="end"
+            tools:text="Сегодня!"/>
+    </LinearLayout>
+    <LinearLayout
+        android:id="@+id/layout_challenge_list_reward"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end|center_vertical"
+        android:visibility="gone"
+        tools:visibility="visible">
+        <ImageView
+            android:id="@+id/imageView_challenge_list_reward_icon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            tools:srcCompat="@drawable/paid"
+            app:tint="?attr/colorSecondary"/>
+        <TextView
+            android:id="@+id/textView_challenge_list_reward_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            style="@style/TextAppearance.Material3.BodyMedium"
+            android:textColor="?attr/colorSecondary"
+            android:maxLines="1"
+            android:ellipsize="end"
+            tools:text="25 Монет"/>
+    </LinearLayout>
+</LinearLayout>
+</LinearLayout>
+    </com.google.android.material.card.MaterialCardView>

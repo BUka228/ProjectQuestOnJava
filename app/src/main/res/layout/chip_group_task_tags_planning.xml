@@ -1,0 +1,25 @@
+<com.google.android.material.chip.ChipGroup android:id="@+id/chip_group_task_tags_planning"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="6dp"
+    app:chipSpacingHorizontal="4dp"
+    app:chipSpacingVertical="2dp"
+    app:singleLine="true"
+    android:visibility="gone"
+    tools:visibility="visible"
+    tools:layout_height="wrap_content"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <com.google.android.material.chip.Chip
+        style="@style/Widget.App.Chip.Small"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        tools:text="Работа" />
+    <com.google.android.material.chip.Chip
+        style="@style/Widget.App.Chip.Small"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        tools:text="Срочно" />
+</com.google.android.material.chip.ChipGroup>

@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/card_task_dashboard_item"
+    style="@style/Widget.App.CardView"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    app:cardElevation="4dp"
+    app:cardBackgroundColor="?attr/colorSurfaceContainer">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp">
+
+        <LinearLayout
+            android:id="@+id/layout_task_time_priority"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingEnd="12dp">
+
+        <TextView
+            android:id="@+id/text_task_hour"
+            style="@style/TextAppearance.App.HeadlineMedium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/colorOnSurface"
+            tools:text="14"/>
+
+        <View
+            android:id="@+id/view_priority_indicator"
+            android:layout_width="28dp"
+            android:layout_height="6dp"
+            android:layout_marginTop="1dp"
+            android:layout_marginBottom="1dp"
+            android:background="@drawable/rounded_priority_indicator" />
+
+        <TextView
+            android:id="@+id/text_task_minute"
+            style="@style/TextAppearance.App.HeadlineMedium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/colorOnSurface"
+            tools:text="30"/>
+    </LinearLayout>
+
+    <!-- Правая часть: Заголовок, Чекбокс, Доп. Инфо -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingEnd="8dp"> <!-- Отступ справа от чекбокса -->
+
+        <!-- Заголовок и Чекбокс -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="top">
+
+            <TextView
+                android:id="@+id/text_task_title"
+                style="@style/TextAppearance.App.TitleLarge"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="3"
+                android:paddingEnd="8dp"
+                android:textStyle="bold"
+                tools:text="Очень длинное название задачи, которое может занимать несколько строк для проверки"/>
+
+            <CheckBox
+                android:id="@+id/checkbox_task_done"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:buttonTint="?attr/colorSecondary"/>
+        </LinearLayout>
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="8dp"/>
+
+        <!-- Дополнительные индикаторы и Теги -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Левая группа: Помидорки и Повторение -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <FrameLayout
+                    android:id="@+id/pomodoro_counter_container"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:background="@drawable/circle_background_primary_container"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+                    <ImageView
+                        android:id="@+id/imageView_pomodoro_timer_icon"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:src="@drawable/timer"
+                        android:scaleType="centerInside"
+                        android:padding="6dp"
+                        app:tint="?attr/colorPrimary"
+                        android:alpha="0.2"/>
+                    <TextView
+                        android:id="@+id/text_pomodoro_count"
+                        style="@style/TextAppearance.App.LabelMedium"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:textColor="?attr/colorOnPrimaryContainer"
+                        tools:text="3"/>
+                </FrameLayout>
+
+                <ImageView
+                    android:id="@+id/icon_task_recurrence"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_marginStart="6dp"
+                    app:srcCompat="@drawable/update"
+                    app:tint="?attr/colorOnSurfaceVariant"
+                    android:visibility="gone"
+                    tools:visibility="visible"/>
+            </LinearLayout>
+
+            <!-- Горизонтальная прокрутка для тегов -->
+            <HorizontalScrollView
+                android:id="@+id/scrollView_task_tags"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:scrollbars="none"
+                android:layout_marginStart="8dp"
+                android:fillViewport="false">
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chip_group_task_tags"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:singleLine="true"
+                    app:chipSpacingHorizontal="4dp"/>
+            </HorizontalScrollView>
+            <!-- Заглушка, если тегов нет -->
+            <Space
+                android:id="@+id/spacer_tags_end"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:visibility="gone"/>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>
+    </com.google.android.material.card.MaterialCardView>

@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="24dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="32dp"
+    android:background="?attr/colorSurfaceContainerHigh"
+    app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+    <com.google.android.material.bottomsheet.BottomSheetDragHandleView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- Заголовок и Чекбокс -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView
+            android:id="@+id/textView_details_title"
+            style="@style/TextAppearance.Material3.HeadlineMedium"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="3"
+            android:ellipsize="end"
+            tools:text="Очень длинное название задачи"/>
+        <CheckBox
+            android:id="@+id/checkbox_details_done"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            app:buttonTint="?attr/colorSecondary"/>
+    </LinearLayout>
+
+    <Space android:layout_width="match_parent" android:layout_height="@dimen/padding_large"/>
+
+    <!-- Дата и Время -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <ImageView android:layout_width="20dp" android:layout_height="20dp" app:srcCompat="@drawable/calendar_today" app:tint="?attr/colorOnSurfaceVariant"/>
+        <TextView
+            android:id="@+id/textView_details_date"
+            style="@style/TextAppearance.Material3.BodyLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            tools:text="Четверг, 24 Авг"/>
+        <TextView
+            style="@style/TextAppearance.Material3.BodyLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="4dp"
+            android:text="·"/>
+        <TextView
+            android:id="@+id/textView_details_time"
+            style="@style/TextAppearance.Material3.BodyLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            tools:text="14:30"/>
+    </LinearLayout>
+
+    <Space android:layout_width="match_parent" android:layout_height="@dimen/padding_large"/>
+
+    <!-- Описание -->
+    <TextView
+        android:id="@+id/textView_details_description_label"
+        style="@style/TextAppearance.Material3.TitleMedium"
+        android:textColor="?attr/colorPrimary"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Описание"
+        android:visibility="gone"
+        tools:visibility="visible"/>
+    <TextView
+        android:id="@+id/textView_details_description"
+        style="@style/TextAppearance.Material3.BodyLarge"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:visibility="gone"
+        tools:text="Подробное описание задачи, которое может быть довольно длинным и занимать несколько строк."
+        tools:visibility="visible"/>
+    <Space android:id="@+id/spacer_after_description" android:layout_width="match_parent" android:layout_height="@dimen/padding_large" android:visibility="gone" tools:visibility="visible"/>
+
+    <!-- Приоритет -->
+    <LinearLayout
+        android:id="@+id/layout_details_priority_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/rounded_background_surface_variant_alpha"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="6dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+        <ImageView
+            android:id="@+id/imageView_details_priority_icon"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            tools:srcCompat="@drawable/priority_high"
+            tools:tint="@color/priority_high"/>
+        <TextView
+            android:id="@+id/textView_details_priority_label"
+            style="@style/TextAppearance.Material3.LabelMedium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            tools:text="Высокий"
+            tools:textColor="@color/priority_high"/>
+    </LinearLayout>
+    <Space android:id="@+id/spacer_after_priority" android:layout_width="match_parent" android:layout_height="@dimen/padding_large" android:visibility="gone" tools:visibility="visible"/>
+
+
+    <!-- Pomodoro -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView
+            style="@style/TextAppearance.Material3.TitleMedium"
+            android:textColor="?attr/colorPrimary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pomodoro:"/>
+        <Space android:layout_width="8dp" android:layout_height="wrap_content"/>
+        <!-- PomodoroCounter (аналогично item_task_dashboard) -->
+        <LinearLayout
+            android:id="@+id/pomodoro_counter_container_details"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/circle_background_primary_container"
+            android:clickable="true"
+            android:focusable="true"
+            android:orientation="horizontal">
+            <ImageView
+                android:id="@+id/imageView_pomodoro_timer_icon_details"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@drawable/timer"
+                android:scaleType="centerInside"
+                android:padding="7dp"
+                app:tint="?attr/colorPrimary"
+                android:alpha="0.2"/>
+            <TextView
+                android:id="@+id/text_pomodoro_count_details"
+                style="@style/TextAppearance.Material3.LabelMedium"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:textColor="?attr/colorOnPrimaryContainer"
+                tools:text="3"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <Space android:layout_width="match_parent" android:layout_height="@dimen/padding_large"/>
+
+    <!-- Теги -->
+    <TextView
+        android:id="@+id/textView_details_tags_label"
+        style="@style/TextAppearance.Material3.TitleMedium"
+        android:textColor="?attr/colorPrimary"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Теги"
+        android:layout_marginBottom="4dp"
+        android:visibility="gone"
+        tools:visibility="visible"/>
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/chipGroup_details_tags"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:chipSpacingHorizontal="6dp"
+        app:chipSpacingVertical="4dp"
+        android:visibility="gone"
+        tools:visibility="visible"/>
+    <Space android:id="@+id/spacer_after_tags" android:layout_width="match_parent" android:layout_height="@dimen/padding_large" android:visibility="gone" tools:visibility="visible"/>
+
+    <!-- Кнопки действий -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <Button
+            android:id="@+id/button_details_pomodoro_action"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="Pomodoro"
+            app:icon="@drawable/timer"/>
+        <ImageButton
+            android:id="@+id/button_details_delete"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/delete"
+            app:tint="?attr/colorError"
+            android:contentDescription="Удалить"/>
+        <ImageButton
+            android:id="@+id/button_details_edit"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/edit"
+            app:tint="?attr/colorPrimary"
+            android:contentDescription="Редактировать"/>
+    </LinearLayout>
+</LinearLayout>

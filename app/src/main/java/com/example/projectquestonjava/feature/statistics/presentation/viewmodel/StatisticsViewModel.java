@@ -4,14 +4,13 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
-
 import com.example.projectquestonjava.core.di.IODispatcher;
 import com.example.projectquestonjava.core.managers.UserSessionManager;
 import com.example.projectquestonjava.core.utils.DateTimeUtils;
 import com.example.projectquestonjava.core.utils.Logger;
 import com.example.projectquestonjava.feature.pomodoro.data.model.PomodoroSession;
+import com.example.projectquestonjava.feature.pomodoro.domain.model.SessionType;
 import com.example.projectquestonjava.feature.pomodoro.domain.repository.PomodoroSessionRepository;
 import com.example.projectquestonjava.feature.statistics.data.model.GamificationHistory;
 import com.example.projectquestonjava.feature.statistics.data.model.GlobalStatistics;
@@ -22,16 +21,12 @@ import com.example.projectquestonjava.feature.statistics.domain.repository.TaskS
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
-
+import com.google.common.util.concurrent.MoreExecutors; // Для directExecutor
 import dagger.hilt.android.lifecycle.HiltViewModel;
-import lombok.Getter;
-
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
@@ -46,128 +41,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
-
-// Вспомогательные классы (если еще не определены глобально)
-enum StatsPeriod { WEEK, MONTH, ALL_TIME, CUSTOM }
-
-class DatePoint {
-    public final LocalDate date;
-    public final float value;
-    public DatePoint(LocalDate date, float value) { this.date = date; this.value = value; }
-}
-
-class DayOfWeekPoint {
-    public final DayOfWeek dayOfWeek;
-    public final float value;
-    public DayOfWeekPoint(DayOfWeek dayOfWeek, float value) { this.dayOfWeek = dayOfWeek; this.value = value; }
-}
-
-class StatisticsScreenUiState {
-    public final StatsPeriod selectedPeriod;
-    public final boolean isLoading;
-    public final String error;
-    public final LocalDate selectedStartDate;
-    public final LocalDate selectedEndDate;
-    public final GlobalStatistics globalStats;
-    public final Float taskCompletionRateOverall;
-    public final float averageTasksPerDayOverall;
-    public final DayOfWeek mostProductiveDayOfWeekOverall;
-    public final List<DatePoint> taskCompletionTrend;
-    public final List<DatePoint> pomodoroFocusTrend;
-    public final List<DatePoint> xpGainTrend;
-    public final List<DatePoint> coinGainTrend;
-    public final List<DayOfWeekPoint> tasksCompletedByDayOfWeek;
-    public final int totalTasksCompletedInPeriod;
-    public final int totalPomodoroMinutesInPeriod;
-    public final float averageDailyPomodoroMinutes;
-    public final int totalXpGainedInPeriod;
-    public final int totalCoinsGainedInPeriod;
-    public final LocalDate mostProductiveDayInPeriod;
-
-    public StatisticsScreenUiState(StatsPeriod selectedPeriod, boolean isLoading, String error,
-                                   LocalDate selectedStartDate, LocalDate selectedEndDate,
-                                   GlobalStatistics globalStats, Float taskCompletionRateOverall,
-                                   float averageTasksPerDayOverall, DayOfWeek mostProductiveDayOfWeekOverall,
-                                   List<DatePoint> taskCompletionTrend, List<DatePoint> pomodoroFocusTrend,
-                                   List<DatePoint> xpGainTrend, List<DatePoint> coinGainTrend,
-                                   List<DayOfWeekPoint> tasksCompletedByDayOfWeek,
-                                   int totalTasksCompletedInPeriod, int totalPomodoroMinutesInPeriod,
-                                   float averageDailyPomodoroMinutes, int totalXpGainedInPeriod,
-                                   int totalCoinsGainedInPeriod, LocalDate mostProductiveDayInPeriod) {
-        this.selectedPeriod = selectedPeriod;
-        this.isLoading = isLoading;
-        this.error = error;
-        this.selectedStartDate = selectedStartDate;
-        this.selectedEndDate = selectedEndDate;
-        this.globalStats = globalStats;
-        this.taskCompletionRateOverall = taskCompletionRateOverall;
-        this.averageTasksPerDayOverall = averageTasksPerDayOverall;
-        this.mostProductiveDayOfWeekOverall = mostProductiveDayOfWeekOverall;
-        this.taskCompletionTrend = taskCompletionTrend != null ? taskCompletionTrend : Collections.emptyList();
-        this.pomodoroFocusTrend = pomodoroFocusTrend != null ? pomodoroFocusTrend : Collections.emptyList();
-        this.xpGainTrend = xpGainTrend != null ? xpGainTrend : Collections.emptyList();
-        this.coinGainTrend = coinGainTrend != null ? coinGainTrend : Collections.emptyList();
-        this.tasksCompletedByDayOfWeek = tasksCompletedByDayOfWeek != null ? tasksCompletedByDayOfWeek : Collections.emptyList();
-        this.totalTasksCompletedInPeriod = totalTasksCompletedInPeriod;
-        this.totalPomodoroMinutesInPeriod = totalPomodoroMinutesInPeriod;
-        this.averageDailyPomodoroMinutes = averageDailyPomodoroMinutes;
-        this.totalXpGainedInPeriod = totalXpGainedInPeriod;
-        this.totalCoinsGainedInPeriod = totalCoinsGainedInPeriod;
-        this.mostProductiveDayInPeriod = mostProductiveDayInPeriod;
-    }
-
-    // Конструктор по умолчанию
-    public StatisticsScreenUiState() {
-        this(StatsPeriod.WEEK, true, null,
-                LocalDate.now().with(DayOfWeek.MONDAY), LocalDate.now(),
-                null, null, 0f, null,
-                Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
-                DayOfWeek.values().length > 0 ?
-                        java.util.Arrays.stream(DayOfWeek.values()).map(day -> new DayOfWeekPoint(day, 0f)).collect(Collectors.toList()) :
-                        Collections.emptyList(),
-                0, 0, 0f, 0, 0, null);
-    }
-
-    public StatisticsScreenUiState copy(
-            StatsPeriod selectedPeriod, Boolean isLoading, String error,
-            LocalDate selectedStartDate, LocalDate selectedEndDate,
-            GlobalStatistics globalStats, Float taskCompletionRateOverall,
-            Float averageTasksPerDayOverall, DayOfWeek mostProductiveDayOfWeekOverall,
-            List<DatePoint> taskCompletionTrend, List<DatePoint> pomodoroFocusTrend,
-            List<DatePoint> xpGainTrend, List<DatePoint> coinGainTrend,
-            List<DayOfWeekPoint> tasksCompletedByDayOfWeek,
-            Integer totalTasksCompletedInPeriod, Integer totalPomodoroMinutesInPeriod,
-            Float averageDailyPomodoroMinutes, Integer totalXpGainedInPeriod,
-            Integer totalCoinsGainedInPeriod, LocalDate mostProductiveDayInPeriod,
-            boolean clearError // Флаг для явной очистки ошибки
-    ) {
-        return new StatisticsScreenUiState(
-                selectedPeriod != null ? selectedPeriod : this.selectedPeriod,
-                isLoading != null ? isLoading : this.isLoading,
-                clearError ? null : (error != null ? error : this.error),
-                selectedStartDate != null ? selectedStartDate : this.selectedStartDate,
-                selectedEndDate != null ? selectedEndDate : this.selectedEndDate,
-                globalStats != null ? globalStats : this.globalStats,
-                taskCompletionRateOverall, // Может быть null
-                averageTasksPerDayOverall != null ? averageTasksPerDayOverall : this.averageTasksPerDayOverall,
-                mostProductiveDayOfWeekOverall, // Может быть null
-                taskCompletionTrend != null ? taskCompletionTrend : this.taskCompletionTrend,
-                pomodoroFocusTrend != null ? pomodoroFocusTrend : this.pomodoroFocusTrend,
-                xpGainTrend != null ? xpGainTrend : this.xpGainTrend,
-                coinGainTrend != null ? coinGainTrend : this.coinGainTrend,
-                tasksCompletedByDayOfWeek != null ? tasksCompletedByDayOfWeek : this.tasksCompletedByDayOfWeek,
-                totalTasksCompletedInPeriod != null ? totalTasksCompletedInPeriod : this.totalTasksCompletedInPeriod,
-                totalPomodoroMinutesInPeriod != null ? totalPomodoroMinutesInPeriod : this.totalPomodoroMinutesInPeriod,
-                averageDailyPomodoroMinutes != null ? averageDailyPomodoroMinutes : this.averageDailyPomodoroMinutes,
-                totalXpGainedInPeriod != null ? totalXpGainedInPeriod : this.totalXpGainedInPeriod,
-                totalCoinsGainedInPeriod != null ? totalCoinsGainedInPeriod : this.totalCoinsGainedInPeriod,
-                mostProductiveDayInPeriod // Может быть null
-        );
-    }
-}
-
 
 @HiltViewModel
 public class StatisticsViewModel extends ViewModel {
@@ -181,18 +57,18 @@ public class StatisticsViewModel extends ViewModel {
     private final UserSessionManager userSessionManager;
     private final DateTimeUtils dateTimeUtils;
     private final Executor ioExecutor;
-    private final Logger logger;
-
-    private final MutableLiveData<StatisticsScreenUiState> _uiStateLiveData = new MutableLiveData<>(new StatisticsScreenUiState());
-    public LiveData<StatisticsScreenUiState> uiStateLiveData = _uiStateLiveData;
-
-    // Для эмуляции debounce и flatMapLatest
     private final ScheduledExecutorService debounceExecutor = new ScheduledThreadPoolExecutor(1);
     private ScheduledFuture<?> scheduledLoadTask;
+    private final Logger logger;
 
-    // LiveData для триггеров
-    private final MutableLiveData<StatsPeriod> _selectedPeriodLiveData = new MutableLiveData<>(StatsPeriod.WEEK);
-    private final MutableLiveData<Pair<LocalDate, LocalDate>> _customDateRangeLiveData =
+    private final MutableLiveData<StatisticsScreenUiState> _uiStateLiveData =
+            new MutableLiveData<>(StatisticsScreenUiState.createDefault());
+    public final LiveData<StatisticsScreenUiState> uiStateLiveData = _uiStateLiveData;
+
+    private final LiveData<Integer> userIdTrigger;
+    private final MutableLiveData<StatsPeriod> _selectedPeriodTrigger = new MutableLiveData<>(StatsPeriod.WEEK);
+    // ИСПРАВЛЕНИЕ: _customDateRangeTrigger инициализируется здесь
+    private final MutableLiveData<DateTimeUtils.Pair<LocalDate, LocalDate>> _customDateRangeTrigger =
             new MutableLiveData<>(calculateDateRangeInternal(StatsPeriod.WEEK, LocalDate.now()));
 
 
@@ -215,22 +91,40 @@ public class StatisticsViewModel extends ViewModel {
         this.ioExecutor = ioExecutor;
         this.logger = logger;
 
-        logger.debug(TAG, "Initializing ViewModel.");
+        logger.debug(TAG, "Initializing StatisticsViewModel.");
 
-        // Объединяем триггеры для загрузки данных
-        MediatorLiveData<Object> loadTrigger = new MediatorLiveData<>();
-        loadTrigger.addSource(userSessionManager.getUserIdLiveData(), id -> triggerLoadWithDebounce());
-        loadTrigger.addSource(_selectedPeriodLiveData, period -> triggerLoadWithDebounce());
-        loadTrigger.addSource(_customDateRangeLiveData, range -> triggerLoadWithDebounce());
+        userIdTrigger = userSessionManager.getUserIdLiveData();
 
-        // Начальная загрузка (если userId уже есть)
-        if (userSessionManager.getUserIdSync() != UserSessionManager.NO_USER_ID) {
+        MediatorLiveData<Object> loadTriggerMediator = new MediatorLiveData<>();
+        loadTriggerMediator.addSource(userIdTrigger, id -> triggerLoadWithDebounce());
+        loadTriggerMediator.addSource(_selectedPeriodTrigger, period -> {
+            if (period != StatsPeriod.CUSTOM) {
+                // При выборе стандартного периода, обновляем _customDateRangeTrigger,
+                // что, в свою очередь, вызовет triggerLoadWithDebounce.
+                _customDateRangeTrigger.setValue(calculateDateRangeInternal(period, LocalDate.now()));
+            } else {
+                // Если выбран CUSTOM, загрузка сработает от изменения _customDateRangeTrigger,
+                // когда пользователь выберет даты в DatePicker.
+                // Но если _customDateRangeTrigger уже содержит нужные даты (например, при восстановлении состояния),
+                // можно вызвать загрузку и здесь. Для простоты, пока оставим так.
+                // Если нужно принудительно обновить для CUSTOM при его выборе (без изменения дат),
+                // можно добавить вызов triggerLoadWithDebounce() сюда.
+                triggerLoadWithDebounce(); // Добавил на случай, если кастомный диапазон не менялся, а период стал CUSTOM
+            }
+        });
+        // ИСПРАВЛЕНИЕ: Подписываемся на _customDateRangeTrigger
+        loadTriggerMediator.addSource(_customDateRangeTrigger, range -> triggerLoadWithDebounce());
+
+
+        loadTriggerMediator.observeForever(ignored -> {});
+
+
+        Integer currentUserId = userIdTrigger.getValue();
+        if (currentUserId != null && currentUserId != UserSessionManager.NO_USER_ID) {
             triggerLoadWithDebounce();
+        } else if (currentUserId == null) {
+            updateUiState(s -> s.toBuilder().isLoading(true).build());
         }
-        // Наблюдаем за loadTrigger, чтобы запустить загрузку, но сама загрузка происходит
-        // через triggerLoadWithDebounce, который использует debounceExecutor.
-        // Это немного обходной путь для эмуляции debounce + collectLatest.
-        loadTrigger.observeForever(ignored -> {}); // Пустой наблюдатель, чтобы MediatorLiveData был активен
     }
 
     private void triggerLoadWithDebounce() {
@@ -238,30 +132,35 @@ public class StatisticsViewModel extends ViewModel {
             scheduledLoadTask.cancel(false);
         }
         scheduledLoadTask = debounceExecutor.schedule(() -> {
-            int userId = userSessionManager.getUserIdSync(); // Получаем актуальный ID
-            StatsPeriod period = _selectedPeriodLiveData.getValue();
-            Pair<LocalDate, LocalDate> customRange = _customDateRangeLiveData.getValue();
+            Integer userId = userIdTrigger.getValue();
+            StatsPeriod currentSelectedPeriod = _selectedPeriodTrigger.getValue();
+            // ИСПРАВЛЕНИЕ: Используем _customDateRangeTrigger.getValue()
+            DateTimeUtils.Pair<LocalDate, LocalDate> dateRange = _customDateRangeTrigger.getValue();
 
-            if (userId != UserSessionManager.NO_USER_ID && period != null) {
-                Pair<LocalDate, LocalDate> dateRange = (period == StatsPeriod.CUSTOM && customRange != null) ?
-                        customRange : calculateDateRangeInternal(period, LocalDate.now());
-                // Обновляем UI State датами ПЕРЕД загрузкой
-                final LocalDate finalStartDate = dateRange.first;
-                final LocalDate finalEndDate = dateRange.second;
-                updateUiState(s -> s.copy(period, true, null, finalStartDate, finalEndDate, null,null,null,null,null,null,null,null,null,null,null,null,null,null,null, false));
-                loadStatisticsForDateRangeInternal(finalStartDate, finalEndDate);
-            } else if (userId == UserSessionManager.NO_USER_ID) {
+            if (userId != null && userId != UserSessionManager.NO_USER_ID && dateRange != null && currentSelectedPeriod != null) {
+                final LocalDate startDate = dateRange.first();
+                final LocalDate endDate = dateRange.second();
+
+                _uiStateLiveData.postValue(
+                        Objects.requireNonNull(_uiStateLiveData.getValue()).toBuilder()
+                                .selectedPeriod(currentSelectedPeriod)
+                                .selectedStartDate(startDate)
+                                .selectedEndDate(endDate)
+                                .isLoading(true)
+                                .error(null)
+                                .build()
+                );
+                loadStatisticsForDateRangeInternal(startDate, endDate);
+            } else if (userId == null || userId == UserSessionManager.NO_USER_ID) {
                 logger.warn(TAG, "No user logged in, clearing statistics.");
-                _uiStateLiveData.postValue(new StatisticsScreenUiState().copy(null, false, null, null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,false));
+                _uiStateLiveData.postValue(StatisticsScreenUiState.createDefault().withLoading(false));
             }
-        }, 300, TimeUnit.MILLISECONDS);
+        }, 100, TimeUnit.MILLISECONDS);
     }
 
-
+    // ... (остальная часть loadStatisticsForDateRangeInternal и другие методы остаются такими же, как в предыдущем ответе)
     private void loadStatisticsForDateRangeInternal(LocalDate startDate, LocalDate endDate) {
         logger.debug(TAG, "Loading statistics for range: " + startDate + " to " + endDate);
-        updateUiState(s -> s.copy(null,true, null, null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,true));
-
 
         ListenableFuture<GlobalStatistics> globalStatsFuture = globalStatsRepository.getGlobalStatisticsSuspend();
         ListenableFuture<List<TaskStatistics>> taskStatsPeriodFuture = taskStatsRepository.getTaskStatsInPeriod(startDate.atStartOfDay(), endDate.atTime(LocalTime.MAX));
@@ -269,13 +168,16 @@ public class StatisticsViewModel extends ViewModel {
         ListenableFuture<List<GamificationHistory>> gamificationHistoryPeriodFuture = gamificationHistoryRepository.getHistoryForPeriod(startDate.atStartOfDay(), endDate.atTime(LocalTime.MAX));
         ListenableFuture<List<TaskStatistics>> allTaskStatsFuture = taskStatsRepository.getAllTaskStatisticsSuspend();
 
-        ListenableFuture<List<Object>> allDataFuture = Futures.allAsList(
+        List<ListenableFuture<?>> futures = List.of(
                 globalStatsFuture, taskStatsPeriodFuture, pomodoroSessionsPeriodFuture,
                 gamificationHistoryPeriodFuture, allTaskStatsFuture
         );
 
+        ListenableFuture<List<Object>> allDataFuture = Futures.allAsList(futures);
+
         Futures.addCallback(allDataFuture, new FutureCallback<List<Object>>() {
             @Override
+            @SuppressWarnings("unchecked")
             public void onSuccess(List<Object> results) {
                 try {
                     GlobalStatistics globalStats = (GlobalStatistics) results.get(0);
@@ -284,32 +186,25 @@ public class StatisticsViewModel extends ViewModel {
                     List<GamificationHistory> gamificationHistoryInPeriod = (List<GamificationHistory>) results.get(3);
                     List<TaskStatistics> allTaskStats = (List<TaskStatistics>) results.get(4);
 
-                    logger.debug(TAG, "Data fetched: Global=" + (globalStats != null) +
-                            ", TasksPeriod=" + taskStatsInPeriod.size() +
-                            ", Pomodoro=" + pomodoroSessionsInPeriod.size() +
-                            ", History=" + gamificationHistoryInPeriod.size() +
-                            ", AllTasks=" + allTaskStats.size());
-
-                    // --- Вычисления --- (такие же, как в Kotlin)
                     Float completionRateOverall = calculateCompletionRate(globalStats);
                     float avgTasksOverall = calculateAverageTasksPerDay(allTaskStats, globalStats);
                     DayOfWeek mostProductiveDayOverall = findMostProductiveDayOfWeek(allTaskStats);
 
                     Map<LocalDate, Integer> completedTasksByDayMap = aggregateTasksByDay(taskStatsInPeriod, startDate, endDate);
                     Map<LocalDate, Integer> pomodoroMinutesByDayMap = aggregatePomodoroByDay(pomodoroSessionsInPeriod, startDate, endDate);
-                    Map<LocalDate, Pair<Integer, Integer>> gamificationChangesByDayMap = aggregateGamificationByDay(gamificationHistoryInPeriod, startDate, endDate);
+                    Map<LocalDate, DateTimeUtils.Pair<Integer, Integer>> gamificationChangesByDayMap = aggregateGamificationByDay(gamificationHistoryInPeriod, startDate, endDate);
                     Map<DayOfWeek, Integer> tasksByDayOfWeekMap = aggregateTasksByDayOfWeek(taskStatsInPeriod);
 
                     List<DatePoint> taskCompletionTrend = mapToDatePoints(completedTasksByDayMap, startDate, endDate);
                     List<DatePoint> pomodoroFocusTrend = mapToDatePoints(pomodoroMinutesByDayMap, startDate, endDate);
-                    List<DatePoint> xpGainTrend = mapToGamificationDatePoints(gamificationChangesByDayMap, startDate, endDate, Pair::getFirst);
-                    List<DatePoint> coinGainTrend = mapToGamificationDatePoints(gamificationChangesByDayMap, startDate, endDate, Pair::getSecond);
+                    List<DatePoint> xpGainTrend = mapToGamificationDatePoints(gamificationChangesByDayMap, startDate, endDate, DateTimeUtils.Pair::first);
+                    List<DatePoint> coinGainTrend = mapToGamificationDatePoints(gamificationChangesByDayMap, startDate, endDate, DateTimeUtils.Pair::second);
                     List<DayOfWeekPoint> tasksCompletedByDayOfWeek = mapToDayOfWeekPoints(tasksByDayOfWeekMap);
 
-                    int totalTasksCompletedInPeriod = taskStatsInPeriod.stream().filter(ts -> ts.getCompletionTime() != null).mapToInt(ts -> 1).sum();
-                    int totalPomodoroMinutesInPeriod = pomodoroSessionsInPeriod.stream().mapToInt(PomodoroSession::getActualDurationSeconds).sum() / 60;
+                    int totalTasksCompletedInPeriod = (int) taskStatsInPeriod.stream().filter(ts -> ts.getCompletionTime() != null).count();
+                    int totalPomodoroSecondsInPeriod = pomodoroSessionsInPeriod.stream().mapToInt(PomodoroSession::getActualDurationSeconds).sum();
                     long numberOfDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
-                    float averageDailyPomodoroMinutes = (numberOfDays > 0) ? (float) totalPomodoroMinutesInPeriod / numberOfDays : 0f;
+                    float averageDailyPomodoroMinutes = (numberOfDays > 0) ? (float) totalPomodoroSecondsInPeriod / 60 / numberOfDays : 0f;
                     int totalXpGainedInPeriod = gamificationHistoryInPeriod.stream().mapToInt(GamificationHistory::getXpChange).sum();
                     int totalCoinsGainedInPeriod = gamificationHistoryInPeriod.stream().mapToInt(GamificationHistory::getCoinsChange).sum();
                     LocalDate mostProductiveDayInPeriod = completedTasksByDayMap.entrySet().stream()
@@ -318,220 +213,180 @@ public class StatisticsViewModel extends ViewModel {
                             .map(Map.Entry::getKey)
                             .orElse(null);
 
-                    updateUiState(s -> s.copy(
-                            null, false, null, null, null,
-                            globalStats, completionRateOverall, avgTasksOverall, mostProductiveDayOverall,
-                            taskCompletionTrend, pomodoroFocusTrend, xpGainTrend, coinGainTrend,
-                            tasksCompletedByDayOfWeek, totalTasksCompletedInPeriod, totalPomodoroMinutesInPeriod,
-                            averageDailyPomodoroMinutes, totalXpGainedInPeriod, totalCoinsGainedInPeriod,
-                            mostProductiveDayInPeriod, false
-                    ));
-
-                } catch (Exception e) { // Ловим исключения при обработке результатов
-                    logger.error(TAG, "Error processing fetched statistics data", e);
-                    updateUiState(s -> s.copy(null, false, "Ошибка обработки данных: " + e.getMessage(), null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null, false));
+                    logger.debug(TAG, "Data processed successfully for " + startDate + " - " + endDate + ".");
+                    _uiStateLiveData.postValue(
+                            Objects.requireNonNull(_uiStateLiveData.getValue()).toBuilder()
+                                    .isLoading(false)
+                                    .globalStats(globalStats)
+                                    .taskCompletionRateOverall(completionRateOverall)
+                                    .averageTasksPerDayOverall(avgTasksOverall)
+                                    .mostProductiveDayOfWeekOverall(mostProductiveDayOverall)
+                                    .taskCompletionTrend(taskCompletionTrend)
+                                    .pomodoroFocusTrend(pomodoroFocusTrend)
+                                    .xpGainTrend(xpGainTrend)
+                                    .coinGainTrend(coinGainTrend)
+                                    .tasksCompletedByDayOfWeek(tasksCompletedByDayOfWeek)
+                                    .totalTasksCompletedInPeriod(totalTasksCompletedInPeriod)
+                                    .totalPomodoroMinutesInPeriod(totalPomodoroSecondsInPeriod / 60)
+                                    .averageDailyPomodoroMinutes(averageDailyPomodoroMinutes)
+                                    .totalXpGainedInPeriod(totalXpGainedInPeriod)
+                                    .totalCoinsGainedInPeriod(totalCoinsGainedInPeriod)
+                                    .mostProductiveDayInPeriod(mostProductiveDayInPeriod)
+                                    .error(null)
+                                    .build()
+                    );
+                } catch (Exception e) {
+                    logger.error(TAG, "Error processing fetched stats data in callback", e);
+                    _uiStateLiveData.postValue(Objects.requireNonNull(_uiStateLiveData.getValue()).withLoading(false).withError("Ошибка обработки данных: " + e.getMessage()));
                 }
             }
-
             @Override
             public void onFailure(@NonNull Throwable t) {
                 logger.error(TAG, "Error loading statistics for " + startDate + " - " + endDate, t);
-                updateUiState(s -> s.copy(null, false, "Ошибка загрузки статистики: " + t.getMessage(), null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null, false));
+                _uiStateLiveData.postValue(Objects.requireNonNull(_uiStateLiveData.getValue()).withLoading(false).withError("Ошибка загрузки статистики: " + t.getMessage()));
             }
-        }, ioExecutor); // Выполняем коллбэк на ioExecutor
+        }, ioExecutor);
     }
 
-
-    // --- Функции агрегации (такие же, как в Kotlin ViewModel, адаптированные под Java) ---
     private Map<LocalDate, Integer> aggregateTasksByDay(List<TaskStatistics> stats, LocalDate startDate, LocalDate endDate) {
         Map<LocalDate, Integer> dateMap = new HashMap<>();
-        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            dateMap.put(date, 0);
-        }
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) { dateMap.put(date, 0); }
         if (stats != null) {
-            stats.stream()
-                    .filter(s -> s.getCompletionTime() != null)
-                    .forEach(s -> {
-                        LocalDate date = dateTimeUtils.utcToLocalLocalDateTime(s.getCompletionTime()).toLocalDate();
-                        if (dateMap.containsKey(date)) {
-                            dateMap.put(date, dateMap.get(date) + 1);
-                        }
-                    });
-        }
-        return dateMap;
+            stats.stream().filter(s -> s.getCompletionTime() != null).forEach(s -> {
+                LocalDate date = dateTimeUtils.utcToLocalLocalDateTime(s.getCompletionTime()).toLocalDate();
+                dateMap.computeIfPresent(date, (k, v) -> v + 1);
+            });
+        } return dateMap;
     }
-
     private Map<LocalDate, Integer> aggregatePomodoroByDay(List<PomodoroSession> sessions, LocalDate startDate, LocalDate endDate) {
         Map<LocalDate, Integer> dateMap = new HashMap<>();
-        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            dateMap.put(date, 0);
-        }
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) { dateMap.put(date, 0); }
         if (sessions != null) {
             sessions.forEach(s -> {
-                LocalDate date = dateTimeUtils.utcToLocalLocalDateTime(s.getStartTime()).toLocalDate();
-                if (dateMap.containsKey(date)) {
-                    dateMap.put(date, dateMap.get(date) + (s.getActualDurationSeconds() / 60)); // Суммируем минуты
+                if (s.getSessionType() == SessionType.FOCUS) {
+                    LocalDate date = dateTimeUtils.utcToLocalLocalDateTime(s.getStartTime()).toLocalDate();
+                    dateMap.computeIfPresent(date, (k, v) -> v + (s.getActualDurationSeconds() / 60));
                 }
             });
-        }
-        return dateMap;
+        } return dateMap;
     }
-
-    private Map<LocalDate, Pair<Integer, Integer>> aggregateGamificationByDay(List<GamificationHistory> history, LocalDate startDate, LocalDate endDate) {
-        Map<LocalDate, Pair<Integer, Integer>> dateMap = new HashMap<>();
-        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            dateMap.put(date, new Pair<>(0, 0));
-        }
+    private Map<LocalDate, DateTimeUtils.Pair<Integer, Integer>> aggregateGamificationByDay(List<GamificationHistory> history, LocalDate startDate, LocalDate endDate) {
+        Map<LocalDate, DateTimeUtils.Pair<Integer, Integer>> dateMap = new HashMap<>();
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) { dateMap.put(date, new DateTimeUtils.Pair<>(0,0));}
         if (history != null) {
             history.forEach(h -> {
                 LocalDate date = dateTimeUtils.utcToLocalLocalDateTime(h.getTimestamp()).toLocalDate();
-                if (dateMap.containsKey(date)) {
-                    dateMap.computeIfPresent(date, (k, current) -> new Pair<>(current.first + h.getXpChange(), current.second + h.getCoinsChange()));
-                }
+                dateMap.computeIfPresent(date, (k, current) -> new DateTimeUtils.Pair<>(current.first() + h.getXpChange(), current.second() + h.getCoinsChange()));
             });
-        }
-        return dateMap;
+        } return dateMap;
     }
-
     private Map<DayOfWeek, Integer> aggregateTasksByDayOfWeek(List<TaskStatistics> stats) {
         if (stats == null) return Collections.emptyMap();
-        return stats.stream()
-                .filter(s -> s.getCompletionTime() != null)
-                .collect(Collectors.groupingBy(
-                        s -> dateTimeUtils.utcToLocalLocalDateTime(s.getCompletionTime()).getDayOfWeek(),
-                        Collectors.summingInt(s -> 1)
-                ));
+        return stats.stream().filter(s -> s.getCompletionTime() != null)
+                .collect(Collectors.groupingBy(s -> dateTimeUtils.utcToLocalLocalDateTime(s.getCompletionTime()).getDayOfWeek(), Collectors.summingInt(s -> 1)));
     }
-
-    private Float calculateCompletionRate(GlobalStatistics globalStats) {
-        if (globalStats == null || globalStats.getTotalTasks() <= 0) return null;
-        return Math.max(0f, Math.min(1f, (float) globalStats.getCompletedTasks() / globalStats.getTotalTasks()));
+    private Float calculateCompletionRate(GlobalStatistics gs) {
+        return (gs == null || gs.getTotalTasks() <= 0) ? null : Math.max(0f, Math.min(1f, (float) gs.getCompletedTasks() / gs.getTotalTasks()));
     }
-
-    private float calculateAverageTasksPerDay(List<TaskStatistics> allStats, GlobalStatistics globalStats) {
+    private float calculateAverageTasksPerDay(List<TaskStatistics> allStats, GlobalStatistics gs) {
         if (allStats == null || allStats.isEmpty()) return 0f;
         LocalDateTime firstActivityDate = null;
-        if (globalStats != null && globalStats.getLastActive() != null) { // Используем lastActive как дату "регистрации"
-            firstActivityDate = globalStats.getLastActive(); // Это UTC
+        if (gs != null && gs.getLastActive() != null) {
+            firstActivityDate = gs.getLastActive();
         }
-
-        LocalDateTime firstCompletionDateTime = allStats.stream()
+        LocalDateTime firstCompletion = allStats.stream()
                 .map(TaskStatistics::getCompletionTime)
-                .filter(Objects::nonNull).filter(Objects::nonNull)
+                .filter(Objects::nonNull)
                 .min(LocalDateTime::compareTo)
                 .orElse(null);
-
-        if (firstCompletionDateTime != null) {
-            firstActivityDate = (firstActivityDate == null || firstCompletionDateTime.isBefore(firstActivityDate)) ?
-                    firstCompletionDateTime : firstActivityDate;
+        if (firstCompletion != null && (firstActivityDate == null || firstCompletion.isBefore(firstActivityDate))) {
+            firstActivityDate = firstCompletion;
         }
-
         if (firstActivityDate == null) return 0f;
 
-        // Конвертируем дату первой активности в локальную для корректного расчета дней
         LocalDate startDate = dateTimeUtils.utcToLocalLocalDateTime(firstActivityDate).toLocalDate();
         long daysActive = ChronoUnit.DAYS.between(startDate, dateTimeUtils.currentLocalDate()) + 1;
         daysActive = Math.max(1, daysActive);
-
-        long totalCompleted = allStats.stream().filter(s -> s.getCompletionTime() != null).count();
+        long totalCompleted = allStats.stream().filter(s->s.getCompletionTime() != null).count();
         return (float) totalCompleted / daysActive;
     }
-
-
     private DayOfWeek findMostProductiveDayOfWeek(List<TaskStatistics> allStats) {
-        if (allStats == null || allStats.isEmpty()) return null;
+        if (allStats == null) return null;
         return aggregateTasksByDayOfWeek(allStats).entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse(null);
+                .max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse(null);
     }
-
     private List<DatePoint> mapToDatePoints(Map<LocalDate, Integer> data, LocalDate startDate, LocalDate endDate) {
         List<DatePoint> points = new ArrayList<>();
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
             points.add(new DatePoint(date, Objects.requireNonNull(data.getOrDefault(date, 0)).floatValue()));
-        }
-        return points;
+        } return points;
     }
-
-    private List<DatePoint> mapToGamificationDatePoints(Map<LocalDate, Pair<Integer,Integer>> data, LocalDate startDate, LocalDate endDate, java.util.function.Function<Pair<Integer,Integer>, Integer> valueSelector) {
+    private List<DatePoint> mapToGamificationDatePoints(Map<LocalDate, DateTimeUtils.Pair<Integer,Integer>> data, LocalDate startDate, LocalDate endDate, Function<DateTimeUtils.Pair<Integer,Integer>, Integer> valueSelector) {
         List<DatePoint> points = new ArrayList<>();
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            Pair<Integer,Integer> pair = data.getOrDefault(date, new Pair<>(0,0));
+            DateTimeUtils.Pair<Integer,Integer> pair = data.getOrDefault(date, new DateTimeUtils.Pair<>(0,0));
             points.add(new DatePoint(date, valueSelector.apply(pair).floatValue()));
-        }
-        return points;
+        } return points;
     }
-
     private List<DayOfWeekPoint> mapToDayOfWeekPoints(Map<DayOfWeek, Integer> data) {
         List<DayOfWeekPoint> points = new ArrayList<>();
-        for (DayOfWeek day : DayOfWeek.values()) { // Итерация по всем дням недели
+        for (DayOfWeek day : DayOfWeek.values()) {
             points.add(new DayOfWeekPoint(day, Objects.requireNonNull(data.getOrDefault(day, 0)).floatValue()));
         }
-        // Сортируем по стандартному порядку дней недели (Пн-Вс)
-        points.sort(Comparator.comparingInt(p -> p.dayOfWeek.getValue()));
+        points.sort(Comparator.comparingInt(p -> p.dayOfWeek().getValue()));
         return points;
     }
 
 
-    // --- Методы для UI ---
     public void selectPeriod(StatsPeriod period) {
-        if (period == _selectedPeriodLiveData.getValue() && period != StatsPeriod.CUSTOM) return;
-        logger.debug(TAG, "Period selected via UI: " + period);
-        _selectedPeriodLiveData.setValue(period); // Это вызовет triggerLoadWithDebounce
+        _selectedPeriodTrigger.setValue(period);
     }
 
     public void selectCustomDateRange(LocalDate startDate, LocalDate endDate) {
-        logger.debug(TAG, "Custom date range selected: " + startDate + " - " + endDate);
-        _selectedPeriodLiveData.setValue(StatsPeriod.CUSTOM);
-        _customDateRangeLiveData.setValue(new Pair<>(startDate, endDate)); // Это вызовет triggerLoadWithDebounce
+        _customDateRangeTrigger.setValue(new DateTimeUtils.Pair<>(startDate, endDate));
+        _selectedPeriodTrigger.setValue(StatsPeriod.CUSTOM); // Устанавливаем тип периода
     }
 
     public void clearError() {
-        updateUiState(s -> s.copy(null, null, null, null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,true));
+        updateUiState(s -> s.withError(null));
     }
 
-    private Pair<LocalDate, LocalDate> calculateDateRangeInternal(StatsPeriod period, LocalDate today) {
+    private DateTimeUtils.Pair<LocalDate, LocalDate> calculateDateRangeInternal(StatsPeriod period, LocalDate today) {
+        if (period == null) period = StatsPeriod.WEEK;
         return switch (period) {
-            case MONTH -> new Pair<>(today.withDayOfMonth(1), today);
-            case ALL_TIME ->
-                // Для "Все время" можно взять очень раннюю дату или дату регистрации пользователя, если она есть
-                // Здесь для примера - последние 365 дней
-                    new Pair<>(today.minusDays(365), today);
-            case CUSTOM -> {
-                Pair<LocalDate, LocalDate> currentCustom = _customDateRangeLiveData.getValue();
-                yield currentCustom != null ? currentCustom : new Pair<>(today.minusDays(6), today);
+            case WEEK -> new DateTimeUtils.Pair<>(today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)), today);
+            case MONTH -> new DateTimeUtils.Pair<>(today.with(TemporalAdjusters.firstDayOfMonth()), today);
+            case ALL_TIME -> {
+                GlobalStatistics gs = null;
+                StatisticsScreenUiState currentState = _uiStateLiveData.getValue();
+                if (currentState != null) gs = currentState.getGlobalStats();
+                LocalDate veryFirstDay;
+                if ((gs != null && gs.getLastActive() != null)) {
+                    assert dateTimeUtils != null;
+                    veryFirstDay = dateTimeUtils.utcToLocalLocalDateTime(gs.getLastActive()).toLocalDate();
+                } else {
+                    veryFirstDay = today.minusYears(5);
+                }
+                yield new DateTimeUtils.Pair<>(veryFirstDay.with(TemporalAdjusters.firstDayOfYear()), today);
             }
-            default -> new Pair<>(today.with(DayOfWeek.MONDAY), today);
+            case CUSTOM -> {
+                DateTimeUtils.Pair<LocalDate, LocalDate> currentCustom = _customDateRangeTrigger.getValue();
+                yield Objects.requireNonNullElseGet(currentCustom, () -> new DateTimeUtils.Pair<>(today.minusDays(6), today));
+            }
         };
     }
 
-    // Вспомогательный интерфейс для обновления UI State
-    @FunctionalInterface
-    private interface UiStateUpdaterStatistics {
-        StatisticsScreenUiState update(StatisticsScreenUiState currentState);
-    }
-    private void updateUiState(UiStateUpdaterStatistics updater) {
+    private void updateUiState(Function<StatisticsScreenUiState, StatisticsScreenUiState> updater) {
         StatisticsScreenUiState current = _uiStateLiveData.getValue();
-        _uiStateLiveData.postValue(updater.update(current != null ? current : new StatisticsScreenUiState()));
+        _uiStateLiveData.postValue(updater.apply(current != null ? current : StatisticsScreenUiState.createDefault()));
     }
-
-    // Вспомогательный класс Pair
-    @Getter
-    private static class Pair<F, S> {
-        final F first;
-        final S second;
-        Pair(F f, S s) { first = f; second = s; }
-    }
-
 
     @Override
     protected void onCleared() {
         super.onCleared();
-        if (debounceExecutor != null && !debounceExecutor.isShutdown()) {
+        if (!debounceExecutor.isShutdown()) {
             debounceExecutor.shutdownNow();
         }
-        // Отписка от LiveData, если использовался observeForever (здесь не используется для основных потоков данных)
-        logger.debug(TAG, "ViewModel cleared.");
+        logger.debug(TAG, "StatisticsViewModel cleared.");
     }
 }

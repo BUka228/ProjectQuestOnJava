@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".feature.gamification.presentation.screens.GamificationFragment">
+
+    <!-- TopAppBar с TabLayout будет добавлен MainActivity/Родительским фрагментом -->
+    <!-- или TabLayout будет частью этого макета, если табы только здесь -->
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:id="@+id/layout_gamification_content_root"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="16dp"> <!-- Отступ для контента -->
+
+            <!-- Этот FrameLayout будет содержать либо MainGamificationScreen, либо BadgesScreen -->
+            <FrameLayout
+                android:id="@+id/frameLayout_gamification_tab_content"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- SnackbarHost управляется из MainActivity -->
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

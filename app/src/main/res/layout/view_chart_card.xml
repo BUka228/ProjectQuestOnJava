@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="16dp"
+    app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+    android:layout_marginBottom="16dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+        <TextView
+            android:id="@+id/textView_chart_title_card"
+            style="@style/TextAppearance.Material3.TitleLarge"
+            android:textStyle="bold"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            tools:text="Заголовок графика"/>
+
+        <FrameLayout
+            android:id="@+id/frameLayout_chart_container_card"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:background="?attr/colorSurface"
+            android:foreground="?attr/selectableItemBackground"
+            android:clipToPadding="false"
+            android:padding="8dp">
+            <!-- График будет добавлен сюда программно -->
+            <com.github.mikephil.charting.charts.LineChart
+                android:id="@+id/line_chart_generic"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone"/>
+            <com.github.mikephil.charting.charts.BarChart
+                android:id="@+id/bar_chart_generic"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone"/>
+            <TextView
+                android:id="@+id/textView_chart_empty_data_card"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="Нет данных для отображения"
+                android:visibility="gone"
+                style="@style/TextAppearance.Material3.BodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant"/>
+            <ProgressBar
+                android:id="@+id/progressBar_chart_loading_card"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:id="@+id/layout_chart_summary_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <ImageView
+                    android:id="@+id/imageView_chart_summary_icon_card"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    tools:srcCompat="@drawable/check_box"
+                    app:tint="?attr/colorPrimary"/>
+                <TextView
+                    android:id="@+id/textView_chart_summary_text_card"
+                    style="@style/TextAppearance.Material3.BodyMedium"
+                    android:textStyle="bold"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    tools:text="Сводка: Значение"/>
+            </LinearLayout>
+            <TextView
+                android:id="@+id/textView_chart_additional_info_card"
+                style="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="24dp"
+                tools:text="Доп. инфо"/>
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="WormPagerIndicatorView">
+        <attr name="wpi_pageCount" format="integer" />
+        <attr name="wpi_indicatorSize" format="dimension" />
+        <attr name="wpi_spacing" format="dimension" />
+        <attr name="wpi_activeColor" format="color" />
+        <attr name="wpi_inactiveColor" format="color" />
+        <attr name="stepSize" format="integer" />
+    </declare-styleable>
+</resources>

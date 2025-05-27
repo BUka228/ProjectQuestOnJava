@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/navigation_dashboard"
+        android:icon="@drawable/dashboard"
+        android:title="Дашборд"/>
+    <item
+        android:id="@+id/navigation_calendar_planning"
+        android:icon="@drawable/edit_calendar"
+        android:title="План"/>
+    <item
+        android:id="@+id/navigation_pomodoro"
+        android:icon="@drawable/timer"
+        android:title="Pomodoro"/>
+    <item
+        android:id="@+id/navigation_gamification"
+        android:icon="@drawable/sports_esports"
+        android:title="Игра"/>
+    <item
+        android:id="@+id/navigation_profile"
+        android:icon="@drawable/person"
+        android:title="Профиль"/>
+</menu>

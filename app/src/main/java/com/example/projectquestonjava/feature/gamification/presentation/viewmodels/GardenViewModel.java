@@ -1,12 +1,16 @@
 package com.example.projectquestonjava.feature.gamification.presentation.viewmodels;
 
+import android.os.Handler;
+import android.os.Looper;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 import com.example.projectquestonjava.core.di.IODispatcher;
+import com.example.projectquestonjava.core.managers.SnackbarManager;
 import com.example.projectquestonjava.core.utils.DateTimeUtils;
 import com.example.projectquestonjava.core.utils.Logger;
 import com.example.projectquestonjava.feature.gamification.data.managers.GamificationDataStoreManager;
@@ -17,8 +21,6 @@ import com.example.projectquestonjava.feature.gamification.domain.usecases.Manua
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
-
 import dagger.hilt.android.lifecycle.HiltViewModel;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -28,83 +30,38 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executor;
+import java.util.function.Function; // Для java.util.function.Function
 import java.util.stream.Collectors;
 import javax.inject.Inject;
-
-// Состояние UI для экрана Сада
-class GardenScreenUiState { // Если еще не создан, убираем public
-    public final boolean isLoading;
-    public final String errorMessage;
-    public final String successMessage;
-    public final List<VirtualGarden> plants;
-    public final long selectedPlantId;
-    public final Map<Long, PlantHealthState> healthStates;
-    public final boolean canWaterToday;
-    public final boolean showWateringConfirmation;
-    public final boolean showWateringPlantEffect;
-
-    public GardenScreenUiState(boolean isLoading, String errorMessage, String successMessage,
-                               List<VirtualGarden> plants, long selectedPlantId,
-                               Map<Long, PlantHealthState> healthStates, boolean canWaterToday,
-                               boolean showWateringConfirmation, boolean showWateringPlantEffect) {
-        this.isLoading = isLoading;
-        this.errorMessage = errorMessage;
-        this.successMessage = successMessage;
-        this.plants = plants != null ? plants : Collections.emptyList();
-        this.selectedPlantId = selectedPlantId;
-        this.healthStates = healthStates != null ? healthStates : Collections.emptyMap();
-        this.canWaterToday = canWaterToday;
-        this.showWateringConfirmation = showWateringConfirmation;
-        this.showWateringPlantEffect = showWateringPlantEffect;
-    }
-
-    // Конструктор по умолчанию
-    public GardenScreenUiState() {
-        this(false, null, null, Collections.emptyList(), -1L,
-                Collections.emptyMap(), false, false, false);
-    }
-
-    public GardenScreenUiState copy(
-            Boolean isLoading, String errorMessage, String successMessage,
-            List<VirtualGarden> plants, Long selectedPlantId,
-            Map<Long, PlantHealthState> healthStates, Boolean canWaterToday,
-            Boolean showWateringConfirmation, Boolean showWateringPlantEffect
-    ) {
-        return new GardenScreenUiState(
-                isLoading != null ? isLoading : this.isLoading,
-                errorMessage, // может быть null
-                successMessage, // может быть null
-                plants != null ? plants : this.plants,
-                selectedPlantId != null ? selectedPlantId : this.selectedPlantId,
-                healthStates != null ? healthStates : this.healthStates,
-                canWaterToday != null ? canWaterToday : this.canWaterToday,
-                showWateringConfirmation != null ? showWateringConfirmation : this.showWateringConfirmation,
-                showWateringPlantEffect != null ? showWateringPlantEffect : this.showWateringPlantEffect
-        );
-    }
-}
-
 
 @HiltViewModel
 public class GardenViewModel extends ViewModel {
 
     private static final String TAG = "GardenViewModel";
 
+    private final VirtualGardenRepository virtualGardenRepository;
     private final GamificationDataStoreManager gamificationDataStoreManager;
     private final ManuallyWaterPlantUseCase manuallyWaterPlantUseCase;
     private final DateTimeUtils dateTimeUtils;
     private final Executor ioExecutor;
     private final Logger logger;
+    private final SnackbarManager snackbarManager;
 
-    private final MutableLiveData<GardenScreenUiState> _uiStateLiveData = new MutableLiveData<>(new GardenScreenUiState());
-    public LiveData<GardenScreenUiState> uiStateLiveData = _uiStateLiveData;
+    private final MutableLiveData<GardenScreenUiState> _uiStateLiveData =
+            new MutableLiveData<>(GardenScreenUiState.createDefault());
+    public final LiveData<GardenScreenUiState> uiStateLiveData = _uiStateLiveData;
 
-    // LiveData для отдельных частей состояния, которые будут комбинироваться
+    // Источники данных для MediatorLiveData
     private final LiveData<List<VirtualGarden>> allPlantsLiveData;
-    private final LiveData<Long> selectedPlantIdLiveData;
+    private final LiveData<Long> selectedPlantIdFromDataStoreLiveData;
 
-    // Таймер для сброса эффектов полива
-    private java.util.Timer effectResetTimer; // Используем java.util.Timer
+    private java.util.Timer effectResetTimer;
+    private final Handler uiHandler = new Handler(Looper.getMainLooper());
+
+    // Обозреватели для отписки в onCleared
+    private final Observer<List<VirtualGarden>> allPlantsObserver;
+    private final Observer<Long> selectedPlantIdObserver;
+    private final Observer<Object> combinatorObserver; // Пустой наблюдатель для активации MediatorLiveData
 
     @Inject
     public GardenViewModel(
@@ -113,144 +70,165 @@ public class GardenViewModel extends ViewModel {
             ManuallyWaterPlantUseCase manuallyWaterPlantUseCase,
             DateTimeUtils dateTimeUtils,
             @IODispatcher Executor ioExecutor,
-            Logger logger) {
+            Logger logger,
+            SnackbarManager snackbarManager) {
+        this.virtualGardenRepository = virtualGardenRepository;
         this.gamificationDataStoreManager = gamificationDataStoreManager;
         this.manuallyWaterPlantUseCase = manuallyWaterPlantUseCase;
         this.dateTimeUtils = dateTimeUtils;
         this.ioExecutor = ioExecutor;
         this.logger = logger;
+        this.snackbarManager = snackbarManager;
 
-        logger.info(TAG, "ViewModel initialized.");
+        logger.info(TAG, "GardenViewModel initialized.");
 
-        allPlantsLiveData = Transformations.switchMap(
-                gamificationDataStoreManager.getGamificationIdFlow(), // LiveData<Long>
-                gamiId -> (gamiId == null || gamiId == -1L) ?
-                        new MutableLiveData<>(Collections.emptyList()) :
-                        virtualGardenRepository.getAllPlantsFlow() // LiveData<List<VirtualGarden>>
-        );
+        LiveData<Long> gamificationIdLiveData = gamificationDataStoreManager.getGamificationIdFlow();
 
-        selectedPlantIdLiveData = gamificationDataStoreManager.getSelectedPlantIdFlow(); // LiveData<Long>
+        allPlantsLiveData = Transformations.switchMap(gamificationIdLiveData, gamiId -> {
+            if (gamiId == null || gamiId == -1L) {
+                return new MutableLiveData<>(Collections.emptyList());
+            }
+            return virtualGardenRepository.getAllPlantsFlow();
+        });
 
-        // Объединяем все источники для формирования _uiStateLiveData
+        selectedPlantIdFromDataStoreLiveData = gamificationDataStoreManager.getSelectedPlantIdFlow();
+
         MediatorLiveData<Object> combinator = new MediatorLiveData<>();
-        combinator.addSource(allPlantsLiveData, value -> combineAndSetUiState());
-        combinator.addSource(selectedPlantIdLiveData, value -> combineAndSetUiState());
-        // Добавляем _isLoadingLiveData как источник, чтобы UI обновлялся при его изменении
-        // (хотя он не используется в combineAndSetUiState для вычисления, но триггерит обновление)
-        // Либо, мы можем не добавлять его сюда, а обновлять _uiStateLiveData напрямую при изменении isLoading
 
-        // Изначально загружаем данные, если нужно (allPlantsLiveData и selectedPlantIdLiveData начнут эмитить)
-        // Состояние isLoading будет управляться методами waterPlant и т.д.
+        allPlantsObserver = plants -> combineAndSetUiState();
+        selectedPlantIdObserver = selectedId -> combineAndSetUiState();
+        combinatorObserver = ignored -> {}; // Пустой наблюдатель
+
+        combinator.addSource(allPlantsLiveData, allPlantsObserver);
+        combinator.addSource(selectedPlantIdFromDataStoreLiveData, selectedPlantIdObserver);
+
+        // Начальная установка isLoading
+        updateUiState(currentState -> currentState.withLoading(true));
+        // Наблюдаем за MediatorLiveData, чтобы он был активен
+        combinator.observeForever(combinatorObserver);
     }
 
     private void combineAndSetUiState() {
         List<VirtualGarden> plants = allPlantsLiveData.getValue();
-        Long selectedId = selectedPlantIdLiveData.getValue();
-        GardenScreenUiState currentState = _uiStateLiveData.getValue(); // Текущее состояние для сохранения флагов эффектов
+        Long selectedIdFromStore = selectedPlantIdFromDataStoreLiveData.getValue();
+        GardenScreenUiState currentState = _uiStateLiveData.getValue(); // Для сохранения флагов эффектов
 
-        if (plants == null || selectedId == null) {
-            // Если какие-то из основных данных еще не пришли, не обновляем или ставим isLoading
-            _uiStateLiveData.postValue((currentState != null ? currentState : new GardenScreenUiState()).copy(
-                    true, null,null, null, null, null, null, null, null
-            ));
+        if (plants == null || selectedIdFromStore == null) {
+            // Если основные данные еще не пришли, не обновляем или оставляем isLoading,
+            // если он не был сброшен другим процессом (например, ошибкой)
+            if (currentState == null || currentState.isLoading()) {
+                _uiStateLiveData.postValue(GardenScreenUiState.createDefault().withLoading(true));
+            }
             return;
+        }
+
+        long finalSelectedPlantId = selectedIdFromStore;
+        if (finalSelectedPlantId == -1L && !plants.isEmpty()) {
+            finalSelectedPlantId = plants.stream()
+                    .max(Comparator.comparingLong(VirtualGarden::getId))
+                    .map(VirtualGarden::getId)
+                    .orElse(-1L);
+            if (finalSelectedPlantId != -1L) {
+                final long idToSave = finalSelectedPlantId;
+                ioExecutor.execute(() -> gamificationDataStoreManager.saveSelectedPlantId(idToSave));
+            }
         }
 
         Map<Long, PlantHealthState> healthMap = calculateHealthStatesMap(plants);
         boolean canWater = calculateCanWaterToday(plants);
 
-        _uiStateLiveData.postValue(new GardenScreenUiState(
-                currentState != null ? currentState.isLoading : false, // Сохраняем текущий isLoading
-                currentState != null ? currentState.errorMessage : null,
-                currentState != null ? currentState.successMessage : null,
-                plants,
-                selectedId,
-                healthMap,
-                canWater,
-                currentState != null ? currentState.showWateringConfirmation : false,
-                currentState != null ? currentState.showWateringPlantEffect : false
-        ));
-        logger.debug(TAG, "UI State combined: " + plants.size() + " plants, selected: " + selectedId + ", canWater: " + canWater);
-    }
+        GardenScreenUiState.GardenScreenUiStateBuilder newStateBuilder = (currentState != null ? currentState.toBuilder() : GardenScreenUiState.builder())
+                .isLoading(false)
+                .plants(plants)
+                .selectedPlantId(finalSelectedPlantId)
+                .healthStates(healthMap)
+                .canWaterToday(canWater);
 
+        // Ошибку и сообщение об успехе не сбрасываем здесь, они управляются действиями
+        _uiStateLiveData.postValue(newStateBuilder.build());
+        logger.debug(TAG, "UI State combined: " + plants.size() + " plants, selected: " + finalSelectedPlantId + ", canWater: " + canWater);
+    }
 
     public void selectActivePlant(long plantId) {
         GardenScreenUiState current = _uiStateLiveData.getValue();
-        if (current == null || plantId == current.selectedPlantId || current.isLoading) return;
+        if (current == null || plantId == current.getSelectedPlantId() || current.isLoading()) return;
 
         logger.debug(TAG, "Selecting active plant: " + plantId);
-        // gamificationDataStoreManager.saveSelectedPlantId возвращает ListenableFuture<Void>
         ListenableFuture<Void> saveFuture = gamificationDataStoreManager.saveSelectedPlantId(plantId);
         Futures.addCallback(saveFuture, new FutureCallback<Void>() {
             @Override
-            public void onSuccess(Void result) { /* LiveData selectedPlantIdLiveData обновится автоматически */ }
+            public void onSuccess(Void result) {
+                logger.info(TAG, "Selected plant ID " + plantId + " saved to DataStore.");
+                // _selectedPlantIdFromDataStoreLiveData обновится, что вызовет combineAndSetUiState
+            }
             @Override
             public void onFailure(@NonNull Throwable t) {
                 logger.error(TAG, "Failed to save selected plant ID " + plantId, t);
-                updateUiState(s -> s.copy(null, "Не удалось выбрать растение",null, null, null, null, null, null, null));
+                updateUiState(s -> s.withErrorMessage("Не удалось выбрать растение"));
             }
         }, ioExecutor);
     }
 
     public void waterPlant() {
         GardenScreenUiState current = _uiStateLiveData.getValue();
-        if (current == null || !current.canWaterToday || current.isLoading || current.showWateringConfirmation) {
-            if (current != null && !current.canWaterToday) {
-                logger.warn(TAG, "Attempted to water plant when not allowed (already watered).");
-                updateUiState(s -> s.copy(null, "Вы уже поливали растения сегодня.",null, null, null, null, null, null, null));
-            } else if (current != null && current.isLoading) {
-                logger.warn(TAG, "Attempted to water plant during another operation.");
-            }
+        if (current == null) return;
+
+        if (!current.isCanWaterToday()) {
+            logger.warn(TAG, "Attempted to water plant when not allowed (already watered).");
+            snackbarManager.showMessage("Вы уже поливали растения сегодня.");
             return;
         }
-        logger.debug(TAG, "Initiating manual plant watering...");
-        updateUiState(s -> s.copy(true, null, null, null, null, null, null, null, null));
+        if (current.isLoading() || current.isShowWateringConfirmation()) {
+            logger.warn(TAG, "Attempted to water plant during another operation or effect.");
+            return;
+        }
 
+        logger.debug(TAG, "Initiating manual plant watering...");
+        updateUiState(s -> s.withLoading(true).withErrorMessage(null).withSuccessMessage(null));
 
         ListenableFuture<Void> waterFuture = manuallyWaterPlantUseCase.execute();
         Futures.addCallback(waterFuture, new FutureCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
                 logger.info(TAG, "Manual watering successful via UseCase.");
-                triggerWateringEffects(); // Запускаем эффекты
-                // isLoading будет сброшен после эффектов
+                triggerWateringEffects();
             }
             @Override
             public void onFailure(@NonNull Throwable t) {
                 logger.error(TAG, "Manual watering failed via UseCase", t);
-                updateUiState(s -> s.copy(false, "Не удалось полить: " + t.getMessage(),null, null, null, null, null, null, null));
+                updateUiState(s -> s.withLoading(false).withErrorMessage("Не удалось полить: " + t.getMessage()));
             }
         }, ioExecutor);
     }
 
     private void triggerWateringEffects() {
-        // Отменяем предыдущий таймер, если он был
         if (effectResetTimer != null) {
             effectResetTimer.cancel();
+            effectResetTimer.purge();
         }
         effectResetTimer = new java.util.Timer();
 
-        updateUiState(s -> s.copy(null, null,null, null, null, null, null, true, true));
+        updateUiState(s -> s.withShowWateringConfirmation(true).withShowWateringPlantEffect(true));
 
-        // Запускаем задачи для сброса флагов через java.util.Timer
-        effectResetTimer.schedule(new java.util.TimerTask() {
-            @Override
-            public void run() {
-                updateUiState(s -> s.copy(null, null,null, null, null, null, null, false, null));
-            }
-        }, 1500); // Длительность анимации галочки
+        uiHandler.postDelayed(() -> {
+            updateUiState(s -> s.withShowWateringConfirmation(false));
+        }, 1500);
 
-        effectResetTimer.schedule(new java.util.TimerTask() {
-            @Override
-            public void run() {
-                updateUiState(s -> s.copy(false, null, null, null, null, null, null, null, false)); // Сбрасываем и isLoading
-            }
-        }, 1200 + 300); // Длительность эффекта на растениях + небольшая задержка после галочки
+        uiHandler.postDelayed(() -> {
+            // Сбрасываем isLoading здесь, после завершения всех эффектов
+            updateUiState(s -> s.withLoading(false)
+                    .withShowWateringPlantEffect(false)
+                    .withSuccessMessage("Растения политы!"));
+            // snackbarManager.showMessage("Растения политы!"); // Можно и здесь, если нет гонки с successMessage
+        }, 1200 + 300 + 100); // Длительность эффекта + задержки
     }
 
-
-    public void clearErrorMessage() { updateUiState(s -> s.copy(null, null,null, null, null, null, null, null, null)); }
-    public void clearSuccessMessage() { updateUiState(s -> s.copy(null, null,null, null, null, null, null, null, null)); }
+    public void clearErrorMessage() {
+        updateUiState(s -> s.withErrorMessage(null));
+    }
+    public void clearSuccessMessage() {
+        updateUiState(s -> s.withSuccessMessage(null));
+    }
 
     private Map<Long, PlantHealthState> calculateHealthStatesMap(List<VirtualGarden> plants) {
         if (plants == null) return Collections.emptyMap();
@@ -261,7 +239,7 @@ public class GardenViewModel extends ViewModel {
     private PlantHealthState calculateHealthState(VirtualGarden plant) {
         if (plant == null) return PlantHealthState.HEALTHY;
         LocalDate lastWateredDate = dateTimeUtils.utcToLocalLocalDateTime(plant.getLastWatered()).toLocalDate();
-        LocalDate today = dateTimeUtils.currentLocalDate(); // Используем dateTimeUtils
+        LocalDate today = dateTimeUtils.currentLocalDate();
         long daysSinceWatered = ChronoUnit.DAYS.between(lastWateredDate, today);
         if (daysSinceWatered <= 1) return PlantHealthState.HEALTHY;
         if (daysSinceWatered == 2L) return PlantHealthState.NEEDSWATER;
@@ -270,11 +248,16 @@ public class GardenViewModel extends ViewModel {
 
     private boolean calculateCanWaterToday(List<VirtualGarden> plants) {
         if (plants == null || plants.isEmpty()) return false;
-        // Проверяем по дате полива ПЕРВОГО растения (или любого, т.к. все поливаются одновременно)
-        VirtualGarden firstPlant = plants.get(0); // Если список не пуст, первый элемент есть
+        VirtualGarden firstPlant = plants.get(0);
         LocalDate lastWateredDate = dateTimeUtils.utcToLocalLocalDateTime(firstPlant.getLastWatered()).toLocalDate();
         LocalDate today = dateTimeUtils.currentLocalDate();
         return lastWateredDate.isBefore(today);
+    }
+
+    // Используем Function для передачи логики обновления
+    private void updateUiState(Function<GardenScreenUiState, GardenScreenUiState> updater) {
+        GardenScreenUiState current = _uiStateLiveData.getValue();
+        _uiStateLiveData.postValue(updater.apply(current != null ? current : GardenScreenUiState.createDefault()));
     }
 
     @Override
@@ -282,19 +265,20 @@ public class GardenViewModel extends ViewModel {
         super.onCleared();
         if (effectResetTimer != null) {
             effectResetTimer.cancel();
+            effectResetTimer.purge();
             effectResetTimer = null;
         }
-        // Отписка от LiveData не нужна, т.к. ViewModel сама управляет их жизненным циклом
-    }
+        // Отписываемся от LiveData, на которые была подписка с observeForever
+        if (allPlantsLiveData != null && allPlantsObserver != null) {
+            allPlantsLiveData.removeObserver(allPlantsObserver);
+        }
+        if (selectedPlantIdFromDataStoreLiveData != null && selectedPlantIdObserver != null) {
+            selectedPlantIdFromDataStoreLiveData.removeObserver(selectedPlantIdObserver);
+        }
+        // MediatorLiveData сам отпишется от источников, если на него нет активных наблюдателей.
+        // Но если мы использовали observeForever на самом MediatorLiveData, то от него тоже нужно отписаться.
+        // В данном случае `combinator` был локальным, и мы подписались на его источники.
 
-    // Вспомогательный интерфейс для обновления UI State
-    @FunctionalInterface
-    private interface UiStateUpdater {
-        GardenScreenUiState update(GardenScreenUiState currentState);
-    }
-    // Перегруженный метод для удобства
-    private void updateUiState(UiStateUpdater updater) {
-        GardenScreenUiState current = _uiStateLiveData.getValue();
-        _uiStateLiveData.postValue(updater.update(current != null ? current : new GardenScreenUiState()));
+        logger.debug(TAG, "GardenViewModel cleared.");
     }
 }

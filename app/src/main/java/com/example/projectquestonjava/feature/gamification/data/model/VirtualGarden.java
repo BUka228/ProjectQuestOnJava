@@ -3,17 +3,15 @@ package com.example.projectquestonjava.feature.gamification.data.model;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
+import androidx.room.Ignore;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
 import com.example.projectquestonjava.feature.gamification.domain.model.PlantType;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
-@Setter
-@Getter
 @Entity(
         tableName = "virtual_garden",
         foreignKeys = {
@@ -26,26 +24,28 @@ import lombok.Setter;
         },
         indices = {@Index("gamification_id")}
 )
+@Data
 public class VirtualGarden {
 
     @PrimaryKey(autoGenerate = true)
-    private long id;
+    public long id;
 
     @ColumnInfo(name = "gamification_id")
-    private long gamificationId;
+    public final long gamificationId;
 
     @ColumnInfo(name = "plant_type")
-    private PlantType plantType;
+    public final PlantType plantType;
 
     @ColumnInfo(name = "growth_stage")
-    private int growthStage;
+    public int growthStage;
 
     @ColumnInfo(name = "growth_points", defaultValue = "0")
-    private int growthPoints;
+    public int growthPoints;
 
     @ColumnInfo(name = "last_watered")
-    private LocalDateTime lastWatered;
+    public LocalDateTime lastWatered;
 
+    // Основной конструктор для Room
     public VirtualGarden(long id, long gamificationId, PlantType plantType, int growthStage, int growthPoints, LocalDateTime lastWatered) {
         this.id = id;
         this.gamificationId = gamificationId;
@@ -54,11 +54,11 @@ public class VirtualGarden {
         this.growthPoints = growthPoints;
         this.lastWatered = lastWatered;
     }
-    // Конструктор для Room
+
+    @Ignore
     public VirtualGarden(long gamificationId, PlantType plantType, int growthStage, int growthPoints, LocalDateTime lastWatered) {
         this(0, gamificationId, plantType, growthStage, growthPoints, lastWatered);
     }
-
 
     @Override
     public boolean equals(Object o) {
@@ -72,4 +72,6 @@ public class VirtualGarden {
     public int hashCode() {
         return Objects.hash(id, gamificationId, plantType, growthStage, growthPoints, lastWatered);
     }
+
+
 }

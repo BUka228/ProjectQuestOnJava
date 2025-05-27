@@ -1,13 +1,13 @@
 package com.example.projectquestonjava.approach.gtd.data.model;
 
+import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
 import com.example.projectquestonjava.core.data.model.core.Task;
 import java.time.LocalDateTime;
-
-import lombok.Getter;
+import java.util.Objects;
 
 @Entity(
         tableName = "gtd_params",
@@ -24,20 +24,18 @@ import lombok.Getter;
 )
 public class GTDParams {
 
-    @Getter
     @ColumnInfo(name = "task_id")
-    private final long taskId;
+    public final long taskId;
 
-    @Getter
-    private final String context;
+    public final String context;
 
-    @Getter
     @ColumnInfo(name = "next_review_date")
-    private final LocalDateTime nextReviewDate;
+    public final LocalDateTime nextReviewDate;
 
     @ColumnInfo(name = "is_scheduled")
-    private final boolean isScheduled;
+    public final boolean isScheduled;
 
+    // Основной конструктор для Room
     public GTDParams(long taskId, String context, LocalDateTime nextReviewDate, boolean isScheduled) {
         this.taskId = taskId;
         this.context = context;
@@ -45,7 +43,28 @@ public class GTDParams {
         this.isScheduled = isScheduled;
     }
 
-    public boolean isScheduled() {
-        return isScheduled;
+    // equals, hashCode, toString
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        GTDParams gtdParams = (GTDParams) o;
+        return taskId == gtdParams.taskId && isScheduled == gtdParams.isScheduled && Objects.equals(context, gtdParams.context) && Objects.equals(nextReviewDate, gtdParams.nextReviewDate);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(taskId, context, nextReviewDate, isScheduled);
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return "GTDParams{" +
+                "taskId=" + taskId +
+                ", context='" + context + '\'' +
+                ", nextReviewDate=" + nextReviewDate +
+                ", isScheduled=" + isScheduled +
+                '}';
     }
 }

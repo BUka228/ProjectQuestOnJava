@@ -1,7 +1,67 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Base.Theme.ProjectQuestOnJava" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+    <style name="Base.Theme.ProgressQuest" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/primaryDark</item>
+        <item name="colorOnPrimary">@color/onPrimaryDark</item>
+        <item name="colorPrimaryContainer">@color/primaryContainerDark</item>
+        <item name="colorOnPrimaryContainer">@color/onPrimaryContainerDark</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/secondaryDark</item>
+        <item name="colorOnSecondary">@color/onSecondaryDark</item>
+        <item name="colorSecondaryContainer">@color/secondaryContainerDark</item>
+        <item name="colorOnSecondaryContainer">@color/onSecondaryContainerDark</item>
+        <!-- Tertiary brand color. -->
+        <item name="colorTertiary">@color/tertiaryDark</item>
+        <item name="colorOnTertiary">@color/onTertiaryDark</item>
+        <item name="colorTertiaryContainer">@color/tertiaryContainerDark</item>
+        <item name="colorOnTertiaryContainer">@color/onTertiaryContainerDark</item>
+        <!-- Error color. -->
+        <item name="colorError">@color/errorDark</item>
+        <item name="colorOnError">@color/onErrorDark</item>
+        <item name="colorErrorContainer">@color/errorContainerDark</item>
+        <item name="colorOnErrorContainer">@color/onErrorContainerDark</item>
+        <!-- Background colors. -->
+        <item name="android:colorBackground">@color/backgroundDark</item>
+        <item name="colorOnBackground">@color/onBackgroundDark</item>
+        <!-- Surface colors. -->
+        <item name="colorSurface">@color/surfaceDark</item>
+        <item name="colorOnSurface">@color/onSurfaceDark</item>
+        <item name="colorSurfaceVariant">@color/surfaceVariantDark</item>
+        <item name="colorOnSurfaceVariant">@color/onSurfaceVariantDark</item>
+        <!-- Outline color. -->
+        <item name="colorOutline">@color/outlineDark</item>
+        <item name="colorOutlineVariant">@color/outlineVariantDark</item> <!-- Added -->
+        <!-- Scrim color. -->
+        <item name="scrimBackground">@color/scrimDark</item> <!-- For scrim -->
+        <!-- Inverse colors. -->
+        <item name="colorSurfaceInverse">@color/inverseSurfaceDark</item>
+        <item name="colorOnSurfaceInverse">@color/inverseOnSurfaceDark</item>
+        <item name="colorPrimaryInverse">@color/inversePrimaryDark</item>
+
+        <!-- New M3 surface roles -->
+        <item name="colorSurfaceDim">@color/surfaceDimDark</item>
+        <item name="colorSurfaceBright">@color/surfaceBrightDark</item>
+        <item name="colorSurfaceContainerLowest">@color/surfaceContainerLowestDark</item>
+        <item name="colorSurfaceContainerLow">@color/surfaceContainerLowDark</item>
+        <item name="colorSurfaceContainer">@color/surfaceContainerDark</item>
+        <item name="colorSurfaceContainerHigh">@color/surfaceContainerHighDark</item>
+        <item name="colorSurfaceContainerHighest">@color/surfaceContainerHighestDark</item>
+
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">?attr/colorSurfaceContainer</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item> <!-- For dark theme -->
+        <!-- Navigation bar color (optional) -->
+        <item name="android:navigationBarColor">?attr/colorSurfaceContainer</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
+
+        <!-- Customize your theme here. -->
+        <item name="materialCardViewStyle">@style/Widget.App.CardView</item>
+        <item name="materialButtonStyle">@style/Widget.App.Button</item>
+        <item name="extendedFloatingActionButtonStyle">@style/Widget.App.ExtendedFloatingActionButton</item>
+        <item name="floatingActionButtonStyle">@style/Widget.App.FloatingActionButton</item>
+        <item name="chipStyle">@style/Widget.App.Chip</item>
     </style>
+
+    <style name="Theme.ProgressQuest" parent="Base.Theme.ProgressQuest" />
 </resources>

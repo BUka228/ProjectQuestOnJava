@@ -1,12 +1,13 @@
 package com.example.projectquestonjava.approach.eatTheFrog.data.model;
 
+import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
+import androidx.room.Ignore;
 import androidx.room.Index;
-import com.example.projectquestonjava.core.data.model.core.Task; // Убедитесь, что Task.java уже создан
-
-import lombok.Getter;
+import com.example.projectquestonjava.core.data.model.core.Task;
+import java.util.Objects;
 
 @Entity(
         tableName = "frog_params",
@@ -23,24 +24,42 @@ import lombok.Getter;
 )
 public class FrogParams {
 
-    @Getter
     @ColumnInfo(name = "task_id")
-    private final long taskId;
+    public final long taskId;
 
     @ColumnInfo(name = "is_frog")
-    private final boolean isFrog;
+    public final boolean isFrog;
 
-    @Getter
-    private final Difficulty difficulty;
+    public final Difficulty difficulty;
 
+    // Основной конструктор для Room
     public FrogParams(long taskId, boolean isFrog, Difficulty difficulty) {
         this.taskId = taskId;
         this.isFrog = isFrog;
         this.difficulty = difficulty;
     }
 
-    public boolean isFrog() {
-        return isFrog;
+    // equals, hashCode, toString
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        FrogParams that = (FrogParams) o;
+        return taskId == that.taskId && isFrog == that.isFrog && difficulty == that.difficulty;
     }
 
+    @Override
+    public int hashCode() {
+        return Objects.hash(taskId, isFrog, difficulty);
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return "FrogParams{" +
+                "taskId=" + taskId +
+                ", isFrog=" + isFrog +
+                ", difficulty=" + difficulty +
+                '}';
+    }
 }

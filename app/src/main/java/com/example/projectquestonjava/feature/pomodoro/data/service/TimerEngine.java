@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -96,7 +97,7 @@ public class TimerEngine {
             PomodoroSettingsRepository settingsRepository,
             PomodoroSessionManager pomodoroSessionManager,
             DateTimeUtils dateTimeUtils,
-            @IODispatcher ExecutorService ioExecutor, // Принимаем ExecutorService
+            @IODispatcher Executor ioExecutor, // Принимаем ExecutorService
             Logger logger) {
         this.soundManager = soundManager;
         this.vibrationManager = vibrationManager;
@@ -104,7 +105,7 @@ public class TimerEngine {
         this.settingsRepository = settingsRepository;
         this.pomodoroSessionManager = pomodoroSessionManager;
         this.dateTimeUtils = dateTimeUtils;
-        this.engineExecutor = ioExecutor; // Используем внедренный Executor
+        this.engineExecutor = (ExecutorService) ioExecutor; // Используем внедренный Executor
         this.settingsExecutor = Executors.newSingleThreadExecutor(); // Для настроек, чтобы не блокировать engineExecutor
         this.logger = logger;
 

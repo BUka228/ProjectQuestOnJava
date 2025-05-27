@@ -9,9 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-interface PermissionChecker {
-    boolean hasNotificationPermission();
-}
+
 
 @Singleton
 public class AndroidPermissionChecker implements PermissionChecker {

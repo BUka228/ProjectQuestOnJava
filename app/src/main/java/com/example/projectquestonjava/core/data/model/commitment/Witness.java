@@ -4,11 +4,10 @@ import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
+import androidx.room.Ignore;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
 import java.util.Objects;
-
-import lombok.Setter;
 
 @Entity(
         tableName = "witness",
@@ -24,39 +23,28 @@ import lombok.Setter;
 )
 public class Witness {
 
-    @Setter
     @PrimaryKey(autoGenerate = true)
-    private int id;
+    public int id;
 
     @ColumnInfo(name = "commitment_id")
-    private final int commitmentId;
+    public final int commitmentId;
 
     @ColumnInfo(name = "witness_name")
-    private final String witnessName;
+    public final String witnessName;
 
+    // Основной конструктор для Room
     public Witness(int id, int commitmentId, String witnessName) {
         this.id = id;
         this.commitmentId = commitmentId;
         this.witnessName = witnessName;
     }
-    // Конструктор без id для Room
+
+    @Ignore
     public Witness(int commitmentId, String witnessName) {
         this(0, commitmentId, witnessName);
     }
 
-
-    public int getId() {
-        return id;
-    }
-
-    public int getCommitmentId() {
-        return commitmentId;
-    }
-
-    public String getWitnessName() {
-        return witnessName;
-    }
-
+    // equals, hashCode, toString
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

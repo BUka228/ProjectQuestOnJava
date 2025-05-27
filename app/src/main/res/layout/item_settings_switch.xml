@@ -1,0 +1,23 @@
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:parentTag="android.widget.LinearLayout"> <!-- Указываем родительский тег для корректной работы preview -->
+
+    <!-- Включаем базовую разметку -->
+    <include layout="@layout/item_settings_base"/>
+
+    <!-- Переопределяем/добавляем контент для frameLayout_settings_item_trailing_content -->
+    <!-- Поскольку ID тот же, этот FrameLayout заменит тот, что в item_settings_base -->
+    <FrameLayout
+        android:id="@+id/frameLayout_settings_item_trailing_content"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switch_settings_item_toggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            tools:checked="true"/> <!-- tools:checked для preview -->
+    </FrameLayout>
+
+</merge>

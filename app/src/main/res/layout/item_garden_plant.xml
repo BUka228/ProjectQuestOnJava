@@ -1,0 +1,52 @@
+<!-- res/layout/item_garden_plant.xml -->
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/card_garden_plant_item"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="2dp"
+    app:strokeWidth="2dp"
+    tools:strokeColor="@color/plant_healthy_border"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Этот FrameLayout будет служить для установки aspect ratio, если нужно -->
+<FrameLayout
+android:id="@+id/frameLayout_garden_plant_content"
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:padding="6dp"> <!-- Внутренний отступ для контента -->
+
+<!-- aspectRatio можно установить программно, если он нужен фиксированный,
+     или использовать ConstraintLayout с ratio для всего item -->
+<ImageView
+    android:id="@+id/imageView_garden_plant_image"
+    android:layout_width="match_parent"
+    android:layout_height="100dp"
+android:scaleType="fitCenter"
+tools:srcCompat="@drawable/sunflower_0_healthy"/>
+
+<com.google.android.material.card.MaterialCardView
+    android:id="@+id/card_plant_stage_badge"
+    android:layout_width="26dp"
+    android:layout_height="26dp"
+    android:layout_gravity="top|start"
+    android:layout_margin="4dp"
+app:cardCornerRadius="13dp"
+app:cardBackgroundColor="?attr/colorPrimaryContainer"
+app:cardElevation="4dp">
+<TextView
+    android:id="@+id/textView_plant_stage"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    style="@style/TextAppearance.Material3.LabelSmall"
+    android:textStyle="bold"
+    android:gravity="center"
+    android:textColor="?attr/colorOnPrimaryContainer"
+    tools:text="1"/>
+</com.google.android.material.card.MaterialCardView>
+    </FrameLayout>
+    </com.google.android.material.card.MaterialCardView>
