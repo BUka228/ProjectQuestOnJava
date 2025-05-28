@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="?attr/actionBarSize"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="0dp"
+    android:paddingEnd="8dp">
+
+    <!-- Контейнер для даты -->
+    <LinearLayout
+        android:id="@+id/layout_toolbar_date_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="8dp">
+
+        <FrameLayout
+            android:id="@+id/frame_date_circle_indicator"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/circle_background_surface_variant"
+            tools:backgroundTint="?attr/colorPrimary"> <!-- Для превью -->
+
+            <TextView
+                android:id="@+id/textView_toolbar_date_day_number"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                style="@style/TextAppearance.Material3.TitleLarge"
+                android:textStyle="bold"
+                tools:text="28"
+                tools:textColor="?attr/colorOnPrimary"/>
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/textView_toolbar_date_day_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            style="@style/TextAppearance.Material3.HeadlineMedium"
+            tools:text="Ср"/>
+    </LinearLayout>
+
+    <Space
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"/>
+
+    <!-- Контейнер для уровня -->
+    <FrameLayout
+        android:id="@+id/frameLayout_toolbar_level_progress_container"
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:minWidth="80dp"
+        android:background="@drawable/rounded_background_surface_variant"
+        android:paddingHorizontal="2dp"
+        android:paddingVertical="2dp">
+
+        <ProgressBar
+            android:id="@+id/progressBar_toolbar_level"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:progressDrawable="@drawable/level_progress_bar_drawable"
+            android:background="@android:color/transparent"
+            tools:progress="60"/>
+
+        <TextView
+            android:id="@+id/textView_toolbar_level_text"
+            style="@style/TextAppearance.Material3.LabelLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:textColor="?attr/colorOnSurface"
+            android:textStyle="bold"
+            android:paddingHorizontal="8dp"
+            tools:text="Ур. 5"/>
+    </FrameLayout>
+</LinearLayout>

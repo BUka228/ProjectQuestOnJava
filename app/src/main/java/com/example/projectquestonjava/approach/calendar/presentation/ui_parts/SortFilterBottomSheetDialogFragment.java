@@ -21,18 +21,19 @@ import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class SortFilterBottomSheetDialogFragment extends BottomSheetDialogFragment {
 
     private CalendarDashboardViewModel viewModel;
     private MaterialButtonToggleGroup toggleSortTime, toggleSortCreated;
-    // Добавим для сортировки по приоритету и статусу, если они нужны на дашборде
-    // private MaterialButtonToggleGroup toggleSortPriorityDashboard;
-    // private Button buttonSortStatusDashboard;
     private ChipGroup chipGroupFilters;
     private Map<TaskFilterOption, Chip> filterChipMap = new HashMap<>();
 
+    // Флаги для предотвращения циклов
+    private boolean isUpdatingSortFromVm = false;
+    private boolean isUpdatingFiltersFromVm = false;
 
     public static SortFilterBottomSheetDialogFragment newInstance() {
         return new SortFilterBottomSheetDialogFragment();
@@ -41,7 +42,6 @@ public class SortFilterBottomSheetDialogFragment extends BottomSheetDialogFragme
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Получаем ViewModel от родительского фрагмента (CalendarDashboardFragment)
         viewModel = new ViewModelProvider(requireParentFragment()).get(CalendarDashboardViewModel.class);
     }
 
@@ -73,78 +73,92 @@ public class SortFilterBottomSheetDialogFragment extends BottomSheetDialogFragme
         toggleSortCreated = view.findViewById(R.id.toggle_sort_created_dashboard);
         chipGroupFilters = view.findViewById(R.id.chipGroup_filters_dashboard);
 
-        // Сопоставление Chip ID с TaskFilterOption
         filterChipMap.put(TaskFilterOption.ALL, view.findViewById(R.id.chip_filter_all_dashboard));
         filterChipMap.put(TaskFilterOption.INCOMPLETE, view.findViewById(R.id.chip_filter_incomplete_dashboard));
         filterChipMap.put(TaskFilterOption.COMPLETE, view.findViewById(R.id.chip_filter_complete_dashboard));
         filterChipMap.put(TaskFilterOption.HIGH_PRIORITY, view.findViewById(R.id.chip_filter_high_priority_dashboard));
-        // Добавьте CRITICAL_PRIORITY, TODAY, OVERDUE если они есть в макете и enum
 
         view.findViewById(R.id.button_reset_sort_filter_dashboard).setOnClickListener(v -> {
             viewModel.resetSortAndFilters();
-            // dismiss(); // Можно закрывать или оставить "Применить"
         });
         view.findViewById(R.id.button_apply_sort_filter_dashboard).setOnClickListener(v -> dismiss());
 
         setupSortControls();
         setupFilterChips();
 
-        viewModel.sortOptionLiveData.observe(getViewLifecycleOwner(), this::updateSortSelectionInDialog);
-        viewModel.filterOptionsLiveData.observe(getViewLifecycleOwner(), this::updateFilterSelectionInDialog);
+        viewModel.sortOptionLiveData.observe(getViewLifecycleOwner(), selectedSort -> {
+            if (selectedSort != null) {
+                isUpdatingSortFromVm = true; // Устанавливаем флаг перед обновлением UI
+                updateSortSelectionInDialog(selectedSort);
+                isUpdatingSortFromVm = false; // Сбрасываем флаг
+            }
+        });
+        viewModel.filterOptionsLiveData.observe(getViewLifecycleOwner(), selectedFilters -> {
+            if (selectedFilters != null) {
+                isUpdatingFiltersFromVm = true; // Устанавливаем флаг
+                updateFilterSelectionInDialog(selectedFilters);
+                isUpdatingFiltersFromVm = false; // Сбрасываем флаг
+            }
+        });
     }
 
     private void setupSortControls() {
         toggleSortTime.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (isChecked) {
+            if (isChecked && !isUpdatingSortFromVm) { // Проверяем флаг
                 uncheckOtherSortGroups(group);
                 if (checkedId == R.id.button_sort_time_asc_dashboard) viewModel.updateSortOption(TaskSortOption.TIME_ASC);
                 else if (checkedId == R.id.button_sort_time_desc_dashboard) viewModel.updateSortOption(TaskSortOption.TIME_DESC);
             }
         });
         toggleSortCreated.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (isChecked) {
+            if (isChecked && !isUpdatingSortFromVm) { // Проверяем флаг
                 uncheckOtherSortGroups(group);
                 if (checkedId == R.id.button_sort_created_newest_dashboard) viewModel.updateSortOption(TaskSortOption.CREATED_NEWEST);
                 else if (checkedId == R.id.button_sort_created_oldest_dashboard) viewModel.updateSortOption(TaskSortOption.CREATED_OLDEST);
             }
         });
-        // TODO: Добавить обработчики для PRIORITY и STATUS, если они есть на дашборде
     }
 
     private void uncheckOtherSortGroups(MaterialButtonToggleGroup currentGroup) {
+        // Эта логика не меняет состояние ViewModel, только UI, поэтому флаг isUpdatingSortFromVm здесь не нужен
         if (currentGroup != toggleSortTime) toggleSortTime.clearChecked();
         if (currentGroup != toggleSortCreated) toggleSortCreated.clearChecked();
-        // if (currentGroup != toggleSortPriorityDashboard) toggleSortPriorityDashboard.clearChecked();
-        // if (buttonSortStatusDashboard.isSelected() && currentGroup != null /* фиктивная проверка для кнопки */) buttonSortStatusDashboard.setSelected(false);
-
     }
 
     private void setupFilterChips() {
         for (Map.Entry<TaskFilterOption, Chip> entry : filterChipMap.entrySet()) {
-            entry.getValue().setOnClickListener(v -> viewModel.toggleFilterOption(entry.getKey()));
+            entry.getValue().setOnClickListener(v -> {
+                if (!isUpdatingFiltersFromVm) { // Проверяем флаг
+                    viewModel.toggleFilterOption(entry.getKey());
+                }
+            });
+            // Настройка внешнего вида чипов (checkedIcon и т.д.)
+            Chip chip = entry.getValue();
+            chip.setEnsureMinTouchTargetSize(false);
+            chip.setChipIconVisible(false); // Если у вас нет иконок по умолчанию
+            chip.setCheckedIconVisible(true); // Показываем галочку при выборе
         }
     }
 
     private void updateSortSelectionInDialog(TaskSortOption selectedSort) {
-        if (selectedSort == null) return;
-        uncheckOtherSortGroups(null); // Сначала сбрасываем все
+        // Эта функция только обновляет UI, не вызывая viewModel
+        uncheckOtherSortGroups(null);
         switch (selectedSort) {
             case TIME_ASC: toggleSortTime.check(R.id.button_sort_time_asc_dashboard); break;
             case TIME_DESC: toggleSortTime.check(R.id.button_sort_time_desc_dashboard); break;
             case CREATED_NEWEST: toggleSortCreated.check(R.id.button_sort_created_newest_dashboard); break;
             case CREATED_OLDEST: toggleSortCreated.check(R.id.button_sort_created_oldest_dashboard); break;
-            // TODO: Добавить PRIORITY и STATUS
+            // Добавьте другие варианты, если они есть
         }
     }
 
     private void updateFilterSelectionInDialog(Set<TaskFilterOption> selectedFilters) {
-        if (selectedFilters == null) return;
+        // Эта функция только обновляет UI
         boolean isAllSelected = selectedFilters.contains(TaskFilterOption.ALL);
         for (Map.Entry<TaskFilterOption, Chip> entry : filterChipMap.entrySet()) {
             Chip chip = entry.getValue();
             TaskFilterOption option = entry.getKey();
             chip.setChecked(selectedFilters.contains(option));
-            // Блокируем остальные, если выбран "ALL"
             if (option != TaskFilterOption.ALL) {
                 chip.setEnabled(!isAllSelected);
             }

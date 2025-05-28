@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="padding_small">4dp</dimen>
-    <dimen name="padding_medium">8dp</dimen>
-    <dimen name="padding_large">16dp</dimen>
+
     <dimen name="padding_xlarge">24dp</dimen>
 
     <dimen name="card_corner_radius_default">8dp</dimen>
-    <dimen name="card_corner_radius">12dp</dimen>
-    <dimen name="card_corner_radius_large">16dp</dimen>
+
     <dimen name="button_corner_radius">12dp</dimen>
     <dimen name="fab_extended_corner_radius">16dp</dimen>
 
@@ -30,13 +27,35 @@
     <dimen name="text_size_display_medium">45sp</dimen>
     <dimen name="text_size_display_large">57sp</dimen>
 
-    <dimen name="card_elevation_default">2dp</dimen>
-    <dimen name="card_elevation_highlighted">6dp</dimen> <!-- Немного больше для выделения -->
-
-    <!-- Stroke width for earned badges -->
-    <dimen name="badge_earned_stroke_width">2dp</dimen>
 
     <dimen name="small_component_corner_radius">
         8dp
     </dimen>
+
+    <dimen name="fab_margin">16dp</dimen>
+    <!-- Отступ для FAB, чтобы он был над BottomNavigationView.
+         Высота BottomNavigationView обычно 56dp. Плюс небольшой отступ. -->
+    <dimen name="fab_margin_bottom_with_nav">72dp</dimen>
+    <dimen name="padding_small">8dp</dimen>
+    <dimen name="padding_medium">16dp</dimen>
+    <dimen name="padding_large">24dp</dimen>
+    <dimen name="card_corner_radius">12dp</dimen>
+    <dimen name="card_corner_radius_large">16dp</dimen>
+    <dimen name="card_elevation_default">2dp</dimen>
+    <dimen name="card_elevation_highlighted">6dp</dimen>
+    <dimen name="badge_earned_stroke_width">2dp</dimen>
+
+
+    <dimen name="toolbar_content_inset_start_with_navigation">4dp</dimen> <!-- Стандартное значение MaterialToolbar меньше -->
+    <dimen name="status_bar_height_placeholder">24dp</dimen> <!-- Используется, если не удалось получить системную высоту -->
+
+    <!-- Размеры для элементов кастомного заголовка -->
+    <dimen name="dashboard_toolbar_date_circle_size">40dp</dimen>
+    <dimen name="dashboard_toolbar_date_number_text_size">20sp</dimen> <!-- Пример, подберите по макету -->
+    <dimen name="dashboard_toolbar_day_name_text_size">28sp</dimen>  <!-- Пример -->
+    <dimen name="dashboard_toolbar_level_indicator_height">36dp</dimen>
+    <dimen name="dashboard_toolbar_level_indicator_min_width">80dp</dimen>
+    <dimen name="dashboard_toolbar_level_text_padding_horizontal">12dp</dimen>
+    <dimen name="dashboard_toolbar_level_text_padding_vertical">4dp</dimen>
+    <dimen name="dashboard_toolbar_level_corner_radius">18dp</dimen>
 </resources>

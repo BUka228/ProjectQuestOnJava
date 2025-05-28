@@ -1,0 +1,6 @@
+<!-- res/drawable/rounded_background_surface_variant.xml -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="?attr/colorSurfaceVariant" /> <!-- НЕпрозрачный -->
+    <corners android:radius="18dp" />
+</shape>

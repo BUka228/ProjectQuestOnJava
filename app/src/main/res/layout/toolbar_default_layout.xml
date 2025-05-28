@@ -1,0 +1,11 @@
+<!-- res/layout/toolbar_default_layout.xml -->
+<com.google.android.material.appbar.MaterialToolbar
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/toolbar_default_actual"
+    android:layout_width="match_parent"
+    android:layout_height="?attr/actionBarSize"
+    android:background="?attr/colorSurfaceContainer"
+    app:titleCentered="true">
+    <!-- Menu будет добавляться фрагментом -->
+</com.google.android.material.appbar.MaterialToolbar>

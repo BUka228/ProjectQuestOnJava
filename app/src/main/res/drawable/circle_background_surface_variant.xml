@@ -1,0 +1,5 @@
+<!-- res/drawable/circle_background_surface_variant.xml -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="?attr/colorSurfaceVariant" /> <!-- Или другой подходящий цвет фона -->
+</shape>

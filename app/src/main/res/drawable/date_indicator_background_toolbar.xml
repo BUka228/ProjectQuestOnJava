@@ -1,0 +1,15 @@
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_activated="true"> <!-- Используем state_activated для "сегодня" -->
+        <shape android:shape="oval">
+            <solid android:color="?attr/colorPrimary" />
+            <size android:width="40dp" android:height="40dp"/>
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="?attr/colorSurfaceVariant" />
+            <stroke android:width="1dp" android:color="?attr/colorOutline" />
+            <size android:width="40dp" android:height="40dp"/>
+        </shape>
+    </item>
+</selector>

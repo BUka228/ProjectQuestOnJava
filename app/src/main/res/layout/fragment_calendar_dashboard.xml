@@ -8,11 +8,6 @@
     android:layout_height="match_parent"
     tools:context=".approach.calendar.presentation.screens.CalendarDashboardFragment">
 
-    <!-- AppBarLayout и Toolbar будут предоставлены MainActivity -->
-    <!-- Если нужен сложный TopBar, его можно включить сюда через <include>
-         и управлять им из фрагмента, скрывая Toolbar MainActivity.
-         Но для стандартного подхода, Toolbar в MainActivity. -->
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -25,8 +20,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:indeterminate="false"
-            android:paddingVertical="4dp"
-            tools:progress="60"/>
+            tools:progress="60"/> <!-- Убран paddingVertical -->
 
         <HorizontalScrollView
             android:id="@+id/horizontalScrollView_filter_tags_dashboard"
@@ -42,7 +36,7 @@
                 android:gravity="center_vertical">
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/button_clear_all_tags_dashboard"
-                    style="?attr/materialIconButtonFilledStyle"
+                    style="?attr/materialIconButtonFilledTonalStyle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     app:icon="@drawable/close"
@@ -58,7 +52,6 @@
             </LinearLayout>
         </HorizontalScrollView>
 
-        <!-- WormPagerIndicator - Заглушка. Заменить на кастомный View или библиотеку -->
         <com.google.android.material.tabs.TabLayout
             android:id="@+id/tabLayout_pager_indicator_dashboard"
             android:layout_width="match_parent"
@@ -68,16 +61,14 @@
             app:tabBackground="@drawable/pager_dot_selector"
             app:tabRippleColor="@null"
             android:layout_marginTop="4dp"
-            android:layout_marginBottom="8dp"/>
+            android:layout_marginBottom="8dp"
+            android:visibility="gone"/> <!-- СКРЫТ -->
 
         <androidx.viewpager2.widget.ViewPager2
             android:id="@+id/viewPager_dashboard_days"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"/>
-        <!-- Placeholder для пустого ViewPager вынесен в DayTasksFragment -->
     </LinearLayout>
-
-    <!-- FAB будет добавлен и управляться из MainActivity -->
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

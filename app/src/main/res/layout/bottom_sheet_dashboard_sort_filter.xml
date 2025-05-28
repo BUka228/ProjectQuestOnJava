@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<!-- res/layout/bottom_sheet_dashboard_sort_filter.xml -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -89,12 +89,34 @@
         app:chipSpacingHorizontal="8dp"
         app:chipSpacingVertical="4dp"
         app:singleLine="false">
-        <!-- Чипы будут добавлены программно для примера, но можно и в XML -->
-        <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:id="@+id/chip_filter_all_dashboard" android:text="Все задачи" app:checkedIconVisible="true" app:chipIcon="@drawable/list_alt"/>
-        <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:id="@+id/chip_filter_incomplete_dashboard" android:text="Незавершенные" app:checkedIconVisible="true" app:chipIcon="@drawable/check_box_outline_blank"/>
-        <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:id="@+id/chip_filter_complete_dashboard" android:text="Завершенные" app:checkedIconVisible="true" app:chipIcon="@drawable/check_box"/>
-        <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:id="@+id/chip_filter_high_priority_dashboard" android:text="Высокий приоритет" app:checkedIconVisible="true" app:chipIcon="@drawable/priority_high"/>
-        <!-- Добавьте другие фильтры, если есть -->
+        <com.google.android.material.chip.Chip
+            style="@style/Widget.App.Chip.Filter"
+            android:id="@+id/chip_filter_all_dashboard"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Все задачи"
+            app:chipIcon="@drawable/list_alt"/>
+        <com.google.android.material.chip.Chip
+            style="@style/Widget.App.Chip.Filter"
+            android:id="@+id/chip_filter_incomplete_dashboard"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Незавершенные"
+            app:chipIcon="@drawable/check_box_outline_blank"/>
+        <com.google.android.material.chip.Chip
+            style="@style/Widget.App.Chip.Filter"
+            android:id="@+id/chip_filter_complete_dashboard"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Завершенные"
+            app:chipIcon="@drawable/check_box"/>
+        <com.google.android.material.chip.Chip
+            style="@style/Widget.App.Chip.Filter"
+            android:id="@+id/chip_filter_high_priority_dashboard"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Высокий приоритет"
+            app:chipIcon="@drawable/priority_high"/>
     </com.google.android.material.chip.ChipGroup>
 
     <Space android:layout_width="match_parent" android:layout_height="24dp"/>
@@ -107,14 +129,14 @@
         android:gravity="end">
         <Button
             android:id="@+id/button_reset_sort_filter_dashboard"
-            style="?attr/materialButtonOutlinedStyle"
+            style="@style/Widget.App.Button.Outlined.Destructive"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Сбросить"
             app:icon="@drawable/refresh"/>
         <Button
             android:id="@+id/button_apply_sort_filter_dashboard"
-            style="@style/Widget.Material3.Button"
+            style="@style/Widget.App.Button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"

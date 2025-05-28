@@ -1,18 +1,19 @@
-package com.example.projectquestonjava.approach.calendar.presentation.ui_parts; // Убедитесь, что пакет правильный
+package com.example.projectquestonjava.approach.calendar.presentation.ui_parts;
 
 import android.app.Dialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button; // Стандартная кнопка
+import android.widget.Button;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 import com.example.projectquestonjava.R;
 import com.example.projectquestonjava.approach.calendar.domain.model.TaskFilterOption;
 import com.example.projectquestonjava.approach.calendar.domain.model.TaskSortOption;
-import com.example.projectquestonjava.approach.calendar.presentation.viewmodels.CalendarPlanningViewModel; // Используем Planning ViewModel
+import com.example.projectquestonjava.approach.calendar.presentation.viewmodels.CalendarPlanningViewModel;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -27,11 +28,15 @@ import java.util.Set;
 
 public class PlanningSortFilterBottomSheetFragment extends BottomSheetDialogFragment {
 
-    private CalendarPlanningViewModel viewModel; // Изменен тип ViewModel
+    private CalendarPlanningViewModel viewModel;
     private MaterialButtonToggleGroup toggleSortTime, toggleSortPriority, toggleSortCreated;
-    private MaterialButton buttonSortStatus; // Изменен тип на MaterialButton
+    private MaterialButton buttonSortStatus;
     private ChipGroup chipGroupFilters;
     private Map<TaskFilterOption, Chip> filterChipMap = new HashMap<>();
+
+    // Флаги для предотвращения циклов
+    private boolean isUpdatingSortFromVm = false;
+    private boolean isUpdatingFiltersFromVm = false;
 
     public static PlanningSortFilterBottomSheetFragment newInstance() {
         return new PlanningSortFilterBottomSheetFragment();
@@ -73,7 +78,6 @@ public class PlanningSortFilterBottomSheetFragment extends BottomSheetDialogFrag
         toggleSortCreated = view.findViewById(R.id.toggle_sort_created_planning);
         chipGroupFilters = view.findViewById(R.id.chipGroup_filters_planning);
 
-        // Инициализация Chip-ов для фильтров (как в предыдущем)
         filterChipMap.put(TaskFilterOption.ALL, view.findViewById(R.id.chip_filter_all_planning));
         filterChipMap.put(TaskFilterOption.INCOMPLETE, view.findViewById(R.id.chip_filter_incomplete_planning));
         filterChipMap.put(TaskFilterOption.COMPLETE, view.findViewById(R.id.chip_filter_complete_planning));
@@ -90,52 +94,73 @@ public class PlanningSortFilterBottomSheetFragment extends BottomSheetDialogFrag
         setupSortControls();
         setupFilterChips();
 
-        viewModel.sortOptionLiveData.observe(getViewLifecycleOwner(), this::updateSortSelectionInDialog);
-        viewModel.filterOptionsLiveData.observe(getViewLifecycleOwner(), this::updateFilterSelectionInDialog);
+        viewModel.sortOptionLiveData.observe(getViewLifecycleOwner(), selectedSort -> {
+            if (selectedSort != null) {
+                isUpdatingSortFromVm = true;
+                updateSortSelectionInDialog(selectedSort);
+                isUpdatingSortFromVm = false;
+            }
+        });
+        viewModel.filterOptionsLiveData.observe(getViewLifecycleOwner(), selectedFilters -> {
+            if (selectedFilters != null) {
+                isUpdatingFiltersFromVm = true;
+                updateFilterSelectionInDialog(selectedFilters);
+                isUpdatingFiltersFromVm = false;
+            }
+        });
     }
 
     private void setupSortControls() {
         toggleSortTime.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (isChecked) {
-                uncheckOtherSortGroups(group);
+            if (isChecked && !isUpdatingSortFromVm) {
+                uncheckOtherSortGroups(group, buttonSortStatus);
                 if (checkedId == R.id.button_sort_time_asc_planning) viewModel.updateSortOption(TaskSortOption.TIME_ASC);
                 else if (checkedId == R.id.button_sort_time_desc_planning) viewModel.updateSortOption(TaskSortOption.TIME_DESC);
             }
         });
         toggleSortPriority.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (isChecked) {
-                uncheckOtherSortGroups(group);
+            if (isChecked && !isUpdatingSortFromVm) {
+                uncheckOtherSortGroups(group, buttonSortStatus);
                 if (checkedId == R.id.button_sort_priority_desc_planning) viewModel.updateSortOption(TaskSortOption.PRIORITY_DESC);
                 else if (checkedId == R.id.button_sort_priority_asc_planning) viewModel.updateSortOption(TaskSortOption.PRIORITY_ASC);
             }
         });
         buttonSortStatus.setOnClickListener(v -> {
-            uncheckOtherSortGroups(null); // Передаем null, т.к. это не ToggleGroup
-            viewModel.updateSortOption(TaskSortOption.STATUS);
-            // Визуальное выделение кнопки статуса
-            buttonSortStatus.setSelected(true); // Если MaterialButton поддерживает это
-            // Или меняем стиль/фон:
-            // buttonSortStatus.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.primaryContainerLight));
-            // buttonSortStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.onPrimaryContainerLight));
+            if (!isUpdatingSortFromVm) {
+                uncheckOtherSortGroups(null, buttonSortStatus);
+                viewModel.updateSortOption(TaskSortOption.STATUS);
+                // Визуальное выделение кнопки статуса
+                updateButtonSortStatusSelection(true);
+            }
         });
         toggleSortCreated.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (isChecked) {
-                uncheckOtherSortGroups(group);
+            if (isChecked && !isUpdatingSortFromVm) {
+                uncheckOtherSortGroups(group, buttonSortStatus);
                 if (checkedId == R.id.button_sort_created_newest_planning) viewModel.updateSortOption(TaskSortOption.CREATED_NEWEST);
                 else if (checkedId == R.id.button_sort_created_oldest_planning) viewModel.updateSortOption(TaskSortOption.CREATED_OLDEST);
             }
         });
     }
 
-    private void uncheckOtherSortGroups(@Nullable MaterialButtonToggleGroup currentActiveGroup) {
+    private void uncheckOtherSortGroups(@Nullable MaterialButtonToggleGroup currentActiveGroup, MaterialButton statusButton) {
         if (currentActiveGroup != toggleSortTime) toggleSortTime.clearChecked();
         if (currentActiveGroup != toggleSortPriority) toggleSortPriority.clearChecked();
         if (currentActiveGroup != toggleSortCreated) toggleSortCreated.clearChecked();
-        // Сброс стиля/выделения для кнопки статуса, если она не была нажата
-        if (currentActiveGroup != null) { // Если currentActiveGroup - это одна из групп, сбрасываем кнопку статуса
-            buttonSortStatus.setSelected(false);
-            // buttonSortStatus.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.mtrl_btn_transparent_bg_color)); // Сброс на дефолтный
-            // buttonSortStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.material_on_surface_emphasis_medium));
+        // Сброс кнопки статуса, если активна одна из групп
+        if (currentActiveGroup != null) {
+            updateButtonSortStatusSelection(false);
+        }
+    }
+
+    private void updateButtonSortStatusSelection(boolean isSelected) {
+        buttonSortStatus.setSelected(isSelected);
+        if (isSelected) {
+            buttonSortStatus.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.primaryContainerLight));
+            buttonSortStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.onPrimaryContainerLight));
+        } else {
+            // Сброс на стиль по умолчанию (может потребоваться более точная настройка на основе темы)
+            buttonSortStatus.setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.transparent)); // Пример
+            buttonSortStatus.setTextColor(ContextCompat.getColorStateList(requireContext(), R.color.onSurfaceVariantDark));
         }
     }
 
@@ -144,35 +169,35 @@ public class PlanningSortFilterBottomSheetFragment extends BottomSheetDialogFrag
         for (Map.Entry<TaskFilterOption, Chip> entry : filterChipMap.entrySet()) {
             Chip chip = entry.getValue();
             TaskFilterOption option = entry.getKey();
-            // Устанавливаем слушатель
-            chip.setOnClickListener(v -> viewModel.toggleFilterOption(option));
-            // Убедимся, что checkedIcon виден, если чип выбран
-            chip.setEnsureMinTouchTargetSize(false); // Для компактности
-            chip.setChipIconVisible(false); // Скрываем иконку по умолчанию
-            chip.setCheckedIconVisible(true); // Показываем галочку при выборе
+            chip.setOnClickListener(v -> {
+                if (!isUpdatingFiltersFromVm) {
+                    viewModel.toggleFilterOption(option);
+                }
+            });
+            chip.setEnsureMinTouchTargetSize(false);
+            chip.setChipIconVisible(false);
+            chip.setCheckedIconVisible(true);
         }
     }
 
     private void updateSortSelectionInDialog(TaskSortOption selectedSort) {
-        if (selectedSort == null) return;
-        uncheckOtherSortGroups(null); // Сброс всех перед установкой нового
-
-        switch (selectedSort) {
-            case TIME_ASC: toggleSortTime.check(R.id.button_sort_time_asc_planning); break;
-            case TIME_DESC: toggleSortTime.check(R.id.button_sort_time_desc_planning); break;
-            case PRIORITY_DESC: toggleSortPriority.check(R.id.button_sort_priority_desc_planning); break;
-            case PRIORITY_ASC: toggleSortPriority.check(R.id.button_sort_priority_asc_planning); break;
-            case CREATED_NEWEST: toggleSortCreated.check(R.id.button_sort_created_newest_planning); break;
-            case CREATED_OLDEST: toggleSortCreated.check(R.id.button_sort_created_oldest_planning); break;
-            case STATUS:
-                buttonSortStatus.setSelected(true);
-                // buttonSortStatus.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.primaryContainerLight));
-                break;
+        uncheckOtherSortGroups(null, buttonSortStatus);
+        if (selectedSort == TaskSortOption.STATUS) {
+            updateButtonSortStatusSelection(true);
+        } else {
+            updateButtonSortStatusSelection(false); // Убедимся, что кнопка статуса сброшена
+            switch (selectedSort) {
+                case TIME_ASC: toggleSortTime.check(R.id.button_sort_time_asc_planning); break;
+                case TIME_DESC: toggleSortTime.check(R.id.button_sort_time_desc_planning); break;
+                case PRIORITY_DESC: toggleSortPriority.check(R.id.button_sort_priority_desc_planning); break;
+                case PRIORITY_ASC: toggleSortPriority.check(R.id.button_sort_priority_asc_planning); break;
+                case CREATED_NEWEST: toggleSortCreated.check(R.id.button_sort_created_newest_planning); break;
+                case CREATED_OLDEST: toggleSortCreated.check(R.id.button_sort_created_oldest_planning); break;
+            }
         }
     }
 
     private void updateFilterSelectionInDialog(Set<TaskFilterOption> selectedFilters) {
-        if (selectedFilters == null) return;
         boolean isAllSelected = selectedFilters.contains(TaskFilterOption.ALL);
         for (Map.Entry<TaskFilterOption, Chip> entry : filterChipMap.entrySet()) {
             Chip chip = entry.getValue();

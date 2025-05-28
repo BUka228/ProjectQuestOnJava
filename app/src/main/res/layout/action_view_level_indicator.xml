@@ -1,0 +1,31 @@
+<!-- res/layout/action_view_level_indicator.xml -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="36dp"
+    android:minWidth="80dp"
+    android:background="@drawable/rounded_background_surface_variant_alpha"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="4dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:contentDescription="Уровень игрока">
+
+    <ProgressBar
+        android:id="@+id/toolbar_level_progress_bar_action"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:progressDrawable="@drawable/level_progress_drawable_toolbar"
+        android:indeterminate="false"
+        tools:progress="60"/>
+    <TextView
+        android:id="@+id/toolbar_level_text_action"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        style="@style/TextAppearance.Material3.LabelLarge"
+        android:textStyle="bold"
+        android:textColor="?attr/colorOnSurface"
+        tools:text="Ур. 5"/>
+</FrameLayout>

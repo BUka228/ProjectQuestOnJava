@@ -1,13 +1,23 @@
+<!-- res/menu/dashboard_toolbar_menu.xml -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_level_indicator_dashboard"
+        android:title="Уровень"
+        app:actionLayout="@layout/action_view_level_indicator"
+        app:showAsAction="always"/>
+
     <item
         android:id="@+id/action_open_calendar_dialog_dashboard"
         android:icon="@drawable/calendar_month"
         android:title="Выбрать дату"
         app:showAsAction="ifRoom"/>
+
     <item
         android:id="@+id/action_filter_sort_dashboard"
         android:icon="@drawable/filter_list"
         android:title="Фильтр/Сортировка"
+        app:actionLayout="@layout/menu_item_filter_indicator"
         app:showAsAction="ifRoom"/>
 </menu>
