@@ -16,6 +16,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -189,5 +190,61 @@ public class ChallengeRepositoryImpl implements ChallengeRepository {
     public ListenableFuture<Void> deleteRulesForChallenge(long challengeId) {
         logger.debug(TAG, "Deleting rules for challengeId=" + challengeId);
         return Futures.transform(challengeDao.deleteRulesForChallenge(challengeId), count -> null, MoreExecutors.directExecutor());
+    }
+
+    @Override
+    public List<Challenge> getActiveChallengesSync() {
+        logger.debug(TAG, "SYNC Getting active challenges");
+        return challengeDao.getChallengesByStatusSync(ChallengeStatus.ACTIVE); // DAO должен иметь getChallengesByStatusSync
+    }
+
+    @Override
+    public Challenge getChallengeByIdSync(long challengeId) {
+        logger.debug(TAG, "SYNC Getting challenge by id=" + challengeId);
+        return challengeDao.getChallengeByIdSync(challengeId); // DAO должен иметь getChallengeByIdSync
+    }
+
+    @Override
+    public List<ChallengeRule> getChallengeRulesSync(long challengeId) {
+        logger.debug(TAG, "SYNC Getting rules for challenge id=" + challengeId);
+        return challengeDao.getChallengeRulesByChallengeIdSync(challengeId); // DAO должен иметь getChallengeRulesByChallengeIdSync
+    }
+
+    @Override
+    public GamificationChallengeProgress getProgressForRuleSync(long challengeId, long ruleId) throws IOException {
+        long gamificationId = gamificationDataStoreManager.getGamificationIdSync(); // Получаем ID здесь
+        if (gamificationId == -1L) {
+            logger.warn(TAG, "SYNC Cannot get progress for rule: Gamification ID not found.");
+            return null;
+        }
+        logger.debug(TAG, "SYNC Getting progress for rule " + ruleId + " (Challenge " + challengeId + ", GamiID " + gamificationId + ")");
+        return challengeDao.getProgressSync(gamificationId, challengeId, ruleId); // DAO должен иметь getProgressSync
+    }
+
+    @Override
+    public List<GamificationChallengeProgress> getAllProgressForChallengeSync(long gamificationId, long challengeId) {
+        logger.debug(TAG, "SYNC Getting all progress for challenge " + challengeId + " (GamiID " + gamificationId + ")");
+        return challengeDao.getAllProgressForChallengeSync(gamificationId, challengeId); // DAO должен иметь getAllProgressForChallengeSync
+    }
+
+    @Override
+    public void insertOrUpdateProgressSync(GamificationChallengeProgress progress) throws IOException {
+        long currentGamificationId = gamificationDataStoreManager.getGamificationIdSync();
+        if (progress.getGamificationId() != currentGamificationId) {
+            logger.error(TAG, "SYNC Mismatch Gamification ID during progress update. Progress GamiID: " + progress.getGamificationId() + ", Current GamiID: " + currentGamificationId);
+            throw new IllegalStateException("Gamification ID mismatch");
+        }
+        GamificationChallengeProgress progressToSave = new GamificationChallengeProgress(
+                progress.getGamificationId(), progress.getChallengeId(), progress.getRuleId(),
+                progress.getProgress(), progress.isCompleted(), LocalDateTime.now()
+        );
+        logger.debug(TAG, "SYNC Inserting/Updating progress for rule " + progress.getRuleId());
+        challengeDao.insertOrUpdateProgressSync(progressToSave); // DAO должен иметь insertOrUpdateProgressSync
+    }
+
+    @Override
+    public void updateChallengeStatusSync(long challengeId, ChallengeStatus status) {
+        logger.debug(TAG, "SYNC Updating status for challenge " + challengeId + " to " + status);
+        challengeDao.updateChallengeStatusSync(challengeId, status); // DAO должен иметь updateChallengeStatusSync
     }
 }

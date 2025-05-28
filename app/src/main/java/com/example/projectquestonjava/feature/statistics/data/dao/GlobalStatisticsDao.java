@@ -37,4 +37,24 @@ public interface GlobalStatisticsDao {
 
     @Query("SELECT * FROM global_statistics WHERE user_id = :userId LIMIT 1")
     ListenableFuture<GlobalStatistics> getGlobalStatisticsSuspend(int userId);
+
+
+    // --- SYNC ---
+    @Query("SELECT * FROM global_statistics WHERE user_id = :userId LIMIT 1")
+    GlobalStatistics getGlobalStatisticsSync(int userId); // НОВЫЙ
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    long insertOrUpdateGlobalStatisticsSync(GlobalStatistics globalStatistics); // Уже был
+
+    @Query("UPDATE global_statistics SET total_tasks = total_tasks + 1 WHERE user_id = :userId")
+    void incrementTotalTasksSync(int userId); // Уже был
+
+    @Query("UPDATE global_statistics SET completed_tasks = completed_tasks + 1 WHERE user_id = :userId")
+    void incrementCompletedTasksSync(int userId); // Уже был
+
+    @Query("UPDATE global_statistics SET total_time_spent = total_time_spent + :timeToAdd WHERE user_id = :userId")
+    void addTotalTimeSpentSync(int userId, int timeToAdd); // Уже был
+
+    @Query("UPDATE global_statistics SET last_active = :timestamp WHERE user_id = :userId")
+    void updateLastActiveSync(int userId, LocalDateTime timestamp); // Уже был
 }

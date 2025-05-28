@@ -14,4 +14,9 @@ public interface BadgeRepository {
     ListenableFuture<List<GamificationBadgeCrossRef>> getEarnedBadges(); // suspend -> ListenableFuture
     ListenableFuture<Void> insertEarnedBadge(GamificationBadgeCrossRef crossRef); // suspend Result -> ListenableFuture
     ListenableFuture<Void> deleteEarnedBadgesForGamification(long gamificationId); // suspend Result -> ListenableFuture
+
+    // --- SYNC ---
+    void insertEarnedBadgeSync(GamificationBadgeCrossRef crossRef);
+    Badge getBadgeByIdSync(long badgeId);
+    List<GamificationBadgeCrossRef> getEarnedBadgesSync(long gamificationId);
 }

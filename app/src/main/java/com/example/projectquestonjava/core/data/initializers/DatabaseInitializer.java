@@ -3,6 +3,7 @@ package com.example.projectquestonjava.core.data.initializers;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import com.example.projectquestonjava.R; // Убедитесь, что R-файл доступен
 import com.example.projectquestonjava.core.data.model.enums.ApproachName;
+import com.example.projectquestonjava.core.utils.Logger;
 import com.example.projectquestonjava.feature.gamification.domain.model.ChallengePeriod;
 import com.example.projectquestonjava.feature.gamification.domain.model.ChallengeStatus;
 import com.example.projectquestonjava.feature.gamification.domain.model.ChallengeType;
@@ -10,7 +11,6 @@ import com.example.projectquestonjava.feature.gamification.domain.model.RewardTy
 
 import javax.inject.Inject;
 import javax.inject.Singleton; // Если DatabaseInitializer должен быть Singleton
-import timber.log.Timber; // Если Timber уже настроен для Java
 
 // Если Timber не настроен для Java, можно использовать android.util.Log
 // import android.util.Log;
@@ -18,6 +18,8 @@ import timber.log.Timber; // Если Timber уже настроен для Java
 @Singleton // Предполагаем, что инициализатор - синглтон
 public class DatabaseInitializer {
     private static final String TAG = "DbInitializer";
+
+    private final Logger logger;
 
     // --- КОНСТАНТЫ ID ЗНАЧКОВ ---
     private static final long BADGE_ID_STREAK_7 = 1L;
@@ -76,42 +78,44 @@ public class DatabaseInitializer {
 
 
     @Inject
-    public DatabaseInitializer() {
-        // Конструктор может быть пустым, если нет зависимостей,
-        // или принимать Logger, DateTimeUtils, если они нужны здесь (но они не были в Kotlin версии)
+    public DatabaseInitializer(Logger logger) {
+        this.logger = logger;
     }
 
+    // DatabaseInitializer.java
     public void initialize(SupportSQLiteDatabase db) {
-        Timber.tag(TAG).i("Running onCreate callback: Inserting default GLOBAL data...");
-        // В Java нет db.beginTransactionScope(), используем стандартные методы транзакций
+        logger.info(TAG, "DatabaseInitializer: Starting GLOBAL data initialization...");
         db.beginTransaction();
         try {
             insertDefaultApproaches(db);
+            logger.info(TAG, "DatabaseInitializer: Approaches inserted.");
             insertAllDefaultRewards(db);
+            logger.info(TAG, "DatabaseInitializer: Rewards inserted.");
             insertAllDefaultBadges(db);
+            logger.info(TAG, "DatabaseInitializer: Badges inserted.");
             insertDefaultStreakRewardDefinitions(db);
+            logger.info(TAG, "DatabaseInitializer: Streak definitions inserted.");
             insertDefaultChallengesAndRules(db);
+            logger.info(TAG, "DatabaseInitializer: Challenges and rules inserted.");
 
             db.setTransactionSuccessful();
-            Timber.tag(TAG).i("Default GLOBAL data inserted successfully.");
+            logger.info(TAG, "DatabaseInitializer: Default GLOBAL data transaction successful.");
         } catch (Exception e) {
-            Timber.tag(TAG).e(e, "Error inserting default GLOBAL data");
+            logger.error(TAG, "DatabaseInitializer: Error inserting default GLOBAL data", e);
         } finally {
             db.endTransaction();
+            logger.info(TAG, "DatabaseInitializer: Default GLOBAL data transaction ended.");
         }
     }
 
     private void insertDefaultApproaches(SupportSQLiteDatabase db) {
-        Timber.tag(TAG).d("Inserting default approaches...");
         db.execSQL("INSERT OR IGNORE INTO approach (id, name, description) VALUES (1, '" + ApproachName.CALENDAR.name() + "', 'Calendar Approach');");
         db.execSQL("INSERT OR IGNORE INTO approach (id, name, description) VALUES (2, '" + ApproachName.GTD.name() + "', 'Getting Things Done');");
         db.execSQL("INSERT OR IGNORE INTO approach (id, name, description) VALUES (3, '" + ApproachName.EISENHOWER.name() + "', 'Eisenhower Matrix');");
         db.execSQL("INSERT OR IGNORE INTO approach (id, name, description) VALUES (4, '" + ApproachName.FROG.name() + "', 'Eat The Frog');");
-        Timber.tag(TAG).d("Default approaches inserted.");
     }
 
     private void insertAllDefaultRewards(SupportSQLiteDatabase db) {
-        Timber.tag(TAG).d("Inserting ALL default rewards definitions...");
         // Ежедневные
         db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_DAY_1 + ", 'Стартовый капитал', 'Добро пожаловать! Небольшой бонус для начала.', '" + RewardType.COINS.name() + "', 'BASE*10*1.08');");
         // ... и так далее для всех REWARD_ID_DAY_...
@@ -134,32 +138,26 @@ public class DatabaseInitializer {
         db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_CHALLENGE_C134_BADGE + ", 'Значок ''Легенда 100''', 'Достигнут 100 уровень!', '" + RewardType.BADGE.name() + "', '" + BADGE_ID_CHALLENGE_LEVEL_100 + "');");
         db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_CHALLENGE_C134_FALLBACK + ", 'Дань Легенде', 'Значок за 100 уровень уже есть! Получи монеты.', '" + RewardType.COINS.name() + "', 'BASE*1000*1.15');");
 
-        Timber.tag(TAG).d("Default reward definitions insertion finished.");
     }
 
     private void insertAllDefaultBadges(SupportSQLiteDatabase db) {
-        Timber.tag(TAG).d("Inserting all default badge definitions...");
         db.execSQL("INSERT OR IGNORE INTO badge (id, name, description, image_url, criteria) VALUES (" + BADGE_ID_STREAK_7 + ", 'Первая Неделя', 'Вы получали награду 7 дней подряд!', " + BADGE_DRAWABLE_STREAK_7 + ", 'Стрик 7 дней');");
         db.execSQL("INSERT OR IGNORE INTO badge (id, name, description, image_url, criteria) VALUES (" + BADGE_ID_STREAK_14 + ", 'Двухнедельная стойкость', 'Две недели подряд! Твоя дисциплина впечатляет.', " + BADGE_DRAWABLE_STREAK_14 + ", 'Стрик 14 дней');");
         db.execSQL("INSERT OR IGNORE INTO badge (id, name, description, image_url, criteria) VALUES (" + BADGE_ID_STREAK_30 + ", 'Месяц дисциплины', 'Целый месяц ежедневных успехов!', " + BADGE_DRAWABLE_STREAK_30 + ", 'Стрик 30 дней');");
         db.execSQL("INSERT OR IGNORE INTO badge (id, name, description, image_url, criteria) VALUES (" + BADGE_ID_CHALLENGE_VETERAN_250 + ", 'Ветеран 250', 'Выполнено 250 задач!', " + BADGE_DRAWABLE_CHALLENGE_VETERAN_250 + ", 'Завершить 250 задач');");
         // ... и так далее для всех значков
         db.execSQL("INSERT OR IGNORE INTO badge (id, name, description, image_url, criteria) VALUES (" + BADGE_ID_CHALLENGE_LEVEL_100 + ", 'Легенда 100', 'Достигнут 100 уровень!', " + BADGE_DRAWABLE_CHALLENGE_LEVEL_100 + ", 'Достичь 100 уровня');");
-        Timber.tag(TAG).d("Default badge definitions insertion finished.");
     }
 
     private void insertDefaultStreakRewardDefinitions(SupportSQLiteDatabase db) {
-        Timber.tag(TAG).d("Inserting default streak reward definitions...");
         // Связываем дни 1-30 с их ОСНОВНЫМИ наградами
         db.execSQL("INSERT OR IGNORE INTO streak_reward_definition (streak_day, reward_id) VALUES (1, " + REWARD_ID_DAY_1 + ");");
         // ... и так далее для всех дней до 30 ...
         db.execSQL("INSERT OR IGNORE INTO streak_reward_definition (streak_day, reward_id) VALUES (14, " + REWARD_ID_DAY_14_BADGE + ");");
         db.execSQL("INSERT OR IGNORE INTO streak_reward_definition (streak_day, reward_id) VALUES (30, " + REWARD_ID_DAY_30_BADGE + ");");
-        Timber.tag(TAG).d("Default streak reward definitions insertion finished.");
     }
 
     private void insertDefaultChallengesAndRules(SupportSQLiteDatabase db) {
-        Timber.tag(TAG).d("Inserting default challenges and rules...");
         String minDateString = "'MIN'"; // LocalDateTime.MIN.toString() не будет работать в SQL напрямую
         String maxDateString = "'MAX'"; // LocalDateTime.MAX.toString()
 
@@ -167,6 +165,5 @@ public class DatabaseInitializer {
         db.execSQL("INSERT OR IGNORE INTO Challenge (id, name, description, start_date, end_date, reward_id, status, period) VALUES (" + CHALLENGE_ID_C1 + ", 'Первые шаги', 'Заверши свою первую задачу', " + minDateString + ", " + maxDateString + ", " + REWARD_ID_CHALLENGE_C1 + ", '" + ChallengeStatus.ACTIVE.name() + "', '" + ChallengePeriod.ONCE.name() + "');");
         db.execSQL("INSERT OR IGNORE INTO challenge_rule (challenge_id, type, target, period, condition_json) VALUES (" + CHALLENGE_ID_C1 + ", '" + ChallengeType.TASK_COMPLETION.name() + "', 1, '" + ChallengePeriod.ONCE.name() + "', NULL);");
 
-        Timber.tag(TAG).d("Default challenges and rules insertion finished.");
     }
 }

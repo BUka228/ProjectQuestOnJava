@@ -7,6 +7,8 @@ import com.example.projectquestonjava.feature.gamification.data.model.Gamificati
 import com.example.projectquestonjava.feature.gamification.domain.model.ChallengeProgressFullDetails;
 import com.example.projectquestonjava.feature.gamification.domain.model.ChallengeStatus;
 import com.google.common.util.concurrent.ListenableFuture;
+
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -28,4 +30,12 @@ public interface ChallengeRepository {
     ListenableFuture<Void> deleteProgressForGamification(long gamificationId);
     ListenableFuture<Void> deleteProgressForChallenge(long challengeId);
     ListenableFuture<Void> deleteRulesForChallenge(long challengeId);
+
+    List<Challenge> getActiveChallengesSync();
+    Challenge getChallengeByIdSync(long challengeId);
+    List<ChallengeRule> getChallengeRulesSync(long challengeId);
+    GamificationChallengeProgress getProgressForRuleSync(long challengeId, long ruleId) throws IOException;
+    List<GamificationChallengeProgress> getAllProgressForChallengeSync(long gamificationId, long challengeId);
+    void insertOrUpdateProgressSync(GamificationChallengeProgress progress) throws IOException;
+    void updateChallengeStatusSync(long challengeId, ChallengeStatus status);
 }

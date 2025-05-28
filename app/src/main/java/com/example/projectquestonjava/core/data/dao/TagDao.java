@@ -33,4 +33,14 @@ public interface TagDao {
 
     @Query("SELECT * FROM tags WHERE name = :name LIMIT 1")
     ListenableFuture<Tag> getTagByName(String name);
+
+    // --- SYNC ---
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    long insertTagSync(Tag tag);
+
+    @Delete
+    void deleteTagSync(Tag tag); // или int
+
+    @Delete
+    void deleteTagsSync(List<Tag> tags); // или int
 }

@@ -1,6 +1,6 @@
 package com.example.projectquestonjava.feature.gamification.domain.usecases;
 
-import com.example.projectquestonjava.core.di.IODispatcher;
+import com.example.projectquestonjava.core.di.IODispatcher; // Не используется для Sync, но может остаться для конструктора
 import com.example.projectquestonjava.core.utils.Logger;
 import com.example.projectquestonjava.feature.gamification.data.model.Gamification;
 import com.example.projectquestonjava.feature.gamification.data.model.Reward;
@@ -11,100 +11,93 @@ import com.example.projectquestonjava.feature.gamification.domain.repository.Gam
 import com.example.projectquestonjava.feature.gamification.domain.repository.VirtualGardenRepository;
 import com.example.projectquestonjava.feature.gamification.data.model.GamificationBadgeCrossRef;
 import com.example.projectquestonjava.feature.gamification.data.model.VirtualGarden;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-
+// Guava Futures больше не нужны здесь, если метод синхронный
 import java.time.LocalDateTime;
-import java.util.concurrent.Executor;
+import java.util.concurrent.Executor; // Не используется для Sync
 import javax.inject.Inject;
-
 import lombok.Getter;
 
 public class ApplyRewardUseCase {
     private static final String TAG = "ApplyRewardUseCase";
 
-    private final GamificationRepository gamificationRepository;
-    private final BadgeRepository badgeRepository;
-    private final VirtualGardenRepository virtualGardenRepository;
-    private final Executor ioExecutor;
+    private final GamificationRepository gamificationRepository; // Ожидает getGamificationByIdSync
+    private final BadgeRepository badgeRepository;             // Ожидает insertEarnedBadgeSync
+    private final VirtualGardenRepository virtualGardenRepository; // Ожидает insertPlantSync
     private final Logger logger;
 
-    // Класс для возврата результата
     @Getter
     public static class RewardApplicationResult {
         private final int deltaXp;
         private final int deltaCoins;
-
         public RewardApplicationResult(int deltaXp, int deltaCoins) {
             this.deltaXp = deltaXp;
             this.deltaCoins = deltaCoins;
         }
     }
 
-
     @Inject
     public ApplyRewardUseCase(
             GamificationRepository gamificationRepository,
             BadgeRepository badgeRepository,
             VirtualGardenRepository virtualGardenRepository,
-            @IODispatcher Executor ioExecutor,
+            @IODispatcher Executor ioExecutor, // Может быть не нужен, если все операции синхронны
             Logger logger) {
         this.gamificationRepository = gamificationRepository;
         this.badgeRepository = badgeRepository;
         this.virtualGardenRepository = virtualGardenRepository;
-        this.ioExecutor = ioExecutor;
         this.logger = logger;
     }
 
-    public ListenableFuture<RewardApplicationResult> execute(long gamificationId, Reward reward) {
-        return Futures.submitAsync(() -> {
-            logger.debug(TAG, "Applying reward " + reward.getId() + " ('" + reward.getName() + "', type=" + reward.getRewardType() + ") for gamificationId " + gamificationId);
-            try {
-                Gamification currentGamification = Futures.getDone(gamificationRepository.getGamificationById(gamificationId));
-                if (currentGamification == null) {
-                    throw new IllegalStateException("Gamification data not found for ID " + gamificationId);
-                }
-                int currentLevel = currentGamification.getLevel();
-                int deltaXp = 0;
-                int deltaCoins = 0;
-
-                switch (reward.getRewardType()) {
-                    case COINS:
-                        deltaCoins = calculateValue(reward.getRewardValue(), currentLevel);
-                        logger.debug(TAG, "Calculated coin delta: " + deltaCoins);
-                        break;
-                    case EXPERIENCE:
-                        deltaXp = calculateValue(reward.getRewardValue(), currentLevel);
-                        logger.debug(TAG, "Calculated experience delta: " + deltaXp);
-                        break;
-                    case BADGE:
-                        Long badgeId = Long.parseLong(reward.getRewardValue()); // Может бросить NumberFormatException
-                        Futures.getDone(badgeRepository.insertEarnedBadge(
-                                new GamificationBadgeCrossRef(gamificationId, badgeId, LocalDateTime.now())
-                        ));
-                        logger.debug(TAG, "Applied badge with ID " + badgeId + ".");
-                        break;
-                    case PLANT:
-                        PlantType plantType = PlantType.valueOf(reward.getRewardValue().toUpperCase());
-                        Futures.getDone(virtualGardenRepository.insertPlant(
-                                new VirtualGarden(gamificationId, plantType, 0, 0, LocalDateTime.now().minusDays(1))
-                        ));
-                        logger.debug(TAG, "Applied plant reward: " + plantType + ".");
-                        break;
-                    case THEME:
-                        logger.debug(TAG, "Applying theme reward: " + reward.getRewardValue());
-                        // Логика themeManager.unlockTheme(...)
-                        break;
-                }
-                return Futures.immediateFuture(new RewardApplicationResult(deltaXp, deltaCoins));
-            } catch (Exception e) {
-                logger.error(TAG, "Failed to apply reward " + reward.getId() + " ('" + reward.getName() + "')", e);
-                return Futures.immediateFailedFuture(e);
+    // Метод теперь СИНХРОННЫЙ и вызывается из потока, управляемого транзакцией
+    public RewardApplicationResult execute(long gamificationId, Reward reward) throws Exception {
+        logger.debug(TAG, "SYNC Applying reward " + reward.getId() + " ('" + reward.getName() + "', type=" + reward.getRewardType() + ") for gamificationId " + gamificationId);
+        try {
+            Gamification currentGamification = gamificationRepository.getGamificationByIdSync(gamificationId);
+            if (currentGamification == null) {
+                throw new IllegalStateException("Gamification data not found for ID " + gamificationId);
             }
-        }, ioExecutor);
+            int currentLevel = currentGamification.getLevel();
+            int deltaXp = 0;
+            int deltaCoins = 0;
+
+            switch (reward.getRewardType()) {
+                case COINS:
+                    deltaCoins = calculateValue(reward.getRewardValue(), currentLevel);
+                    logger.debug(TAG, "Calculated coin delta: " + deltaCoins);
+                    break;
+                case EXPERIENCE:
+                    deltaXp = calculateValue(reward.getRewardValue(), currentLevel);
+                    logger.debug(TAG, "Calculated experience delta: " + deltaXp);
+                    break;
+                case BADGE:
+                    Long badgeId = Long.parseLong(reward.getRewardValue());
+                    // TODO: Проверить, есть ли значок уже, если insertEarnedBadgeSync не делает OnConflict.IGNORE
+                    badgeRepository.insertEarnedBadgeSync(
+                            new GamificationBadgeCrossRef(gamificationId, badgeId, LocalDateTime.now())
+                    );
+                    logger.debug(TAG, "Applied badge with ID " + badgeId + ".");
+                    break;
+                case PLANT:
+                    PlantType plantType = PlantType.valueOf(reward.getRewardValue().toUpperCase());
+                    // TODO: Проверить, есть ли такое растение уже
+                    virtualGardenRepository.insertPlantSync(
+                            new VirtualGarden(gamificationId, plantType, 0, 0, LocalDateTime.now().minusDays(1))
+                    );
+                    logger.debug(TAG, "Applied plant reward: " + plantType + ".");
+                    break;
+                case THEME:
+                    logger.debug(TAG, "Applying theme reward (not implemented in DB): " + reward.getRewardValue());
+                    break;
+            }
+            return new RewardApplicationResult(deltaXp, deltaCoins);
+        } catch (Exception e) {
+            logger.error(TAG, "SYNC Failed to apply reward " + reward.getId() + " ('" + reward.getName() + "')", e);
+            throw e; // Пробрасываем для обработки внешней транзакцией
+        }
     }
 
     private int calculateValue(String rewardValue, int level) {
+        // ... (реализация без изменений) ...
         String trimmedValue = rewardValue.trim();
         try {
             if (trimmedValue.toUpperCase().startsWith("LEVEL*")) {

@@ -1,12 +1,14 @@
 // File: A:\Progects\ProjectQuestOnJava\app\src\main\java\com\example\projectquestonjava\app\MainActivity.java
 package com.example.projectquestonjava.app;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.TextView;
+// Эти импорты ImageView и TextView здесь не нужны, если кастомный заголовок инфлейтится из XML
+// import android.widget.ImageView;
+// import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -14,30 +16,43 @@ import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+// ViewModelProvider здесь не нужен, если MainActivity не использует свои ViewModel
+// import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.NavDestination;
 import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 import com.example.projectquestonjava.R;
+// TestDataInitializer и Executor для него больше не нужны здесь
+// import com.example.projectquestonjava.core.data.initializers.TestDataInitializer;
 import com.example.projectquestonjava.core.managers.SnackbarManager;
 import com.example.projectquestonjava.core.managers.SnackbarMessage;
+import com.example.projectquestonjava.core.utils.Logger;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
-import java.util.ArrayList;
+// FutureCallback и Futures больше не нужны здесь
+// import com.google.common.util.concurrent.FutureCallback;
+// import com.google.common.util.concurrent.Futures;
+// import com.google.common.util.concurrent.ListenableFuture;
+// import com.google.common.util.concurrent.MoreExecutors;
+
+import java.io.File;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
+// import java.util.concurrent.Executor; // Не нужен здесь
 import javax.inject.Inject;
 import dagger.hilt.android.AndroidEntryPoint;
 import lombok.Getter;
 
 @AndroidEntryPoint
 public class MainActivity extends AppCompatActivity {
+
+    private static final String TAG = "MainActivity";
 
     @Getter
     private MaterialToolbar toolbar;
@@ -52,10 +67,17 @@ public class MainActivity extends AppCompatActivity {
     @Inject
     SnackbarManager snackbarManager;
 
+    @Inject
+    Logger logger;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        logger.debug(TAG, "onCreate: Activity creating.");
         setContentView(R.layout.activity_main);
+
+        // Инициализация TestDataInitializer перенесена в MyApplication.onCreate()
 
         toolbar = findViewById(R.id.toolbar_main);
         appBarLayout = findViewById(R.id.appBarLayout_main);
@@ -68,7 +90,9 @@ public class MainActivity extends AppCompatActivity {
         NavController navController;
         if (navHostFragment != null) {
             navController = navHostFragment.getNavController();
+            logger.debug(TAG, "onCreate: NavController obtained.");
         } else {
+            logger.error(TAG, "onCreate: NavHostFragment not found! Navigation will not work.");
             if (snackbarManager != null && coordinatorLayout != null) {
                 snackbarManager.showMessage("Критическая ошибка: NavHostFragment не найден!", Snackbar.LENGTH_LONG);
             }
@@ -92,36 +116,53 @@ public class MainActivity extends AppCompatActivity {
         NavigationUI.setupWithNavController(bottomNavigationView, navController);
 
         navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
+            String destIdString = String.valueOf(destination.getId());
+            CharSequence destLabelCS = destination.getLabel();
+            String destLabelString = (destLabelCS != null) ? destLabelCS.toString() : "";
+
+            logger.debug(TAG, "NavController: Destination changed to '" + destLabelString + "' (ID: " + destIdString + ")");
+
             if (topLevelDestinations.contains(destination.getId())) {
                 bottomNavigationView.setVisibility(View.VISIBLE);
+                logger.debug(TAG, "NavController: BottomNav VISIBLE for " + destLabelString);
             } else {
                 bottomNavigationView.setVisibility(View.GONE);
+                logger.debug(TAG, "NavController: BottomNav GONE for " + destLabelString);
             }
             fabStandard.hide();
             fabExtended.hide();
             fabExtended.shrink();
+            logger.debug(TAG, "NavController: FABs hidden/shrunk for " + destLabelString);
 
-            // --- ОБНОВЛЕННАЯ ОЧИСТКА Toolbar ---
-            removeCurrentCustomTitleView(); // Удаляем кастомный заголовок, если он был
-            toolbar.getMenu().clear();      // Очищаем меню
+            removeCurrentCustomTitleView();
+            toolbar.getMenu().clear();
+            logger.debug(TAG, "NavController: Custom title view removed and menu cleared for " + destLabelString);
 
-            // Устанавливаем стандартный заголовок, если он есть в NavGraph
-            // и если фрагмент сам не установит кастомный заголовок позже
-            CharSequence destinationLabel = destination.getLabel();
-            if (destinationLabel != null && !destinationLabel.toString().isEmpty()) {
-                toolbar.setTitle(destinationLabel);
+            if (!destLabelString.isEmpty() &&
+                    !destLabelString.equalsIgnoreCase("null") &&
+                    !destLabelString.startsWith("@")) {
+                toolbar.setTitle(destLabelString);
+                logger.debug(TAG, "NavController: Toolbar title set to '" + destLabelString + "' for destination ID " + destIdString);
             } else {
-                toolbar.setTitle(""); // Очищаем заголовок, если label нет
+                try {
+                    toolbar.setTitle(getString(R.string.app_name));
+                    logger.debug(TAG, "NavController: Toolbar title set to app name because destination label was: '" + destLabelString + "' for destination ID " + destIdString);
+                } catch (Exception e) {
+                    toolbar.setTitle("");
+                    logger.warn(TAG, "NavController: Toolbar title cleared (app name not found or error) for destination ID " + destIdString + " (original label: '" + destLabelString + "')");
+                }
             }
             toolbar.setSubtitle(null);
-            // ------------------------------------
         });
 
         if (snackbarManager != null) {
             snackbarManager.getMessagesEvent().observe(this, snackbarMessage -> {
                 if (snackbarMessage != null && snackbarMessage.getMessage() != null && !snackbarMessage.getMessage().isEmpty()) {
+                    logger.info(TAG, "SnackbarManager: Showing message '" + snackbarMessage.getMessage() + "' with duration " + snackbarMessage.getDuration());
                     if (coordinatorLayout != null) {
                         Snackbar.make(coordinatorLayout, snackbarMessage.getMessage(), snackbarMessage.getDuration()).show();
+                    } else {
+                        logger.warn(TAG, "SnackbarManager: CoordinatorLayout is null, cannot show Snackbar.");
                     }
                 }
             });
@@ -139,41 +180,91 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(insets.left, 0, insets.right, insets.bottom);
             return windowInsets.inset(0, insets.top, 0, insets.bottom);
         });
+        logger.info(TAG, "onCreate: Activity creation finished.");
     }
 
     public void setCustomToolbarTitleView(@Nullable View customTitleView) {
-        removeCurrentCustomTitleView(); // Удаляем предыдущий
+        removeCurrentCustomTitleView();
         if (customTitleView != null) {
-            toolbar.setTitle(null); // Убираем стандартный текст заголовка
+            toolbar.setTitle(null);
             toolbar.setSubtitle(null);
-            // Устанавливаем параметры для центрирования, если это LinearLayout или FrameLayout
             if (customTitleView.getLayoutParams() instanceof MaterialToolbar.LayoutParams) {
                 ((MaterialToolbar.LayoutParams) customTitleView.getLayoutParams()).gravity = Gravity.START | Gravity.CENTER_VERTICAL;
             } else {
                 MaterialToolbar.LayoutParams params = new MaterialToolbar.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT, // или MATCH_PARENT, если нужно растянуть
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
                 );
-                params.gravity = Gravity.START | Gravity.CENTER_VERTICAL; // Выравнивание по левому краю и по центру вертикали
+                params.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
                 customTitleView.setLayoutParams(params);
             }
             toolbar.addView(customTitleView);
             this.currentCustomTitleView = customTitleView;
+            logger.debug(TAG, "setCustomToolbarTitleView: Custom view set.");
+        } else {
+            logger.debug(TAG, "setCustomToolbarTitleView: Custom view is null.");
         }
-        // Если customTitleView == null, стандартный title (если он был установлен из NavGraph) должен восстановиться,
-        // так как мы не устанавливаем его в "" здесь.
-        // NavController при смене destination снова вызовет toolbar.setTitle(destination.getLabel()).
     }
 
     private void removeCurrentCustomTitleView() {
         if (currentCustomTitleView != null && currentCustomTitleView.getParent() == toolbar) {
             toolbar.removeView(currentCustomTitleView);
+            logger.debug(TAG, "removeCurrentCustomTitleView: Custom view removed.");
         }
         currentCustomTitleView = null;
     }
 
     public FloatingActionButton getStandardFab() { return fabStandard; }
     public ExtendedFloatingActionButton getExtendedFab() { return fabExtended; }
-    public void setCustomTopBar(View customTopBarView) {} // Не используется
-    public void setCustomFab(View customFabView) {} // Не используется
+    public void setCustomTopBar(View customTopBarView) { logger.warn(TAG, "setCustomTopBar called, but not implemented in MainActivity XML version.");}
+    public void setCustomFab(View customFabView) {logger.warn(TAG, "setCustomFab called, but not implemented in MainActivity XML version.");}
+
+    public static void deleteAllDatabases(Context context) {
+        // Логика удаления баз данных (остается без изменений)
+        File dbDir = new File(context.getApplicationInfo().dataDir, "databases");
+        if (dbDir.exists() && dbDir.isDirectory()) {
+            String[] children = dbDir.list();
+            if (children != null) {
+                for (String child : children) {
+                    if (child.endsWith(".db")) {
+                        if (!new File(dbDir, child).delete()) {
+                            System.err.println("Failed to delete database file: " + child);
+                        } else {
+                            System.out.println("Deleted database file: " + child);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        logger.debug(TAG, "onStart");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        logger.debug(TAG, "onResume");
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        logger.debug(TAG, "onPause");
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        logger.debug(TAG, "onStop");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        logger.debug(TAG, "onDestroy");
+    }
 }

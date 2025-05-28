@@ -156,6 +156,38 @@ public class PomodoroSessionRepositoryImpl implements PomodoroSessionRepository 
                 ioExecutor);
     }
 
+    @Override
+    public PomodoroSession getSessionByIdSync(long sessionId) {
+        logger.debug(TAG, "SYNC Getting PomodoroSession by id=" + sessionId);
+        // Здесь проверка userId не нужна, т.к. ищем по глобальному ID сессии
+        return pomodoroSessionDao.getSessionByIdSync(sessionId);
+    }
+
+    @Override
+    public void updateSessionSync(PomodoroSession session) {
+        int userId = userSessionManager.getUserIdSync();
+        if (userId == UserSessionManager.NO_USER_ID || session.getUserId() != userId) {
+            logger.error(TAG, "SYNC Update session attempt for invalid user. Session User: " + session.getUserId() + ", Current User: " + userId);
+            throw new SecurityException("Attempt to update session of another user or user not logged in.");
+        }
+        logger.info(TAG, "SYNC Updating session: sessionId=" + session.getId());
+        int updatedRows = pomodoroSessionDao.updateSync(session);
+        if (updatedRows == 0) {
+            logger.warn(TAG, "SYNC PomodoroSession update affected 0 rows for sessionId=" + session.getId());
+        }
+    }
+
+    @Override
+    public long insertSessionSync(PomodoroSession session) {
+        int userId = userSessionManager.getUserIdSync();
+        if (userId == UserSessionManager.NO_USER_ID || session.getUserId() != userId) {
+            logger.error(TAG, "SYNC Insert session attempt for invalid user. Session User: " + session.getUserId() + ", Current User: " + userId);
+            throw new SecurityException("Attempt to insert session for another user or user not logged in.");
+        }
+        logger.info(TAG, "SYNC Inserting new session: taskId=" + session.getTaskId());
+        return pomodoroSessionDao.insertSync(session);
+    }
+
     // Вспомогательные функциональные интерфейсы
     @FunctionalInterface
     private interface UserSpecificOperation<T> {

@@ -33,4 +33,8 @@ public interface RewardDao {
 
     @Query("SELECT * FROM reward ORDER BY name ASC")
     LiveData<List<Reward>> getAllFlow();
+
+    @Query("SELECT * FROM reward WHERE id = :id")
+    Reward getByIdSync(long id);
+
 }

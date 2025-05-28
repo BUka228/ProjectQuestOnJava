@@ -2,6 +2,7 @@ package com.example.projectquestonjava.core.di;
 
 import android.app.NotificationManager;
 import android.content.Context;
+import androidx.core.content.ContextCompat; // Для getMainExecutor
 import com.example.projectquestonjava.core.managers.SnackbarManager;
 import com.example.projectquestonjava.core.utils.AndroidPermissionChecker;
 import com.example.projectquestonjava.core.utils.PermissionChecker;
@@ -30,7 +31,7 @@ public class AppModule {
 
     @Provides
     @Singleton
-    @DefaultExecutor // Для CPU-bound или общих фоновых задач
+    @DefaultExecutor
     public Executor provideDefaultExecutor() {
         return Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     }
@@ -41,6 +42,14 @@ public class AppModule {
     public ScheduledExecutorService provideScheduledExecutorService() {
         return Executors.newSingleThreadScheduledExecutor();
     }
+
+    @Provides
+    @Singleton
+    @MainExecutor // Добавляем квалификатор для главного потока
+    public Executor provideMainExecutor(@ApplicationContext Context context) {
+        return ContextCompat.getMainExecutor(context);
+    }
+
 
     @Provides
     @Singleton

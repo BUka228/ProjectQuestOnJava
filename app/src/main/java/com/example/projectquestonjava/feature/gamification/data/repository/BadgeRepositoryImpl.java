@@ -135,4 +135,40 @@ public class BadgeRepositoryImpl implements BadgeRepository {
         ListenableFuture<Integer> deleteFuture = gamificationBadgeCrossRefDao.deleteEarnedBadgesForGamification(gamificationId);
         return Futures.transform(deleteFuture, count -> null, MoreExecutors.directExecutor());
     }
+
+    // --- SYNC ---
+    @Override
+    public void insertEarnedBadgeSync(GamificationBadgeCrossRef crossRef) {
+        logger.debug(TAG, "SYNC Inserting earned badge: gamiId=" + crossRef.getGamificationId() + ", badgeId=" + crossRef.getBadgeId());
+        try {
+            gamificationBadgeCrossRefDao.insertSync(crossRef);
+        } catch (Exception e) {
+            logger.error(TAG, "Error SYNC inserting earned badge", e);
+            throw new RuntimeException("Failed to SYNC insert earned badge", e);
+        }
+    }
+
+    @Override
+    public Badge getBadgeByIdSync(long badgeId) {
+        logger.debug(TAG, "SYNC Getting badge by id=" + badgeId);
+        try {
+            return badgeDao.getBadgeByIdSync(badgeId);
+        } catch (Exception e) {
+            logger.error(TAG, "Error SYNC getting badge by id=" + badgeId, e);
+            return null; // или throw
+        }
+    }
+
+
+    @Override
+    public List<GamificationBadgeCrossRef> getEarnedBadgesSync(long gamificationId) {
+        logger.debug(TAG, "SYNC Getting earned badges for gamificationId=" + gamificationId);
+        // DAO должен иметь getEarnedBadgesSync(gamificationId)
+        try {
+            return gamificationBadgeCrossRefDao.getEarnedBadgesSync(gamificationId);
+        } catch (Exception e) {
+            logger.error(TAG, "Error SYNC getting earned badges for gamiId=" + gamificationId, e);
+            return Collections.emptyList();
+        }
+    }
 }

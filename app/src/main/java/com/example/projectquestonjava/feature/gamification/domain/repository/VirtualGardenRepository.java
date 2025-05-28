@@ -16,5 +16,8 @@ public interface VirtualGardenRepository {
     ListenableFuture<Void> updateLastWateredForAllUserPlants(long gamificationId, LocalDateTime timestamp);
     ListenableFuture<Void> deleteVirtualGardenForGamification(long gamificationId);
 
+    // --- SYNC ---
+    long insertPlantSync(VirtualGarden plant);
     ListenableFuture<List<VirtualGarden>> getAllPlantsFuture();
+    List<VirtualGarden> getAllPlantsSync(long gamificationId);
 }

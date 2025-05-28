@@ -33,4 +33,16 @@ public interface BadgeDao {
 
     @Query("SELECT * FROM badge WHERE id = :badgeId")
     ListenableFuture<Badge> getBadgeById(long badgeId);
+
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    long insertSync(Badge badge);
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void insertAllSync(List<Badge> badges);
+
+    @Query("SELECT * FROM badge WHERE id = :badgeId")
+    Badge getBadgeByIdSync(long badgeId);
+
+
 }

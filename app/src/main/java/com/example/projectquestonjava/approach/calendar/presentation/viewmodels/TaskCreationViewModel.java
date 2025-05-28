@@ -1,6 +1,8 @@
 package com.example.projectquestonjava.approach.calendar.presentation.viewmodels;
 
 import android.net.Uri;
+import android.os.Build;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
@@ -13,6 +15,7 @@ import androidx.lifecycle.ViewModel;
 import com.example.projectquestonjava.core.data.model.core.Tag;
 import com.example.projectquestonjava.core.di.DefaultDispatcher; // Предполагаем, что это Executor
 import com.example.projectquestonjava.core.di.IODispatcher; // И это тоже Executor
+import com.example.projectquestonjava.core.di.MainExecutor;
 import com.example.projectquestonjava.core.managers.SnackbarManager;
 import com.example.projectquestonjava.core.utils.DateTimeUtils;
 import com.example.projectquestonjava.core.utils.Logger;
@@ -53,26 +56,23 @@ public class TaskCreationViewModel extends ViewModel {
     private final CreateCalendarTaskUseCase createCalendarTaskUseCase;
     private final UpdateCalendarTaskUseCase updateCalendarTaskUseCase;
     private final GetTaskInputForEditUseCase getTaskInputForEditUseCase;
-    private final GetAllTagsUseCase getAllTagsUseCase; // Теперь возвращает LiveData
+    private final GetAllTagsUseCase getAllTagsUseCase;
     private final AddTagUseCase addTagUseCase;
     private final DeleteTagsUseCase deleteTagsUseCase;
     private final DateTimeUtils dateTimeUtils;
-    @IODispatcher private final Executor ioExecutor; // Для операций с БД
-    private final Executor mainExecutor; // Для обновлений LiveData из фоновых потоков
+    @IODispatcher private final Executor ioExecutor;
+    private final Executor mainExecutor;
     private final Logger logger;
     private final SnackbarManager snackbarManager;
 
-    private final Long taskId; // Может быть null
+    private final Long taskId; // Должно быть final
     private final boolean isEditMode;
 
-    // --- LiveData для UI ---
     private final MutableLiveData<TaskCreationState> _uiStateLiveData;
     public final LiveData<TaskCreationState> uiStateLiveData;
 
-    // LiveData для списка всех тегов
     public final LiveData<Loadable<List<Tag>>> allTagsLoadableLiveData;
 
-    // Объединенное состояние
     private final MediatorLiveData<CombinedState> _combinedStateLiveData = new MediatorLiveData<>();
     public LiveData<CombinedState> combinedStateLiveData = _combinedStateLiveData;
 
@@ -82,11 +82,12 @@ public class TaskCreationViewModel extends ViewModel {
             CreateCalendarTaskUseCase createCalendarTaskUseCase,
             UpdateCalendarTaskUseCase updateCalendarTaskUseCase,
             GetTaskInputForEditUseCase getTaskInputForEditUseCase,
-            GetAllTagsUseCase getAllTagsUseCase, // UseCase
+            GetAllTagsUseCase getAllTagsUseCase,
             AddTagUseCase addTagUseCase,
             DeleteTagsUseCase deleteTagsUseCase,
             DateTimeUtils dateTimeUtils,
-            @IODispatcher Executor ioExecutor, // Для фоновых задач
+            @IODispatcher Executor ioExecutor,
+            @MainExecutor Executor mainExecutorInjected,
             SavedStateHandle savedStateHandle,
             SnackbarManager snackbarManager,
             Logger logger) {
@@ -98,47 +99,58 @@ public class TaskCreationViewModel extends ViewModel {
         this.deleteTagsUseCase = deleteTagsUseCase;
         this.dateTimeUtils = dateTimeUtils;
         this.ioExecutor = ioExecutor;
-        this.mainExecutor = MoreExecutors.directExecutor(); // Или ContextCompat.getMainExecutor(context) если есть context
+        this.mainExecutor = mainExecutorInjected;
         this.logger = logger;
         this.snackbarManager = snackbarManager;
 
-        String taskIdString = savedStateHandle.get("taskId");
-        this.taskId = (taskIdString != null) ? Long.parseLong(taskIdString) : null;
-        this.isEditMode = (this.taskId != null);
+        // --- ИСПРАВЛЕНИЕ ИНИЦИАЛИЗАЦИИ taskId ---
+        Long parsedTaskId = null; // Временная переменная
+        Object taskIdObject = savedStateHandle.get("taskId");
+        if (taskIdObject instanceof Long) {
+            parsedTaskId = (Long) taskIdObject;
+        } else if (taskIdObject instanceof String) {
+            try {
+                parsedTaskId = Long.parseLong((String) taskIdObject);
+            } catch (NumberFormatException e) {
+                logger.warn(TAG, "Could not parse taskId from String in SavedStateHandle: " + taskIdObject);
+                // parsedTaskId остается null
+            }
+        } else if (taskIdObject != null) { // Если не Long, не String, но и не null
+            logger.warn(TAG, "Unexpected type for taskId in SavedStateHandle: " + taskIdObject.getClass().getName());
+            // parsedTaskId остается null
+        }
+        // Если taskIdObject был null (ключ отсутствует или значение null), parsedTaskId останется null
+
+        this.taskId = parsedTaskId; // Однократное присвоение final переменной
+        // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
+
+        this.isEditMode = (this.taskId != null && this.taskId != -1L);
+        logger.debug(TAG, "ViewModel initialized. Parsed TaskId: " + this.taskId + ", isEditMode: " + this.isEditMode);
 
         TaskInput initialInput = TaskInput.EMPTY.copy(
-                null, // id
-                "",   // title
-                "",   // description
-                dateTimeUtils.currentLocalDateTime().plusMinutes(15).withSecond(0).withNano(0), // dueDate
-                null, // recurrenceRule
-                Collections.emptySet() // selectedTags
+                null, "", "",
+                dateTimeUtils.currentLocalDateTime().plusMinutes(15).withSecond(0).withNano(0),
+                null, Collections.emptySet()
         );
         _uiStateLiveData = new MutableLiveData<>(
                 new TaskCreationState(initialInput, false, false, false, true, null, null, isEditMode)
         );
         uiStateLiveData = _uiStateLiveData;
 
-        // GetAllTagsUseCase.execute() возвращает LiveData<List<Tag>>
-        // Преобразуем в LiveData<Loadable<List<Tag>>>
         allTagsLoadableLiveData = Transformations.map(getAllTagsUseCase.execute(), tagsList -> {
             if (tagsList != null) {
                 logger.debug(TAG, "Tags loaded via LiveData: " + tagsList.size());
                 TaskCreationState currentUi = _uiStateLiveData.getValue();
                 if (isEditMode && currentUi != null && !currentUi.isLoading() && currentUi.getTaskInput().getId() != null) {
-                    // Попытка обновить выбранные теги, если задача уже загружена
                     updateSelectedTagsFromLoadedList(tagsList, currentUi.getTaskInput());
                 }
                 return new Loadable.Success<>(tagsList);
             } else {
                 logger.warn(TAG, "Tags list from LiveData is null.");
-                // Можно вернуть Loadable.Error или Loadable.Success с пустым списком,
-                // в зависимости от того, как хотим обрабатывать null от DAO.
                 return new Loadable.Success<>(Collections.emptyList());
             }
         });
 
-        // Настройка MediatorLiveData
         _combinedStateLiveData.addSource(_uiStateLiveData, uiState -> {
             Loadable<List<Tag>> currentTags = allTagsLoadableLiveData.getValue();
             if (uiState != null && currentTags != null) {
@@ -151,28 +163,23 @@ public class TaskCreationViewModel extends ViewModel {
                 _combinedStateLiveData.setValue(new CombinedState(currentUiState, tagsLoadable));
             }
         });
-        // Инициализация MediatorLiveData начальными значениями, если они уже есть
         if (_uiStateLiveData.getValue() != null && allTagsLoadableLiveData.getValue() != null) {
             _combinedStateLiveData.setValue(new CombinedState(_uiStateLiveData.getValue(), allTagsLoadableLiveData.getValue()));
         }
-
         loadInitialData();
     }
 
     private void loadInitialData() {
-        logger.debug(TAG, "loadInitialData called. Edit mode: " + isEditMode + ", Task ID: " + taskId);
-        // Состояние загрузки уже установлено в конструкторе
-        if (isEditMode && taskId != null) {
-            loadExistingTaskInternal(taskId);
+        logger.debug(TAG, "loadInitialData called. Edit mode: " + isEditMode + ", Current Task ID in ViewModel: " + this.taskId);
+        if (isEditMode && this.taskId != null) { // this.taskId теперь корректно инициализирован
+            loadExistingTaskInternal(this.taskId);
         } else {
-            // Если не режим редактирования, просто убираем флаг загрузки из UI
             updateUiState(state -> state.copy(null,null,null,null, false, null, null, null));
         }
     }
 
     private void loadExistingTaskInternal(long id) {
         logger.debug(TAG, "Loading existing task with id=" + id);
-        // _uiStateLiveData.update уже установлен isLoading=true
         ListenableFuture<ListenableFuture<TaskInput>> futureOfFuture = getTaskInputForEditUseCase.executeAsync(id);
 
         Futures.addCallback(futureOfFuture, new FutureCallback<ListenableFuture<TaskInput>>() {
@@ -209,21 +216,27 @@ public class TaskCreationViewModel extends ViewModel {
 
     private void updateSelectedTagsFromLoadedList(List<Tag> allTags, TaskInput currentLoadedInput) {
         TaskCreationState currentUiState = _uiStateLiveData.getValue();
-        if (currentUiState == null || !Objects.equals(currentLoadedInput.getId(), taskId)) return;
+        // Убеждаемся, что обновляем теги для ПРАВИЛЬНОЙ задачи
+        if (currentUiState == null || !Objects.equals(currentLoadedInput.getId(), this.taskId)) {
+            logger.warn(TAG, "Skipping updateSelectedTags: currentLoadedInput.id ("+currentLoadedInput.getId()+") != this.taskId ("+this.taskId+")");
+            return;
+        }
 
         Set<Long> selectedTagIds = currentLoadedInput.getSelectedTags().stream().map(Tag::getId).collect(Collectors.toSet());
         Set<Tag> fullSelectedTags = allTags.stream().filter(tag -> selectedTagIds.contains(tag.getId())).collect(Collectors.toSet());
 
+        // Сравниваем по содержимому, а не по ссылкам, т.к. currentLoadedInput.getSelectedTags() могли быть неполными
         if (!fullSelectedTags.equals(currentLoadedInput.getSelectedTags())) {
-            logger.debug(TAG, "Updating selected tags with full objects for loaded task.");
-            TaskInput updatedTaskInputWithFullTags = new TaskInput(
-                    currentLoadedInput.getId(), currentLoadedInput.getTitle(), currentLoadedInput.getDescription(),
-                    currentLoadedInput.getDueDate(), currentLoadedInput.getRecurrenceRule(), fullSelectedTags
+            logger.debug(TAG, "Updating selected tags with full objects for loaded task ID: " + currentLoadedInput.getId());
+            TaskInput updatedTaskInputWithFullTags = currentLoadedInput.copy(
+                    null, null, null, null, null, fullSelectedTags
             );
-            // Обновляем только taskInput в текущем состоянии
             updateUiState(state -> state.copy(updatedTaskInputWithFullTags, null,null,null,null,null,null, null));
+        } else {
+            logger.debug(TAG, "Selected tags are already full objects for task ID: " + currentLoadedInput.getId());
         }
     }
+
 
     private void updateUiState(UiStateUpdater updater) {
         TaskCreationState currentState = _uiStateLiveData.getValue();
@@ -240,7 +253,6 @@ public class TaskCreationViewModel extends ViewModel {
     private void updateTaskInput(TaskInputUpdater updater) {
         updateUiState(state -> {
             TaskInput currentTaskInput = state.getTaskInput();
-            // Создаем копию для изменения, чтобы не модифицировать существующий объект в LiveData
             TaskInput mutableCopy = new TaskInput(
                     currentTaskInput.getId(), currentTaskInput.getTitle(), currentTaskInput.getDescription(),
                     currentTaskInput.getDueDate(), currentTaskInput.getRecurrenceRule(), new HashSet<>(currentTaskInput.getSelectedTags())
@@ -292,19 +304,28 @@ public class TaskCreationViewModel extends ViewModel {
 
     public void toggleTagSelection(Tag tag) {
         updateTaskInput(taskInput -> {
-            Set<Tag> currentTags = new HashSet<>(taskInput.getSelectedTags()); // Создаем изменяемую копию
-            boolean removed = currentTags.removeIf(t -> t.getId() == tag.getId());
-            if (!removed) {
+            Set<Tag> currentTags = new HashSet<>(taskInput.getSelectedTags());
+            // Пытаемся найти тег по ID, чтобы корректно удалить, даже если объект другой
+            Tag tagToRemove = null;
+            for (Tag selectedTag : currentTags) {
+                if (selectedTag.getId() == tag.getId()) {
+                    tagToRemove = selectedTag;
+                    break;
+                }
+            }
+
+            if (tagToRemove != null) {
+                currentTags.remove(tagToRemove);
+            } else {
                 Loadable<List<Tag>> tagsLoadable = allTagsLoadableLiveData.getValue();
                 if (tagsLoadable instanceof Loadable.Success) {
-                    // Пытаемся найти полный объект Tag в загруженном списке
                     Tag fullTagFromList = ((Loadable.Success<List<Tag>>) tagsLoadable).getData().stream()
                             .filter(t -> t.getId() == tag.getId())
                             .findFirst()
-                            .orElse(tag); // Если не нашли, используем переданный (хотя это странно)
+                            .orElse(tag);
                     currentTags.add(fullTagFromList);
                 } else {
-                    currentTags.add(tag); // Если теги не загружены, добавляем как есть
+                    currentTags.add(tag);
                 }
             }
             taskInput.setSelectedTags(currentTags);
@@ -312,9 +333,10 @@ public class TaskCreationViewModel extends ViewModel {
         });
     }
 
+
     public void addTag(String tagName) {
         if (tagName == null || tagName.trim().isEmpty()) {
-            updateUiState(state -> state.copy(null, null, null, null, null, "Имя тега не может быть пустым", null, null));
+            snackbarManager.showMessage("Имя тега не может быть пустым");
             return;
         }
         Loadable<List<Tag>> tagsLoadable = allTagsLoadableLiveData.getValue();
@@ -322,7 +344,7 @@ public class TaskCreationViewModel extends ViewModel {
             boolean exists = ((Loadable.Success<List<Tag>>) tagsLoadable).getData().stream()
                     .anyMatch(t -> t.getName().equalsIgnoreCase(tagName.trim()));
             if (exists) {
-                updateUiState(state -> state.copy(null, null, null, null, null, "Тег с таким именем уже существует", null, null));
+                snackbarManager.showMessage("Тег с таким именем уже существует");
                 return;
             }
         }
@@ -332,16 +354,16 @@ public class TaskCreationViewModel extends ViewModel {
         Futures.addCallback(future, new FutureCallback<Long>() {
             @Override
             public void onSuccess(Long result) {
-                // LiveData тегов обновится автоматически, что вызовет обновление allTagsLoadableLiveData
-                // и, следовательно, _combinedStateLiveData. Snackbar об успехе не нужен тут.
                 logger.info(TAG, "Tag '" + tagName + "' added successfully with id " + result);
+                snackbarManager.showMessage("Тег '" + tagName + "' добавлен");
+                // LiveData тегов обновится автоматически
             }
             @Override
             public void onFailure(@NonNull Throwable t) {
                 logger.error(TAG, "Failed to add tag '" + tagName + "'", t);
-                updateUiState(state -> state.copy(null, null, null, null, null, toUserFriendlyMessage(t), null, null));
+                snackbarManager.showMessage(toUserFriendlyMessage(t));
             }
-        }, mainExecutor); // Коллбэк на mainExecutor для обновления UI
+        }, mainExecutor);
     }
 
     public void deleteSelectedTags() {
@@ -351,17 +373,20 @@ public class TaskCreationViewModel extends ViewModel {
         List<Tag> tagsToDelete = new ArrayList<>(currentState.getTaskInput().getSelectedTags());
         updateTaskInput(input -> { input.setSelectedTags(Collections.emptySet()); return input; });
 
-        logger.debug(TAG, "Deleting selected tags: " + tagsToDelete.stream().map(Tag::getId).collect(Collectors.toList()));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            logger.debug(TAG, "Deleting selected tags: " + tagsToDelete.stream().map(Tag::getId).toList());
+        }
         ListenableFuture<Void> future = deleteTagsUseCase.execute(tagsToDelete);
         Futures.addCallback(future, new FutureCallback<Void>() {
             @Override
-            public void onSuccess(Void result) { /* LiveData тегов обновится */ }
+            public void onSuccess(Void result) {
+                snackbarManager.showMessage(tagsToDelete.size() + " тег(а/ов) удалено");
+            }
             @Override
             public void onFailure(@NonNull Throwable t) {
                 logger.error(TAG, "Failed to delete selected tags", t);
-                updateUiState(state -> state.copy(null, null, null, null, null, toUserFriendlyMessage(t), null, null));
-                // TODO: Возможно, стоит откатить удаление из UI, если удаление на бэке не удалось,
-                // но это усложнит логику. Проще будет перезагрузить теги.
+                snackbarManager.showMessage(toUserFriendlyMessage(t));
+                // TODO: Потенциально откатить UI, если удаление не удалось, перезагрузив теги
             }
         }, mainExecutor);
     }
@@ -374,25 +399,24 @@ public class TaskCreationViewModel extends ViewModel {
 
         logger.debug(TAG, "Saving task (Edit mode: " + isEditMode + "): " + taskInputToSave.getTitle());
 
-        ListenableFuture<Long> createFuture = null;
-        ListenableFuture<Void> updateFuture = null;
+        ListenableFuture<?> finalFuture;
         final TaskCreationEvent successEvent;
 
         if (isEditMode) {
-            if (taskId == null) {
-                logger.error(TAG, "Task ID is null in edit mode!");
-                updateUiState(state -> state.copy(null, null, null, null, false, "Ошибка: ID задачи отсутствует.", null, null));
+            if (this.taskId == null) {
+                logger.error(TAG, "Task ID is null in edit mode logic inside saveTask!");
+                updateUiState(state -> state.copy(null, null, null, null, false, "Критическая ошибка: ID задачи отсутствует для обновления.", null, null));
+                snackbarManager.showMessage("Критическая ошибка: ID задачи отсутствует.");
                 return;
             }
-            if (taskInputToSave.getId() == null) taskInputToSave.setId(taskId); // Убедимся, что ID установлен
-            updateFuture = updateCalendarTaskUseCase.execute(taskInputToSave);
+            if (taskInputToSave.getId() == null) taskInputToSave.setId(this.taskId);
+
+            finalFuture = updateCalendarTaskUseCase.execute(taskInputToSave);
             successEvent = TaskCreationEvent.TASK_UPDATED;
         } else {
-            createFuture = createCalendarTaskUseCase.execute(taskInputToSave);
+            finalFuture = createCalendarTaskUseCase.execute(taskInputToSave);
             successEvent = TaskCreationEvent.TASK_CREATED;
         }
-
-        ListenableFuture<?> finalFuture = isEditMode ? updateFuture : createFuture;
 
         Futures.addCallback(finalFuture, new FutureCallback<Object>() {
             @Override
@@ -403,10 +427,12 @@ public class TaskCreationViewModel extends ViewModel {
             }
             @Override
             public void onFailure(@NonNull Throwable t) {
-                logger.error(TAG, "Failed to save/update task", t);
-                updateUiState(state -> state.copy(null, null, null, null, false, toUserFriendlyMessage(t), null, null));
+                Throwable cause = t.getCause() != null ? t.getCause() : t;
+                logger.error(TAG, "Failed to save/update task. Original Cause: " + cause.getMessage(), cause);
+                updateUiState(state -> state.copy(null, null, null, null, false, toUserFriendlyMessage(cause), null, null));
+                snackbarManager.showMessage("Ошибка сохранения: " + toUserFriendlyMessage(cause));
             }
-        }, mainExecutor); // Используем mainExecutor для коллбэков, обновляющих UI
+        }, mainExecutor); // <-- ИСПОЛЬЗУЕМ mainExecutor
     }
 
     public void clearError() { updateUiState(state -> state.copy(null, null, null, null, null, null, null, null)); }
@@ -435,7 +461,6 @@ public class TaskCreationViewModel extends ViewModel {
     @Override
     protected void onCleared() {
         super.onCleared();
-        // Отписываемся от LiveData, если использовали observeForever (здесь не используется)
         logger.debug(TAG, "TaskCreationViewModel cleared.");
     }
 }

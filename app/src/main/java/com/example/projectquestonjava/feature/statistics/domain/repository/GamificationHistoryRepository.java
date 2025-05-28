@@ -12,4 +12,6 @@ public interface GamificationHistoryRepository {
     ListenableFuture<List<GamificationHistory>> getHistoryForPeriod(LocalDateTime startTime, LocalDateTime endTime);
     ListenableFuture<Long> insertHistoryEntry(GamificationHistory entry);
     ListenableFuture<Void> deleteHistoryForGamification(); // gamificationId будет браться из сессии в реализации
+    // --- SYNC ---
+    long insertHistoryEntrySync(GamificationHistory entry);
 }

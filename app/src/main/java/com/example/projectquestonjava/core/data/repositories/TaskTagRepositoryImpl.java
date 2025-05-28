@@ -59,4 +59,27 @@ public class TaskTagRepositoryImpl  implements TaskTagRepository {
     public ListenableFuture<Void> insertAllTaskTag(List<TaskTagCrossRef> crossRefs) {
         return taskTagCrossRefDao.insertAllTaskTag(crossRefs);
     }
+
+    // --- РЕАЛИЗАЦИИ SYNC МЕТОДОВ ---
+    @Override
+    public void insertAllTaskTagSync(List<TaskTagCrossRef> crossRefs) {
+        logger.debug("TaskTagRepoImpl", "SYNC Inserting " + crossRefs.size() + " task-tag cross refs.");
+        try {
+            taskTagCrossRefDao.insertAllTaskTagSync(crossRefs);
+        } catch (Exception e) {
+            logger.error("TaskTagRepoImpl", "Error SYNC inserting task-tag cross refs", e);
+            throw new RuntimeException("Sync insertAllTaskTag failed", e);
+        }
+    }
+
+    @Override
+    public void deleteTaskTagsByTaskIdSync(long taskId) {
+        logger.debug("TaskTagRepoImpl", "SYNC Deleting task-tag cross refs for taskId=" + taskId);
+        try {
+            taskTagCrossRefDao.deleteTaskTagsByTaskIdSync(taskId);
+        } catch (Exception e) {
+            logger.error("TaskTagRepoImpl", "Error SYNC deleting task-tag cross refs for taskId=" + taskId, e);
+            throw new RuntimeException("Sync deleteTaskTagsByTaskId failed", e);
+        }
+    }
 }

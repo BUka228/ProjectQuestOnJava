@@ -71,14 +71,14 @@
                 tools:text="Очень важная задача на утро с длинным описанием"/>
 
             <com.google.android.material.chip.ChipGroup
-                android:id="@+id/chipGroup_task_tags_planning"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                app:singleLine="true"
-                app:chipSpacingHorizontal="4dp"
-                android:visibility="gone"
-                tools:visibility="visible"/>
+                android:id="@+id/chip_group_task_tags_planning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            app:singleLine="true"
+            app:chipSpacingHorizontal="4dp"
+            android:visibility="gone"
+            tools:visibility="visible"/>
 
             <Space
                 android:id="@+id/spacer_tags_planning_end"

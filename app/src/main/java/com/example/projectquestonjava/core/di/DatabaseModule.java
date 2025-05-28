@@ -54,11 +54,6 @@ public class DatabaseModule {
                 .build();
     }
 
-    @Provides
-    @Singleton // DatabaseInitializer не имеет зависимостей, можно сделать его @Singleton
-    public DatabaseInitializer provideDatabaseInitializer() {
-        return new DatabaseInitializer();
-    }
 
     // --- Провайдеры для DAO ---
     @Provides @Singleton public UserAuthDao provideUserAuthDao(AppDatabase db) { return db.userAuthDao(); }

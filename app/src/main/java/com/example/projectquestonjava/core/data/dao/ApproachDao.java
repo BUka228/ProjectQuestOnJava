@@ -7,20 +7,23 @@ import androidx.room.Insert;
 import androidx.room.Query;
 import androidx.room.Update;
 import com.example.projectquestonjava.core.data.model.core.Approach;
-
 import java.util.List;
 
 @Dao
 public interface ApproachDao {
-
+    // --- LiveData ---
     @Query("SELECT * FROM approach")
-    LiveData<List<Approach>> getAllApproaches(); 
+    LiveData<List<Approach>> getAllApproaches();
 
     @Query("SELECT * FROM approach WHERE id = :id")
-    LiveData<Approach> getApproachById(long id); 
+    LiveData<Approach> getApproachById(long id);
+
+    // --- SYNC (уже были для инициализаторов) ---
+    @Query("SELECT * FROM approach")
+    List<Approach> getAllApproachesSync();
 
     @Insert
-    long insertApproach(Approach approach);
+    long insertApproach(Approach approach); // Оставим этот как есть, т.к. вставка обычно одноразовая
 
     @Insert
     void insertAll(List<Approach> approaches);

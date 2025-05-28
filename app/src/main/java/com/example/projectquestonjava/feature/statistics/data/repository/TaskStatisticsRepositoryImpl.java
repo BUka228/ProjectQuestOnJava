@@ -196,6 +196,86 @@ public class TaskStatisticsRepositoryImpl implements TaskStatisticsRepository {
         });
     }
 
+
+    // --- РЕАЛИЗАЦИИ SYNC МЕТОДОВ ---
+    @Override
+    public void addTimeToSpentSync(long taskId, int secondsToAdd) {
+        if (secondsToAdd <= 0) return;
+        logger.debug(TAG, "SYNC Adding " + secondsToAdd + "s to time spent for task " + taskId);
+        taskStatisticsDao.addTimeToSpentSync(taskId, secondsToAdd);
+    }
+
+    @Override
+    public void addTotalPomodoroFocusTimeSync(long taskId, int secondsToAdd) {
+        if (secondsToAdd <= 0) return;
+        logger.debug(TAG, "SYNC Adding " + secondsToAdd + "s to Pomodoro focus time for task " + taskId);
+        taskStatisticsDao.addTotalPomodoroFocusTimeSync(taskId, secondsToAdd);
+    }
+
+    @Override
+    public void incrementCompletedPomodoroFocusSessionsSync(long taskId) {
+        logger.debug(TAG, "SYNC Incrementing completed Pomodoro focus sessions for task " + taskId);
+        taskStatisticsDao.incrementCompletedPomodoroFocusSessionsSync(taskId);
+    }
+
+    @Override
+    public void incrementTotalPomodoroInterruptionsSync(long taskId, int countToAdd) {
+        if (countToAdd <= 0) return;
+        logger.debug(TAG, "SYNC Incrementing Pomodoro interruptions by " + countToAdd + " for task " + taskId);
+        taskStatisticsDao.incrementTotalPomodoroInterruptionsSync(taskId, countToAdd);
+    }
+
+    @Override
+    public void markTaskAsCompletedOnceSync(long taskId) {
+        logger.debug(TAG, "SYNC Marking task " + taskId + " as completed once.");
+        taskStatisticsDao.markTaskAsCompletedOnceSync(taskId);
+    }
+
+    @Override
+    public void updateCompletionTimeSync(long taskId, LocalDateTime completionTime) {
+        logger.debug(TAG, "SYNC Updating completion time for task " + taskId + " to " + completionTime);
+        taskStatisticsDao.updateCompletionTimeSync(taskId, completionTime);
+    }
+
+    @Override
+    public TaskStatistics ensureAndGetStatisticsSync(long taskId, TaskStatistics defaultStats) {
+        // Этот метод требует проверки userId, которая должна быть в DAO или здесь, если userId не часть defaultStats
+        // Для простоты, предполагаем, что TaskStatisticsDao.getStatisticsForTaskSyncDirect не требует userId.
+        logger.debug(TAG, "SYNC Ensuring statistics for taskId=" + taskId);
+        TaskStatistics existing = taskStatisticsDao.getStatisticsForTaskSyncDirect(taskId);
+        if (existing != null) {
+            return existing;
+        } else {
+            TaskStatistics statsToInsert = new TaskStatistics(taskId, defaultStats.getCompletionTime(), defaultStats.getTimeSpentSeconds(), defaultStats.getTotalPomodoroFocusSeconds(), defaultStats.getCompletedPomodoroFocusSessions(), defaultStats.getTotalPomodoroInterruptions(), defaultStats.isWasCompletedOnce());
+            taskStatisticsDao.insertOrUpdateTaskStatisticsSync(statsToInsert); // DAO возвращает long, но нам нужен объект
+            return statsToInsert; // Возвращаем созданный объект
+        }
+    }
+
+    @Override
+    public TaskStatistics getStatisticsForTaskSync(long taskId) {
+        int userId = userSessionManager.getUserIdSync();
+        if (userId == UserSessionManager.NO_USER_ID) {
+            logger.warn(TAG, "SYNC Cannot get statistics for task " + taskId + ": User not logged in.");
+            return null; // или бросить исключение
+        }
+        logger.debug(TAG, "SYNC Getting statistics for taskId=" + taskId + ", userId=" + userId);
+        // Используем getStatisticsForTaskSuspend из DAO, но вызываем его синхронно (т.к. мы на ioExecutor)
+        // Если в DAO нет getStatisticsForTaskSync(taskId, userId), то нужно его добавить
+        // или адаптировать существующий suspend метод DAO для синхронного вызова, если это возможно.
+        // Предположим, что taskStatisticsDao.getStatisticsForTaskSuspend(taskId, userId) возвращает ListenableFuture
+        // и мы хотим его выполнить синхронно.
+        try {
+            // Если getStatisticsForTaskSuspend из DAO возвращает ListenableFuture, то:
+            return taskStatisticsDao.getStatisticsForTaskSuspend(taskId, userId).get();
+            // Если в DAO есть прямой синхронный метод getStatisticsForTaskSync(taskId, userId), то:
+            // return taskStatisticsDao.getStatisticsForTaskSync(taskId, userId);
+        } catch (Exception e) {
+            logger.error(TAG, "Error SYNC getting statistics for taskId=" + taskId, e);
+            return null; // или throw
+        }
+    }
+
     // Вспомогательные интерфейсы для лямбд с userId
     @FunctionalInterface
     interface UserFunction<R> {

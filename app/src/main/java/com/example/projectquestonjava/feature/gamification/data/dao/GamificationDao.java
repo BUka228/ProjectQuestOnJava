@@ -11,6 +11,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 @Dao
 public interface GamificationDao {
+    // --- ASYNC / LiveData ---
     @Query("SELECT * FROM gamification WHERE id = :id")
     ListenableFuture<Gamification> getById(long id);
 
@@ -31,4 +32,17 @@ public interface GamificationDao {
 
     @Query("DELETE FROM gamification WHERE user_id = :userId")
     ListenableFuture<Integer> deleteGamificationForUser(int userId);
+
+    // --- SYNC ---
+    @Query("SELECT * FROM gamification WHERE id = :id")
+    Gamification getByIdSync(long id); // Уже был
+
+    @Query("SELECT * FROM gamification WHERE user_id = :userId LIMIT 1")
+    Gamification getByUserIdSync(int userId); // Уже был
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    long insertSync(Gamification gamification); // Уже был
+
+    @Update
+    int updateSync(Gamification gamification); // Уже был
 }

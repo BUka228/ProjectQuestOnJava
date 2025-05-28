@@ -26,4 +26,21 @@ public interface SubtaskRelationDao {
 
     @Delete
     ListenableFuture<Integer> deleteSubtaskRelation(SubtaskRelation relation);
+
+
+    // --- SYNC ---
+    @Query("SELECT * FROM subtask_relation WHERE parent_task_id = :parentTaskId ORDER BY `order` ASC")
+    List<SubtaskRelation> getSubtasksForParentSync(long parentTaskId);
+
+    @Query("SELECT * FROM subtask_relation WHERE child_task_id = :childTaskId LIMIT 1")
+    SubtaskRelation getParentForSubtaskSync(long childTaskId);
+
+    @Insert
+    void insertSubtaskRelationSync(SubtaskRelation relation);
+
+    @Update
+    int updateSubtaskRelationSync(SubtaskRelation relation);
+
+    @Delete
+    int deleteSubtaskRelationSync(SubtaskRelation relation);
 }

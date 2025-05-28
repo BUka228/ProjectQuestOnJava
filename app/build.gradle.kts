@@ -27,11 +27,21 @@ android {
         //         arguments += ["room.incremental": "true"]
         //     }
         // }
+
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments.put("room.schemaLocation", "$projectDir/schemas".toString())
+                arguments.put("room.incremental", "true")
+            }
+        }
     }
 
     buildTypes {
         debug {
+            isJniDebuggable = true
             isDebuggable = true
+
+            buildConfigField("boolean", "CUSTOM_DEBUG_FLAG", "true" )
         }
         release {
             isMinifyEnabled = false
@@ -39,6 +49,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            buildConfigField("boolean", "CUSTOM_DEBUG_FLAG", "true" )
         }
     }
     compileOptions {
@@ -48,6 +59,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 
     packaging {
@@ -99,9 +111,9 @@ dependencies {
     implementation(libs.androidx.datastore.rxjava3)
     implementation("androidx.datastore:datastore-preferences-rxjava3:1.0.0")
 
+    implementation("org.slf4j:slf4j-api:1.7.36")
+    implementation("com.github.tony19:logback-android:2.0.0")
 
-    // Timber (Логгирование)
-    implementation(libs.timber)
 
     // BCrypt (Хеширование паролей)
     implementation(libs.bcrypt)

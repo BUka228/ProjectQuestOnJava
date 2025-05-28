@@ -101,4 +101,39 @@ public class CalendarParamsRepositoryImpl implements CalendarParamsRepository {
         return calendarTaskDao.getParamsForTasks(taskIds);
 
     }
+
+
+    // --- РЕАЛИЗАЦИИ SYNC МЕТОДОВ ---
+    @Override
+    public long insertParamsSync(CalendarParams params) {
+        logger.debug(TAG, "SYNC Inserting CalendarParams for taskId=" + params.getTaskId());
+        try {
+            return calendarTaskDao.insertCalendarParamsSync(params);
+        } catch (Exception e) {
+            logger.error(TAG, "Error SYNC inserting CalendarParams for taskId=" + params.getTaskId(), e);
+            throw new RuntimeException("Sync insert failed", e); // Пробрасываем, чтобы транзакция откатилась
+        }
+    }
+
+    @Override
+    public void updateParamsSync(CalendarParams params) {
+        logger.debug(TAG, "SYNC Updating CalendarParams for taskId=" + params.getTaskId());
+        try {
+            calendarTaskDao.updateCalendarParamsSync(params);
+        } catch (Exception e) {
+            logger.error(TAG, "Error SYNC updating CalendarParams for taskId=" + params.getTaskId(), e);
+            throw new RuntimeException("Sync update failed", e);
+        }
+    }
+
+    @Override
+    public CalendarParams getParamsByTaskIdSync(long taskId) {
+        logger.debug(TAG, "SYNC Getting CalendarParams for taskId=" + taskId);
+        try {
+            return calendarTaskDao.getCalendarParamsByTaskIdSync(taskId);
+        } catch (Exception e) {
+            logger.error(TAG, "Error SYNC getting CalendarParams for taskId=" + taskId, e);
+            return null; // Или throw, если null недопустим
+        }
+    }
 }

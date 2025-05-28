@@ -1,0 +1,54 @@
+<configuration>
+
+    <!-- Аппендер для вывода в Logcat -->
+    <appender name="LOGCAT" class="ch.qos.logback.classic.android.LogcatAppender">
+        <encoder>
+            <!--
+                %d{HH:mm:ss.SSS} - дата и время
+                [%thread] - имя потока
+                %-5level - уровень логирования (DEBUG, INFO, и т.д.), выровненный по левому краю до 5 символов
+                %logger{36} - имя логгера (класса), сокращенное до 36 символов
+                %M - имя метода
+                %L - номер строки
+                - %msg%n - сообщение и перенос строки
+            -->
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!--
+        Аппендер для вывода в файл (опционально).
+        Полезно для сбора логов в релизных сборках или для детального анализа.
+        Убедись, что у приложения есть права на запись, если используешь внешний сторадж.
+        Для внутреннего хранилища права обычно не нужны.
+    -->
+    <!--
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${CONTEXT_NAME}/logs/app.log</file> <!- Путь к файлу лога ->
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!- ежедневная ротация ->
+            <fileNamePattern>${CONTEXT_NAME}/logs/app.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <!- хранить логи за последние 7 дней ->
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    -->
+
+    <!--
+        Уровни логирования: TRACE, DEBUG, INFO, WARN, ERROR, ALL, OFF
+        Можно настроить разные уровни для разных пакетов.
+    -->
+    <logger name="com.example.projectquestonjava" level="DEBUG"/> <!-- Уровень для твоего приложения -->
+    <logger name="okhttp3" level="INFO"/> <!-- Пример: уровень для библиотеки OkHttp -->
+
+
+    <!-- Корневой логгер -->
+    <root level="DEBUG"> <!-- Уровень по умолчанию для всего, что не переопределено выше -->
+        <appender-ref ref="LOGCAT" />
+        <!-- <appender-ref ref="FILE" /> --> <!-- Раскомментируй, если нужен вывод в файл -->
+    </root>
+
+</configuration>

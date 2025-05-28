@@ -107,4 +107,10 @@ public class RewardRepositoryImpl implements RewardRepository {
         ListenableFuture<Integer> future = rewardDao.delete(reward);
         return Futures.transform(future, count -> null, MoreExecutors.directExecutor());
     }
+
+    @Override
+    public Reward getRewardByIdSync(long rewardId) {
+        logger.debug(TAG, "SYNC Getting reward by id=" + rewardId);
+        return rewardDao.getByIdSync(rewardId); // DAO должен иметь getByIdSync
+    }
 }

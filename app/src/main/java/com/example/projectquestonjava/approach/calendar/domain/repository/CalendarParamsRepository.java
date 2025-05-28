@@ -21,4 +21,8 @@ public interface CalendarParamsRepository {
 
     /** Получает LiveData параметров для списка задач. */
     LiveData<List<CalendarParams>> getParamsForTasksFlow(List<Long> taskIds);
+
+    long insertParamsSync(CalendarParams params); // Возвращает Long, т.к. DAO может вернуть null при ошибке, но Room insert вернет long (rowId)
+    void updateParamsSync(CalendarParams params); // или int
+    CalendarParams getParamsByTaskIdSync(long taskId);
 }

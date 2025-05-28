@@ -13,6 +13,8 @@ import com.example.projectquestonjava.core.utils.DateTimeUtils;
 import com.example.projectquestonjava.core.utils.Logger;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -51,6 +53,7 @@ public class TaskRepositoryImpl implements TaskRepository {
     private interface UserSpecificOperationLiveData<T> {
         LiveData<T> execute(int userId);
     }
+
 
     private <T> ListenableFuture<T> executeWithUserCheck(UserSpecificOperation<T> operation) {
         int userId = userSessionManager.getUserIdSync();
@@ -164,5 +167,65 @@ public class TaskRepositoryImpl implements TaskRepository {
             logger.debug(TAG, "Getting task with tags by id " + taskId + " for user " + userId);
             return taskDao.getTaskWithTagsById(taskId, userId);
         });
+    }
+
+    // --- РЕАЛИЗАЦИИ SYNC МЕТОДОВ ---
+    @Override
+    public long insertTaskSync(Task task) {
+        logger.debug(TAG, "Inserting task SYNC: " + task.getTitle());
+        // Предполагается, что этот метод будет вызван уже на фоновом потоке
+        return taskDao.insertTaskSync(task);
+    }
+
+    @Override
+    public Task getTaskByIdSync(long id) {
+        int userId = userSessionManager.getUserIdSync();
+        if (userId == UserSessionManager.NO_USER_ID) {
+            logger.warn(TAG, "Cannot get task SYNC by id " + id + ": User not logged in.");
+            return null; // или бросить исключение
+        }
+        logger.debug(TAG, "Getting task SYNC by id " + id + " for user " + userId);
+        return taskDao.getTaskByIdSync(id, userId);
+    }
+
+    @Override
+    public void updateTaskSync(Task task) {
+        int userId = userSessionManager.getUserIdSync();
+        // Дополнительная проверка, что обновляется задача текущего пользователя
+        if (userId == UserSessionManager.NO_USER_ID || task.getUserId() != userId) {
+            logger.error(TAG, "Cannot update task SYNC: User ID mismatch or not logged in. Task User: " + task.getUserId() + ", Current User: " + userId);
+            // Можно бросить исключение, если это критично
+            // throw new SecurityException("Attempt to update task of another user or user not logged in.");
+            return;
+        }
+        logger.debug(TAG, "Updating task SYNC: " + task.getId());
+        int updatedRows = taskDao.updateTaskSync(task);
+        if (updatedRows == 0) {
+            logger.warn(TAG, "Task SYNC update affected 0 rows for taskId=" + task.getId());
+        }
+    }
+
+    @Override
+    public void updateTaskStatusSync(long taskId, int userId, TaskStatus status, LocalDateTime updatedAt) {
+        // userId уже передан, UserSessionManager здесь не нужен напрямую для этой операции
+        if (userId == UserSessionManager.NO_USER_ID) {
+            logger.error(TAG, "Cannot update task status SYNC: Invalid userId (-1). TaskId: " + taskId);
+            // Можно бросить исключение или просто ничего не делать, в зависимости от логики
+            return;
+        }
+        logger.debug(TAG, "Updating task status SYNC for taskId=" + taskId + ", userId=" + userId + " to " + status);
+        int updatedRows = taskDao.updateTaskStatusSync(taskId, userId, status, updatedAt);
+        if (updatedRows == 0) {
+            logger.warn(TAG, "Task status SYNC update affected 0 rows for taskId=" + taskId + ", userId=" + userId);
+        }
+    }
+
+    @Override
+    public TaskWithTags getTaskWithTagsByIdSync(long taskId, int userId) {
+        if (userId == UserSessionManager.NO_USER_ID) {
+            logger.warn(TAG, "Cannot get task with tags SYNC for taskId=" + taskId + ": User not logged in (userId was -1).");
+        }
+        logger.debug(TAG, "Getting task with tags SYNC for taskId=" + taskId + ", userId=" + userId);
+        return taskDao.getTaskWithTagsByIdSync(taskId, userId);
     }
 }

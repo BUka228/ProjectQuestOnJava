@@ -86,4 +86,32 @@ public interface ChallengeDao {
 
     @Query("DELETE FROM gamification_challenge_progress WHERE challenge_id = :challengeId")
     ListenableFuture<Integer> deleteProgressForChallenge(long challengeId);
+
+
+    @Query("SELECT * FROM Challenge WHERE status = :status ORDER BY end_date ASC")
+    List<Challenge> getChallengesByStatusSync(ChallengeStatus status);
+
+    @Query("SELECT * FROM challenge_rule WHERE challenge_id = :challengeId")
+    List<ChallengeRule> getChallengeRulesByChallengeIdSync(long challengeId);
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void insertOrUpdateProgressSync(GamificationChallengeProgress progress);
+
+
+
+
+
+    @Query("SELECT * FROM Challenge WHERE id = :challengeId")
+    Challenge getChallengeByIdSync(long challengeId); // НОВЫЙ
+
+
+    @Query("SELECT * FROM gamification_challenge_progress WHERE gamification_id = :gamificationId AND challenge_id = :challengeId AND rule_id = :ruleId")
+    GamificationChallengeProgress getProgressSync(long gamificationId, long challengeId, long ruleId); // НОВЫЙ
+
+    @Query("SELECT * FROM gamification_challenge_progress WHERE gamification_id = :gamificationId AND challenge_id = :challengeId")
+    List<GamificationChallengeProgress> getAllProgressForChallengeSync(long gamificationId, long challengeId); // НОВЫЙ
+
+    @Query("UPDATE Challenge SET status = :status WHERE id = :challengeId")
+    int updateChallengeStatusSync(long challengeId, ChallengeStatus status);
+
 }

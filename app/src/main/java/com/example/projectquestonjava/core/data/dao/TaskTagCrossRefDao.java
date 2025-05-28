@@ -26,4 +26,12 @@ public interface TaskTagCrossRefDao {
 
     @Query("DELETE FROM task_tag_cross_ref WHERE tag_id = :tagId")
     ListenableFuture<Void> deleteTaskTagsByTagId(long tagId);
+
+
+    // --- SYNC ---
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void insertAllTaskTagSync(List<TaskTagCrossRef> taskTagCrossRefs);
+
+    @Query("DELETE FROM task_tag_cross_ref WHERE task_id = :taskId")
+    void deleteTaskTagsByTaskIdSync(long taskId);
 }

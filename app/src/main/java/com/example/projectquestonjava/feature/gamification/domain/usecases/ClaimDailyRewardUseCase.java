@@ -130,7 +130,7 @@ public class ClaimDailyRewardUseCase {
                     try {
                         unitOfWork.withTransaction((Callable<Void>) () -> {
                             // 7.1 Применяем выбранную награду
-                            ApplyRewardUseCase.RewardApplicationResult rewardResult = Futures.getDone(applyRewardUseCase.execute(gamificationId, finalRewardToApply));
+                            ApplyRewardUseCase.RewardApplicationResult rewardResult = Futures.getDone((java.util.concurrent.Future<ApplyRewardUseCase.RewardApplicationResult>) applyRewardUseCase.execute(gamificationId, finalRewardToApply));
                             int deltaXp = rewardResult.getDeltaXp();
                             int deltaCoins = rewardResult.getDeltaCoins();
                             logger.debug(TAG, "Applied reward '" + finalRewardToApply.getName() + "'. Delta(XP/Coins): (" + deltaXp + "/" + deltaCoins + ")");
@@ -161,7 +161,7 @@ public class ClaimDailyRewardUseCase {
 
                             // 7.5 Обновляем прогресс челленджей, связанных со стриком
                             GamificationEvent event = new GamificationEvent.StreakUpdated(newStreak);
-                            Futures.getDone(updateChallengeProgressUseCase.execute(gamificationId, event));
+                            Futures.getDone(updateChallengeProgressUseCase.execute(gamificationId, event, ioExecutor));
                             logger.debug(TAG, "Processed challenge progress for streak update (" + newStreak + ").");
 
                             logger.info(TAG, "Daily reward " + finalRewardToApply.getId() + " ('" + finalRewardToApply.getName() + "') for streak day " + newStreak + " claimed successfully.");

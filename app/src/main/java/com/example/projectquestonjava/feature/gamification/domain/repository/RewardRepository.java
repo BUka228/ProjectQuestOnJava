@@ -13,4 +13,6 @@ public interface RewardRepository {
     ListenableFuture<Void> insertAllRewards(List<Reward> rewards);
     ListenableFuture<Void> updateReward(Reward reward);
     ListenableFuture<Void> deleteReward(Reward reward);
+
+    Reward getRewardByIdSync(long rewardId);
 }

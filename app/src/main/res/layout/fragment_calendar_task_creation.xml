@@ -10,114 +10,121 @@
     <!-- TopAppBar будет добавлен MainActivity -->
 
     <androidx.core.widget.NestedScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        android:id="@+id/nestedScrollView_task_creation"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <LinearLayout
+    <LinearLayout
+        android:id="@+id/main_content_linear_layout_task_creation"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/textInputLayout_task_title"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Название">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/editText_task_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+            android:inputType="textCapSentences"
+            android:singleLine="true"/>
+    </com.google.android.material.textfield.TextInputLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/textInputLayout_task_title"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Название">
+    <Space android:layout_width="match_parent" android:layout_height="16dp"/>
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editText_task_title"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="textCapSentences"
-                    android:singleLine="true"/>
-            </com.google.android.material.textfield.TextInputLayout>
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/textInputLayout_task_description"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Описание">
 
-            <Space android:layout_width="match_parent" android:layout_height="16dp"/>
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/editText_task_description"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:gravity="top"
+            android:inputType="textMultiLine|textCapSentences"
+            android:maxLines="4"/>
+    </com.google.android.material.textfield.TextInputLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/textInputLayout_task_description"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Описание">
+    <Space android:layout_width="match_parent" android:layout_height="24dp"/>
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editText_task_description"
-                    android:layout_width="match_parent"
-                    android:layout_height="100dp"
-                    android:gravity="top"
-                    android:inputType="textMultiLine|textCapSentences"
-                    android:maxLines="4"/>
-            </com.google.android.material.textfield.TextInputLayout>
+    <!-- DateTimeSection -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Срок выполнения"
+        style="@style/TextAppearance.App.TitleMedium"
+        android:layout_marginBottom="8dp"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <Button
+            android:id="@+id/button_select_date"
+            style="@style/Widget.App.Button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            tools:text="28 мая 2025"
+            android:layout_marginEnd="8dp"/>
+        <Button
+            android:id="@+id/button_select_time"
+            style="@style/Widget.App.Button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            tools:text="12:53"
+            android:layout_marginStart="8dp"/>
+    </LinearLayout>
 
-            <Space android:layout_width="match_parent" android:layout_height="16dp"/>
+    <Space android:layout_width="match_parent" android:layout_height="24dp"/>
 
-            <!-- DateTimeSection -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Срок выполнения"
-                style="@style/TextAppearance.App.TitleMedium"
-                android:layout_marginBottom="8dp"/>
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-                <Button
-                    android:id="@+id/button_select_date"
-                    style="@style/Widget.App.Button.Outlined"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    tools:text="24 Авг 2023"/>
-                <Space android:layout_width="8dp" android:layout_height="wrap_content"/>
-                <Button
-                    android:id="@+id/button_select_time"
-                    style="@style/Widget.App.Button.Outlined"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    tools:text="14:30"/>
-            </LinearLayout>
+    <!-- RecurrenceSection -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Повторение"
+        style="@style/TextAppearance.App.TitleMedium"
+        android:layout_marginBottom="8dp"/>
+    <Button
+        android:id="@+id/button_select_recurrence"
+        style="@style/Widget.App.Button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        tools:text="Не повторяется"/>
 
-            <Space android:layout_width="match_parent" android:layout_height="16dp"/>
+    <Space android:layout_width="match_parent" android:layout_height="24dp"/>
 
-            <!-- RecurrenceSection -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Повторение"
-                style="@style/TextAppearance.App.TitleMedium"
-                android:layout_marginBottom="8dp"/>
-            <Button
-                android:id="@+id/button_select_recurrence"
-                style="@style/Widget.App.Button.Outlined"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                tools:text="Не повторяется"/>
-
-            <Space android:layout_width="match_parent" android:layout_height="16dp"/>
-
-            <!-- TagsSection -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Теги"
-                    style="@style/TextAppearance.App.TitleMedium"/>
-
-                <!-- Используем ImageButton -->
-                <ImageButton
-                    android:id="@+id/button_delete_selected_tags"
-                    android:layout_width="48dp"
+    <!-- TagsSection -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Теги"
+            style="@style/TextAppearance.App.TitleMedium"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"/>
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true">
+            <ImageButton
+                android:id="@+id/button_delete_selected_tags"
+                android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/delete"
                 app:tint="?attr/colorError"
@@ -125,54 +132,49 @@
                 android:contentDescription="Удалить выбранные теги"
                 android:visibility="gone"
                 tools:visibility="visible"/>
-
-                <ImageButton
-                    android:id="@+id/button_add_tag"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:src="@drawable/add"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Добавить тег" />
-            </LinearLayout>
-
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/chipGroup_task_creation_tags"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:chipSpacingHorizontal="8dp"
-                app:chipSpacingVertical="4dp"
-                android:layout_marginTop="8dp"/>
-
-            <TextView
-                android:id="@+id/textView_no_tags"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Теги не найдены"
-                style="@style/TextAppearance.App.BodyMedium"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:alpha="0.6"
-                android:visibility="gone"
-                tools:visibility="visible"
-                android:layout_marginTop="8dp"/>
-
-            <ProgressBar
-                android:id="@+id/progressBar_tags_loading"
-                style="?android:attr/progressBarStyleSmall"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:visibility="gone"
-                tools:visibility="visible"
-                android:layout_marginTop="8dp"/>
-
-            <!-- Отступ для FAB -->
-            <Space android:layout_width="match_parent" android:layout_height="80dp"/>
-
+            <ImageButton
+                android:id="@+id/button_add_tag"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/add"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Добавить тег"
+                app:tint="?attr/colorPrimary"/>
         </LinearLayout>
+    </RelativeLayout>
+
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/chipGroup_task_creation_tags"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:chipSpacingHorizontal="8dp"
+        app:chipSpacingVertical="4dp"
+        android:visibility="gone"
+        tools:visibility="visible"/>
+
+    <TextView
+        android:id="@+id/textView_no_tags"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Теги не найдены"
+        style="@style/TextAppearance.App.BodyMedium"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:alpha="0.6"
+        android:visibility="visible"
+        android:layout_marginTop="4dp"/>
+
+    <ProgressBar
+        android:id="@+id/progressBar_tags_loading"
+        style="?android:attr/progressBarStyleSmall"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:visibility="gone"
+        tools:visibility="visible"
+        android:layout_marginTop="8dp"/>
+
+    <!-- Отступ для FAB -->
+    <Space android:layout_width="match_parent" android:layout_height="96dp"/>
+</LinearLayout>
     </androidx.core.widget.NestedScrollView>
-
-    <!-- FAB будет добавлен MainActivity -->
-
-    <!-- Error Snackbar будет показан через CoordinatorLayout в MainActivity -->
-
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>

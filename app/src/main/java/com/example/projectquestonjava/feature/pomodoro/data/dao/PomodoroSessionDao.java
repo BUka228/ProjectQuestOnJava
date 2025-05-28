@@ -13,6 +13,7 @@ import java.util.List;
 
 @Dao
 public interface PomodoroSessionDao {
+    // --- ASYNC / LiveData ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     ListenableFuture<Long> insert(PomodoroSession session);
 
@@ -42,4 +43,14 @@ public interface PomodoroSessionDao {
 
     @Query("SELECT * FROM pomodoro_session WHERE id = :sessionId")
     ListenableFuture<PomodoroSession> getSessionById(long sessionId);
+
+    // --- SYNC ---
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    long insertSync(PomodoroSession session); // НОВЫЙ (или проверяем наличие)
+
+    @Query("SELECT * FROM pomodoro_session WHERE id = :sessionId")
+    PomodoroSession getSessionByIdSync(long sessionId); // Уже был
+
+    @Update
+    int updateSync(PomodoroSession session); // Уже был
 }

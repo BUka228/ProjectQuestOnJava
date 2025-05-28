@@ -5,6 +5,7 @@ import com.example.projectquestonjava.core.data.model.core.Tag;
 import com.example.projectquestonjava.core.data.model.enums.TaskStatus;
 import com.example.projectquestonjava.core.di.IODispatcher;
 import com.example.projectquestonjava.core.domain.repository.TaskRepository;
+import com.example.projectquestonjava.core.managers.UserSessionManager; // <--- ИМПОРТ
 import com.example.projectquestonjava.core.utils.DateTimeUtils;
 import com.example.projectquestonjava.core.utils.Logger;
 import com.example.projectquestonjava.feature.gamification.data.managers.GamificationDataStoreManager;
@@ -21,25 +22,23 @@ import com.example.projectquestonjava.feature.statistics.domain.repository.Globa
 import com.example.projectquestonjava.feature.statistics.domain.repository.TaskStatisticsRepository;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import javax.inject.Inject;
 
 public class ProcessTaskCompletionUseCase {
     private static final String TAG = "ProcessTaskCompletionUC";
-    // Константы перенесены из Kotlin объекта GamificationConstants
-    private static final String BASE_XP_REWARD_VALUE = GamificationConstants.POMODORO_FOCUS_XP_REWARD_VALUE; // Пример, возможно нужно другое значение
-    private static final String BASE_COIN_REWARD_VALUE = GamificationConstants.POMODORO_FOCUS_COIN_REWARD_VALUE; // Пример
+    private static final String BASE_XP_REWARD_VALUE = GamificationConstants.POMODORO_FOCUS_XP_REWARD_VALUE;
+    private static final String BASE_COIN_REWARD_VALUE = GamificationConstants.POMODORO_FOCUS_COIN_REWARD_VALUE;
     private static final String HISTORY_REASON_TASK_COMPLETED = GamificationConstants.HISTORY_REASON_TASK_COMPLETED;
 
 
     private final TaskRepository taskRepository;
     private final UnitOfWork unitOfWork;
+    private final UserSessionManager userSessionManager; // <--- ДОБАВЛЕНО ПОЛЕ
     private final GamificationDataStoreManager gamificationDataStoreManager;
     private final GamificationRepository gamificationRepository;
     private final TaskStatisticsRepository taskStatisticsRepository;
@@ -54,21 +53,16 @@ public class ProcessTaskCompletionUseCase {
 
     @Inject
     public ProcessTaskCompletionUseCase(
-            TaskRepository taskRepository,
-            UnitOfWork unitOfWork,
-            GamificationDataStoreManager gamificationDataStoreManager,
-            GamificationRepository gamificationRepository,
-            TaskStatisticsRepository taskStatisticsRepository,
-            GamificationHistoryRepository gamificationHistoryRepository,
-            GlobalStatisticsRepository globalStatisticsRepository,
-            ApplyRewardUseCase applyRewardUseCase,
-            UpdateChallengeProgressUseCase updateChallengeProgressUseCase,
-            ApplyGrowthPointsUseCase applyGrowthPointsUseCase,
-            DateTimeUtils dateTimeUtils,
-            @IODispatcher Executor ioExecutor,
-            Logger logger) {
+            TaskRepository taskRepository, UnitOfWork unitOfWork,
+            UserSessionManager userSessionManager, // <--- ВНЕДРЯЕМ UserSessionManager
+            GamificationDataStoreManager gamificationDataStoreManager, GamificationRepository gamificationRepository,
+            TaskStatisticsRepository taskStatisticsRepository, GamificationHistoryRepository gamificationHistoryRepository,
+            GlobalStatisticsRepository globalStatisticsRepository, ApplyRewardUseCase applyRewardUseCase,
+            UpdateChallengeProgressUseCase updateChallengeProgressUseCase, ApplyGrowthPointsUseCase applyGrowthPointsUseCase,
+            DateTimeUtils dateTimeUtils, @IODispatcher Executor ioExecutor, Logger logger) {
         this.taskRepository = taskRepository;
         this.unitOfWork = unitOfWork;
+        this.userSessionManager = userSessionManager; // <--- СОХРАНЯЕМ
         this.gamificationDataStoreManager = gamificationDataStoreManager;
         this.gamificationRepository = gamificationRepository;
         this.taskStatisticsRepository = taskStatisticsRepository;
@@ -83,126 +77,86 @@ public class ProcessTaskCompletionUseCase {
     }
 
     public ListenableFuture<Void> execute(long taskId, List<Tag> tags) {
-        return Futures.submitAsync(() -> {
+        return Futures.submit(() -> {
             try {
-                Long gamificationId = Futures.getDone(gamificationDataStoreManager.getGamificationIdFuture());
+                // Получаем userId один раз в начале
+                int userId = userSessionManager.getUserIdSync();
+                if (userId == UserSessionManager.NO_USER_ID) {
+                    logger.error(TAG, "Cannot process task completion: User not logged in.");
+                    throw new IllegalStateException("User not logged in for task completion processing.");
+                }
+
+                Long gamificationId = gamificationDataStoreManager.getGamificationIdSync();
                 LocalDateTime completionTimeUtc = dateTimeUtils.currentUtcDateTime();
 
                 unitOfWork.withTransaction((Callable<Void>) () -> {
-                    logger.debug(TAG, "Processing task completion: taskId=" + taskId + ", gamiId=" + (gamificationId != null ? gamificationId : "N/A"));
+                    logger.debug(TAG, "Processing task completion (SYNC): taskId=" + taskId + ", userId=" + userId + ", gamiId=" + (gamificationId != null ? gamificationId : "N/A"));
 
-                    // Шаг 1: Обновление статуса задачи
-                    Futures.getDone(taskRepository.updateTaskStatus(taskId, TaskStatus.DONE));
-                    logger.debug(TAG, "Task " + taskId + " status updated to DONE.");
+                    // --- ИСПОЛЬЗУЕМ userId И completionTimeUtc ---
+                    taskRepository.updateTaskStatusSync(taskId, userId, TaskStatus.DONE, completionTimeUtc);
+                    logger.debug(TAG, "Task " + taskId + " status updated to DONE (SYNC).");
 
-                    // Шаг 2: Статистика и проверка первого завершения
                     TaskStatistics defaultStats = new TaskStatistics(taskId, null, 0, 0, 0, 0, false);
-                    TaskStatistics statistics = Futures.getDone(taskStatisticsRepository.ensureAndGetStatistics(taskId, defaultStats));
+                    TaskStatistics statistics = taskStatisticsRepository.ensureAndGetStatisticsSync(taskId, defaultStats);
                     boolean wasCompletedOnce = statistics.isWasCompletedOnce();
-                    logger.debug(TAG, "Task " + taskId + " statistics ensured/retrieved: wasCompletedOnce = " + wasCompletedOnce);
 
                     int finalDeltaXp = 0;
                     int finalDeltaCoins = 0;
                     Gamification gamificationToUpdate = null;
 
-                    // Шаг 3: Геймификация (Только при первом завершении)
                     if (!wasCompletedOnce) {
-                        Futures.getDone(globalStatisticsRepository.incrementCompletedTasks());
-                        logger.debug(TAG, "Incremented global completed tasks.");
+                        globalStatisticsRepository.incrementCompletedTasksSync(); // userId уже используется внутри этого метода репозитория
+                        if (gamificationId != -1L) {
+                            gamificationToUpdate = gamificationRepository.getGamificationByIdSync(gamificationId);
+                            if (gamificationToUpdate == null) throw new IllegalStateException("Gamification data not found for ID " + gamificationId);
 
-                        if (gamificationId != null && gamificationId != -1L) {
-                            logger.info(TAG, "First completion of task " + taskId + ". Processing gamification...");
-                            gamificationToUpdate = Futures.getDone(gamificationRepository.getGamificationById(gamificationId));
-                            if (gamificationToUpdate == null) {
-                                throw new IllegalStateException("Gamification data not found for ID " + gamificationId);
-                            }
-
-                            Reward baseXpReward = new Reward("XP за задачу", "XP за задачу", RewardType.EXPERIENCE, BASE_XP_REWARD_VALUE);
-                            Reward baseCoinReward = new Reward("Монеты за задачу", "Монеты за задачу", RewardType.COINS, BASE_COIN_REWARD_VALUE);
-
-                            ApplyRewardUseCase.RewardApplicationResult xpResult = Futures.getDone(applyRewardUseCase.execute(gamificationId, baseXpReward));
+                            ApplyRewardUseCase.RewardApplicationResult xpResult = applyRewardUseCase.execute(gamificationId, new Reward("XP за задачу", "", RewardType.EXPERIENCE, BASE_XP_REWARD_VALUE));
                             finalDeltaXp += xpResult.getDeltaXp();
-                            ApplyRewardUseCase.RewardApplicationResult coinResult = Futures.getDone(applyRewardUseCase.execute(gamificationId, baseCoinReward));
+                            ApplyRewardUseCase.RewardApplicationResult coinResult = applyRewardUseCase.execute(gamificationId, new Reward("Монеты за задачу", "", RewardType.COINS, BASE_COIN_REWARD_VALUE));
                             finalDeltaCoins += coinResult.getDeltaCoins();
-                            logger.debug(TAG, "Applied base rewards. Current Delta(XP/Coins): (" + finalDeltaXp + "/" + finalDeltaCoins + ")");
 
                             GamificationEvent event = new GamificationEvent.TaskCompleted(taskId, tags);
-                            ApplyRewardUseCase.RewardApplicationResult challengeResult = Futures.getDone(updateChallengeProgressUseCase.execute(gamificationId, event));
+                            ApplyRewardUseCase.RewardApplicationResult challengeResult = updateChallengeProgressUseCase.executeSync(gamificationId, event);
                             finalDeltaXp += challengeResult.getDeltaXp();
                             finalDeltaCoins += challengeResult.getDeltaCoins();
-                            logger.debug(TAG, "Processed challenge progress. Challenge Delta(XP/Coins): (" + challengeResult.getDeltaXp() + "/" + challengeResult.getDeltaCoins() + "). Total Delta: (" + finalDeltaXp + "/" + finalDeltaCoins + ")");
 
-                            Futures.getDone(taskStatisticsRepository.markTaskAsCompletedOnce(taskId));
-                            logger.info(TAG, "Task " + taskId + " marked as completed once.");
+                            taskStatisticsRepository.markTaskAsCompletedOnceSync(taskId);
 
-                            Long selectedPlantId = Futures.getDone(gamificationDataStoreManager.getSelectedPlantIdFuture());
-                            if (selectedPlantId != null && selectedPlantId != -1L) {
-                                int pointsPerTask = 1; // Можно вынести в GamificationConstants
-                                try {
-                                    Futures.getDone(applyGrowthPointsUseCase.execute(selectedPlantId, pointsPerTask));
-                                    logger.debug(TAG, "Applied " + pointsPerTask + " GP for task " + taskId + " completion to plant " + selectedPlantId + ".");
-                                } catch (Exception growthError) {
-                                    logger.error(TAG, "Non-critical: Failed to apply GP for task completion to plant " + selectedPlantId, growthError);
-                                }
+                            long selectedPlantId = gamificationDataStoreManager.getSelectedPlantIdSync();
+                            if (selectedPlantId != -1L) {
+                                applyGrowthPointsUseCase.execute(selectedPlantId, GamificationConstants.GROWTH_POINTS_PER_COMPLETED_FOCUS_SESSION).get();
                             }
                         } else {
-                            logger.warn(TAG, "Gamification ID not found for first completion of task " + taskId + ". Skipping gamification effects.");
-                            Futures.getDone(taskStatisticsRepository.markTaskAsCompletedOnce(taskId));
-                            logger.info(TAG, "Task " + taskId + " marked as completed once (no gamification profile).");
+                            taskStatisticsRepository.markTaskAsCompletedOnceSync(taskId);
                         }
-                    } else {
-                        logger.info(TAG, "Task " + taskId + " was already completed once. Skipping gamification rewards/challenges/growth.");
                     }
+                    taskStatisticsRepository.updateCompletionTimeSync(taskId, completionTimeUtc);
 
-                    // Шаг 4: Обновление статистики задачи
-                    Futures.getDone(taskStatisticsRepository.updateCompletionTime(taskId, completionTimeUtc));
-                    logger.debug(TAG, "Updated completionTime in statistics for task " + taskId + ".");
-
-                    // Шаг 5: Сохранение итогового состояния геймификации
                     if (gamificationToUpdate != null) {
                         Gamification finalGamification = new Gamification(
                                 gamificationToUpdate.getId(), gamificationToUpdate.getUserId(),
-                                gamificationToUpdate.getLevel(), // Пересчет уровня в репозитории
-                                Math.max(0, gamificationToUpdate.getExperience() + finalDeltaXp),
+                                gamificationToUpdate.getLevel(), Math.max(0, gamificationToUpdate.getExperience() + finalDeltaXp),
                                 Math.max(0, gamificationToUpdate.getCoins() + finalDeltaCoins),
-                                gamificationToUpdate.getMaxExperienceForLevel(), // Пересчет в репозитории
-                                completionTimeUtc, // lastActive
-                                gamificationToUpdate.getCurrentStreak(),
-                                gamificationToUpdate.getLastClaimedDate(),
+                                gamificationToUpdate.getMaxExperienceForLevel(), completionTimeUtc,
+                                gamificationToUpdate.getCurrentStreak(), gamificationToUpdate.getLastClaimedDate(),
                                 gamificationToUpdate.getMaxStreak()
                         );
-                        Futures.getDone(gamificationRepository.updateGamification(finalGamification));
-                        logger.info(TAG, "Final Gamification state saved for user " + gamificationId + ". Applied Delta(XP/Coins): (" + finalDeltaXp + "/" + finalDeltaCoins + ")");
+                        gamificationRepository.updateGamificationSync(finalGamification);
+                        globalStatisticsRepository.updateLastActiveSync(); // userId используется внутри
 
-                        Futures.getDone(globalStatisticsRepository.updateLastActive());
-                        logger.debug(TAG, "Updated global last active time.");
-
-                        // Шаг 6: Запись в ИСТОРИЮ геймификации
                         if (finalDeltaXp != 0 || finalDeltaCoins != 0) {
-                            GamificationHistory historyEntry = new GamificationHistory(
-                                    0, gamificationId, completionTimeUtc,
-                                    finalDeltaXp, finalDeltaCoins,
+                            gamificationHistoryRepository.insertHistoryEntrySync(new GamificationHistory(
+                                    gamificationId, completionTimeUtc, finalDeltaXp, finalDeltaCoins,
                                     HISTORY_REASON_TASK_COMPLETED, taskId
-                            );
-                            try {
-                                Futures.getDone(gamificationHistoryRepository.insertHistoryEntry(historyEntry));
-                                logger.debug(TAG, "Gamification history entry created for task " + taskId + " completion.");
-                            } catch (Exception historyError) {
-                                logger.error(TAG, "Failed to insert Pomodoro gamification history", historyError);
-                            }
-                        } else {
-                            logger.debug(TAG, "No XP/Coin changes, skipping history entry.");
+                            ));
                         }
-                    } else {
-                        logger.debug(TAG, "No gamification profile to update or no significant changes occurred.");
                     }
-                    logger.info(TAG, "Task " + taskId + " completion processed successfully within transaction.");
-                    return null; // Для Callable<Void>
+                    return null;
                 });
-                return Futures.immediateFuture(null); // Успешное завершение
+                return null;
             } catch (Exception e) {
                 logger.error(TAG, "Failed to process task completion for taskId=" + taskId, e);
-                return Futures.immediateFailedFuture(e);
+                throw e;
             }
         }, ioExecutor);
     }

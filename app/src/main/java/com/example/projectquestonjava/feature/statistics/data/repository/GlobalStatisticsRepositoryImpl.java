@@ -127,4 +127,56 @@ public class GlobalStatisticsRepositoryImpl implements GlobalStatisticsRepositor
     private interface UserSpecificLiveDataOperation<T> {
         LiveData<T> apply(int userId);
     }
+
+    // --- РЕАЛИЗАЦИИ SYNC МЕТОДОВ ---
+    @Override
+    public void incrementTotalTasksSync() {
+        int userId = userSessionManager.getUserIdSync();
+        if (userId != UserSessionManager.NO_USER_ID) {
+            logger.debug(TAG, "SYNC Incrementing total tasks for user " + userId);
+            globalStatisticsDao.incrementTotalTasksSync(userId);
+        } else {
+            logger.warn(TAG, "SYNC Cannot increment total tasks: User not logged in.");
+        }
+    }
+
+    @Override
+    public void insertOrUpdateGlobalStatisticsSync(GlobalStatistics globalStatistics) {
+        logger.debug(TAG, "SYNC Inserting/Updating global statistics for userId=" + globalStatistics.getUserId());
+        globalStatisticsDao.insertOrUpdateGlobalStatisticsSync(globalStatistics);
+    }
+
+    @Override
+    public void incrementCompletedTasksSync() {
+        int userId = userSessionManager.getUserIdSync();
+        if (userId != UserSessionManager.NO_USER_ID) {
+            logger.debug(TAG, "SYNC Incrementing completed tasks for user " + userId);
+            globalStatisticsDao.incrementCompletedTasksSync(userId);
+        } else {
+            logger.warn(TAG, "SYNC Cannot increment completed tasks: User not logged in.");
+        }
+    }
+
+    @Override
+    public void addTotalTimeSpentSync(int timeToAdd) {
+        if (timeToAdd <= 0) return;
+        int userId = userSessionManager.getUserIdSync();
+        if (userId != UserSessionManager.NO_USER_ID) {
+            logger.debug(TAG, "SYNC Adding " + timeToAdd + " to total time spent for user " + userId);
+            globalStatisticsDao.addTotalTimeSpentSync(userId, timeToAdd);
+        } else {
+            logger.warn(TAG, "SYNC Cannot add total time spent: User not logged in.");
+        }
+    }
+
+    @Override
+    public void updateLastActiveSync() {
+        int userId = userSessionManager.getUserIdSync();
+        if (userId != UserSessionManager.NO_USER_ID) {
+            logger.debug(TAG, "SYNC Updating last active for user " + userId);
+            globalStatisticsDao.updateLastActiveSync(userId, dateTimeUtils.currentUtcDateTime());
+        } else {
+            logger.warn(TAG, "SYNC Cannot update last active: User not logged in.");
+        }
+    }
 }

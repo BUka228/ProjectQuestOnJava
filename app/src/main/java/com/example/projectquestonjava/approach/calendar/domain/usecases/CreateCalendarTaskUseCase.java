@@ -19,6 +19,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
@@ -26,10 +27,10 @@ import javax.inject.Inject;
 public class CreateCalendarTaskUseCase {
     private static final String TAG = "CreateCalendarTaskUseCase";
 
-    private final TaskRepository taskRepository;
-    private final CalendarParamsRepository calendarParamsRepository;
-    private final TaskTagRepository taskTagRepository;
-    private final GlobalStatisticsRepository globalStatisticsRepository;
+    private final TaskRepository taskRepository; // Должен иметь метод insertTaskSync
+    private final CalendarParamsRepository calendarParamsRepository; // Должен иметь метод insertParamsSync
+    private final TaskTagRepository taskTagRepository; // Должен иметь метод insertAllTaskTagSync
+    private final GlobalStatisticsRepository globalStatisticsRepository; // Должен иметь метод incrementTotalTasksSync
     private final TaskFactory taskFactory;
     private final CalendarParamsFactory calendarParamsFactory;
     private final UnitOfWork unitOfWork;
@@ -64,51 +65,66 @@ public class CreateCalendarTaskUseCase {
         this.logger = logger;
     }
 
-    // Вместо Result<Long> используем ListenableFuture<Long>, который может завершиться с исключением
     public ListenableFuture<Long> execute(TaskInput taskInput) {
-        // Выполняем всю логику на ioExecutor
-        return Futures.submit(() -> {
+        return Futures.submit(() -> { // Внешний вызов асинхронен
+            logger.debug(TAG, "execute started for task: " + taskInput.getTitle());
             try {
-                int userId = userSessionManager.getUserIdSync(); // Блокирующий вызов, но мы уже на ioExecutor
-                long workspaceId = workspaceSessionManager.getWorkspaceIdSync(); // Аналогично
+                int userId = userSessionManager.getUserIdSync();
+                long workspaceId = workspaceSessionManager.getWorkspaceIdSync();
+
+                logger.info(TAG, "Attempting task creation with UserId: " + userId + ", WorkspaceId: " + workspaceId);
 
                 if (userId == UserSessionManager.NO_USER_ID || workspaceId == 0L) {
-                    logger.error(TAG, "User or Workspace not set for task creation.");
-                    throw new IllegalStateException("User or Workspace not set");
+                    String errorMsg = "User or Workspace not set for task creation. UserId: " + userId + ", WorkspaceId: " + workspaceId;
+                    logger.error(TAG, errorMsg);
+                    throw new IllegalStateException(errorMsg);
                 }
                 logger.debug(TAG, "Creating task '" + taskInput.getTitle() + "' for userId=" + userId + ", workspaceId=" + workspaceId);
 
-                // Выполняем все операции с БД внутри транзакции
-                return unitOfWork.withTransaction(() -> {
-                    // 1. Task через TaskRepository
+                // Вся работа с БД выполняется СИНХРОННО внутри этого Callable,
+                // который сам выполняется на ioExecutor благодаря внешнему Futures.submit()
+                return unitOfWork.withTransaction((Callable<Long>) () -> {
+                    logger.debug(TAG, "Transaction started.");
+                    // 1. Task
                     Task taskToInsert = taskFactory.create(taskInput, workspaceId, userId);
-                    // .get() на ListenableFuture блокирует поток, что нормально внутри withTransaction на ioExecutor
-                    Long taskId = taskRepository.insertTask(taskToInsert).get();
-                    logger.debug(TAG, "Task inserted with id=" + taskId);
+                    logger.debug(TAG, "Task object created. Attempting insertTaskSync...");
+                    long taskId = taskRepository.insertTaskSync(taskToInsert); // ИСПОЛЬЗУЕМ СИНХРОННЫЙ МЕТОД
+                    logger.info(TAG, "Task inserted (SYNC) with id=" + taskId);
 
-                    // 2. Обновление Global Stats
-                    // .get() для ListenableFuture<Void> просто ждет завершения или бросает исключение
-                    globalStatisticsRepository.incrementTotalTasks().get();
-                    logger.debug(TAG, "Incremented global total tasks.");
 
-                    // 3. Params через CalendarParamsRepository
+                    // 2. Global Stats
+                    logger.debug(TAG, "Attempting to increment global total tasks (SYNC)...");
+                    globalStatisticsRepository.incrementTotalTasksSync(); // ИСПОЛЬЗУЕМ СИНХРОННЫЙ МЕТОД (void)
+                    logger.info(TAG, "Incremented global total tasks (SYNC).");
+
+
+                    // 3. Calendar Params
                     CalendarParams calendarParams = calendarParamsFactory.create(taskId, taskInput.getRecurrenceRule());
-                    calendarParamsRepository.insertParams(calendarParams).get();
-                    logger.debug(TAG, "CalendarParams inserted for taskId=" + taskId);
+                    logger.debug(TAG, "CalendarParams created. Attempting insertParamsSync for taskId=" + taskId);
+                    calendarParamsRepository.insertParamsSync(calendarParams); // ИСПОЛЬЗУЕМ СИНХРОННЫЙ МЕТОД (long или void)
+                    logger.info(TAG, "CalendarParams inserted (SYNC) for taskId=" + taskId);
 
-                    // 4. Теги через TaskTagRepository
+
+                    // 4. Tags
                     if (taskInput.getSelectedTags() != null && !taskInput.getSelectedTags().isEmpty()) {
                         List<TaskTagCrossRef> crossRefs = taskInput.getSelectedTags().stream()
                                 .map(tag -> new TaskTagCrossRef(taskId, tag.getId()))
                                 .collect(Collectors.toList());
-                        taskTagRepository.insertAllTaskTag(crossRefs).get();
-                        logger.debug(TAG, "Inserted " + crossRefs.size() + " tag cross refs for taskId=" + taskId);
+                        logger.debug(TAG, "Tag cross refs created ("+crossRefs.size()+"). Attempting insertAllTaskTagSync for taskId=" + taskId);
+                        taskTagRepository.insertAllTaskTagSync(crossRefs); // ИСПОЛЬЗUЕМ СИНХРОННЫЙ МЕТОД (void)
+                        logger.info(TAG, "Inserted " + crossRefs.size() + " tag cross refs (SYNC) for taskId=" + taskId);
+                    } else {
+                        logger.debug(TAG, "No tags selected for task " + taskId);
                     }
-                    return taskId; // Возвращаем ID созданной задачи
+                    logger.info(TAG, "Transaction completed successfully for task " + taskId);
+                    return taskId;
                 });
             } catch (Exception e) {
-                logger.error(TAG, "Failed to create task: " + taskInput.getTitle(), e);
-                throw e; // Пробрасываем исключение, чтобы ListenableFuture завершился с ошибкой
+                logger.error(TAG, "Failed to create task in CreateCalendarTaskUseCase: " + taskInput.getTitle() + ". Exception type: " + e.getClass().getName(), e);
+                if (e.getCause() != null) {
+                    logger.error(TAG, "Cause: " + e.getCause().getMessage(), e.getCause());
+                }
+                throw e;
             }
         }, ioExecutor);
     }

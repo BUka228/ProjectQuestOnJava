@@ -28,4 +28,17 @@ public interface CalendarTaskDao {
 
     @Delete
     ListenableFuture<Void> deleteCalendarParams(CalendarParams params);
+
+
+
+    // --- SYNC ---
+    @Query("SELECT * FROM calendar_params WHERE task_id = :taskId")
+    CalendarParams getCalendarParamsByTaskIdSync(long taskId);
+
+    @Insert
+    long insertCalendarParamsSync(CalendarParams params);
+
+    @Update
+    int updateCalendarParamsSync(CalendarParams params);
+
 }

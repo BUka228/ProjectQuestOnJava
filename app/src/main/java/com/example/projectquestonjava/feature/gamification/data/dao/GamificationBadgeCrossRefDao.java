@@ -36,4 +36,13 @@ public interface GamificationBadgeCrossRefDao {
 
     @Query("DELETE FROM gamification_badge_cross_ref WHERE badge_id = :badgeId")
     ListenableFuture<Integer> deleteEarnedBadgesForBadge(long badgeId);
+
+    // --- SYNC ---
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void insertSync(GamificationBadgeCrossRef crossRef);
+
+    @Query("SELECT * FROM gamification_badge_cross_ref WHERE gamification_id = :gamificationId")
+    List<GamificationBadgeCrossRef> getEarnedBadgesSync(long gamificationId);
+
+
 }

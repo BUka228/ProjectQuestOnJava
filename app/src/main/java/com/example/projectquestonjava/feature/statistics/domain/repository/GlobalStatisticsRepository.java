@@ -13,4 +13,11 @@ public interface GlobalStatisticsRepository {
     ListenableFuture<Void> incrementTotalWorkspaces();
     ListenableFuture<Void> addTotalTimeSpent(int timeToAdd);
     ListenableFuture<Void> updateLastActive();
+
+    void incrementTotalTasksSync(); // Для CreateCalendarTaskUseCase
+    // При необходимости можно добавить и другие Sync методы
+    void insertOrUpdateGlobalStatisticsSync(GlobalStatistics globalStatistics); // Для TestDataInitializer
+    void incrementCompletedTasksSync();
+    void addTotalTimeSpentSync(int timeToAdd);
+    void updateLastActiveSync();
 }

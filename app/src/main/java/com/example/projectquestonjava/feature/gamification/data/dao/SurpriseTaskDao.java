@@ -40,4 +40,8 @@ public interface SurpriseTaskDao {
 
     @Query("DELETE FROM surprise_task WHERE gamification_id = :gamificationId")
     ListenableFuture<Integer> deleteSurpriseTasksForGamification(long gamificationId);
+
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void insertAllSync(List<SurpriseTask> surpriseTasks);
 }

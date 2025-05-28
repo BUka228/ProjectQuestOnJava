@@ -12,4 +12,8 @@ public interface TaskTagRepository {
     ListenableFuture<Void> deleteTags(List<Tag> tags);
     ListenableFuture<Void> deleteTaskTagsByTaskId(long taskId);
     ListenableFuture<Void> insertAllTaskTag(List<TaskTagCrossRef> crossRefs);
+
+    // --- SYNC ---
+    void insertAllTaskTagSync(List<TaskTagCrossRef> crossRefs);
+    void deleteTaskTagsByTaskIdSync(long taskId);
 }

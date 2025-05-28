@@ -28,4 +28,8 @@ public interface GamificationHistoryDao {
 
     @Query("DELETE FROM gamification_history WHERE gamification_id = :gamificationId")
     ListenableFuture<Integer> deleteHistoryForGamification(long gamificationId);
+
+    // --- SYNC ---
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    long insertSync(GamificationHistory historyEntry);
 }

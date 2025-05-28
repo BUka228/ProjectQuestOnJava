@@ -148,4 +148,22 @@ public class GamificationRepositoryImpl implements GamificationRepository {
         ListenableFuture<Integer> deleteFuture = gamificationDao.deleteGamificationForUser(userId);
         return Futures.transform(deleteFuture, count -> null, MoreExecutors.directExecutor());
     }
+
+    @Override
+    public Gamification getGamificationByIdSync(long id) {
+        logger.debug(TAG, "SYNC Getting gamification by gamificationId=" + id);
+        // DAO уже должен иметь getByIdSync(id)
+        return gamificationDao.getByIdSync(id);
+    }
+
+    @Override
+    public void updateGamificationSync(Gamification gamification) {
+        logger.debug(TAG, "SYNC Updating gamification for userId=" + gamification.getUserId() + ", level=" + gamification.getLevel() + ", xp=" + gamification.getExperience());
+        Gamification updatedGamification = recalculateGamificationIfNeeded(gamification); // Эта логика остается
+        int updatedRows = gamificationDao.updateSync(updatedGamification); // DAO должен иметь updateSync
+        if (updatedRows == 0) {
+            logger.warn(TAG, "SYNC Gamification update affected 0 rows for gamificationId=" + gamification.getId());
+        }
+        logger.debug(TAG, "SYNC Gamification updated for userId=" + gamification.getUserId() + ". New state: level=" + updatedGamification.getLevel() + ", xp=" + updatedGamification.getExperience());
+    }
 }

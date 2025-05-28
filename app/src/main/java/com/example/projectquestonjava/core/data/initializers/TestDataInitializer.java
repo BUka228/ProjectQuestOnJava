@@ -13,7 +13,7 @@ import com.example.projectquestonjava.core.utils.Logger;
 import com.example.projectquestonjava.feature.gamification.data.dao.ChallengeDao;
 import com.example.projectquestonjava.feature.gamification.data.dao.SurpriseTaskDao;
 import com.example.projectquestonjava.feature.gamification.data.managers.GamificationDataStoreManager;
-import com.example.projectquestonjava.feature.gamification.data.model.Challenge; // Убедитесь, что создан Challenge.java
+import com.example.projectquestonjava.feature.gamification.data.model.Challenge;
 import com.example.projectquestonjava.feature.gamification.data.model.ChallengeRule;
 import com.example.projectquestonjava.feature.gamification.data.model.Gamification;
 import com.example.projectquestonjava.feature.gamification.data.model.GamificationChallengeProgress;
@@ -34,7 +34,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import timber.log.Timber; // или android.util.Log
 
 @Singleton
 public class TestDataInitializer {
@@ -47,8 +46,8 @@ public class TestDataInitializer {
     private static final ApproachName TEST_DEFAULT_APPROACH_NAME = ApproachName.CALENDAR;
     private static final PlantType TEST_INITIAL_PLANT_TYPE = PlantType.SUNFLOWER;
 
-    // Константы ID наград для задач-сюрпризов
-    private static final long REWARD_ID_SURPRISE_201 = 201L; // ... и так далее, как в Kotlin файле
+    private static final long REWARD_ID_SURPRISE_201 = 201L;
+    // ... (остальные константы наград)
 
     private final AppDatabase appDatabase;
     private final UserSessionManager userSessionManager;
@@ -79,171 +78,158 @@ public class TestDataInitializer {
     public ListenableFuture<Void> initializeTestDataIfEmpty() {
         logger.debug(TAG, "Attempting to initialize TEST data for " + TEST_USER_EMAIL + "...");
 
+        // Проверка пользователя выполняется на ioExecutor
         return Futures.submitAsync(() -> {
-            UserAuth existingUser = appDatabase.userAuthDao().getUserByEmail(TEST_USER_EMAIL).get(); // Блокирующий вызов
+            UserAuth existingUser = appDatabase.userAuthDao().getUserByEmailSync(TEST_USER_EMAIL); // Используем Sync метод
             if (existingUser != null) {
-                logger.info(TAG, "Test data already exists for user " + TEST_USER_EMAIL + ". Skipping initialization.");
-                ensureSessionSet(existingUser.getId()); // ensureSessionSet должен быть адаптивным
-                return Futures.immediateFuture(null);
+                logger.info(TAG, "Test data already exists for user " + TEST_USER_EMAIL + ". Ensuring session is set.");
+                return ensureSessionSetAsync(existingUser.getId());
             }
 
             logger.info(TAG, "No existing test data found. Proceeding with TEST initialization for " + TEST_USER_EMAIL);
 
-            try {
-                appDatabase.runInTransaction((Callable<Void>) () -> { // Используем Callable для возврата Void
-                    // Получение ID подхода
-                    // getAllApproaches возвращает LiveData, для синхронного получения в транзакции нужен другой метод в DAO
-                    // Предположим, есть метод List<Approach> getAllApproachesSync() в ApproachDao
-                    // List<Approach> approaches = appDatabase.approachDao().getAllApproachesSync();
-                    // Пока заглушка:
-                    List<Approach> approaches = appDatabase.approachDao().getAllApproaches().getValue(); // Опасно, если LiveData не инициализирована
+            // Вся инициализация данных происходит в транзакции на ioExecutor
+            return Futures.submit(() -> {
+                appDatabase.runInTransaction((Callable<Void>) () -> {
+                    logger.debug(TAG, "Starting transaction for TEST data initialization.");
+                    List<Approach> approaches = appDatabase.approachDao().getAllApproachesSync();
                     if (approaches == null || approaches.isEmpty()) {
-                        // Если не можем получить синхронно, можно сделать этот шаг вне транзакции или использовать
-                        // ListenableFuture и Futures.transformAsync
                         throw new IllegalStateException("Approaches not available for initialization.");
                     }
-
                     Approach defaultApproach = approaches.stream()
                             .filter(a -> a.getName() == TEST_DEFAULT_APPROACH_NAME)
                             .findFirst()
-                            .orElseThrow(() -> new IllegalStateException("Default approach '" + TEST_DEFAULT_APPROACH_NAME + "' not found."));
+                            .orElseThrow(() -> new IllegalStateException("Default approach not found."));
                     long defaultApproachId = defaultApproach.getId();
-                    logger.debug(TAG, "Found default approach '" + TEST_DEFAULT_APPROACH_NAME + "' with ID: " + defaultApproachId);
 
-                    // 1. Пользователь
                     UserAuth testUser = new UserAuth(0, TEST_USER_EMAIL, TEST_USER_PASSWORD_HASH_PLACEHOLDER, TEST_USER_USERNAME, null);
-                    long userIdLong = appDatabase.userAuthDao().insertUser(testUser).get();
+                    long userIdLong = appDatabase.userAuthDao().insertUserSync(testUser); // SYNC
                     int userId = (int) userIdLong;
-                    logger.debug(TAG, "Test user created with ID: " + userId);
+                    logger.debug(TAG, "User created with ID: " + userId);
 
-                    // 2. Рабочее пространство
                     Workspace testWorkspace = new Workspace(0, userId, TEST_WORKSPACE_NAME, TEST_WORKSPACE_DESCRIPTION, defaultApproachId, dateTimeUtils.currentUtcDateTime(), dateTimeUtils.currentUtcDateTime());
-                    long workspaceId = appDatabase.workspaceDao().insertWorkspace(testWorkspace).get();
-                    logger.debug(TAG, "Test workspace created with ID: " + workspaceId);
+                    long workspaceId = appDatabase.workspaceDao().insertWorkspaceSync(testWorkspace); // SYNC
+                    logger.debug(TAG, "Workspace created with ID: " + workspaceId);
 
-                    // 3. Геймификация
                     Gamification testGamification = new Gamification(userId, InitialDataConstants.INITIAL_LEVEL, InitialDataConstants.INITIAL_XP, InitialDataConstants.INITIAL_COINS, InitialDataConstants.MAX_XP_FOR_LEVEL, dateTimeUtils.currentUtcDateTime(), 0, LocalDate.MIN, 0);
-                    long gamificationId = appDatabase.gamificationDao().insert(testGamification).get();
+                    long gamificationId = appDatabase.gamificationDao().insertSync(testGamification); // SYNC
                     logger.debug(TAG, "Gamification profile created with ID: " + gamificationId);
 
-                    // 4. Глобальная статистика
                     GlobalStatistics initialGlobalStats = new GlobalStatistics(0, userId, 1, 0, 0, 0, dateTimeUtils.currentUtcDateTime());
-                    appDatabase.globalStatisticsDao().insertOrUpdateGlobalStatistics(initialGlobalStats).get();
-                    logger.debug(TAG, "Initial global statistics created/updated for user ID: " + userId);
+                    appDatabase.globalStatisticsDao().insertOrUpdateGlobalStatisticsSync(initialGlobalStats); // SYNC
+                    logger.debug(TAG, "Global statistics created for user ID: " + userId);
 
-                    // 5. Начальное растение
                     VirtualGarden initialPlant = new VirtualGarden(gamificationId, TEST_INITIAL_PLANT_TYPE, InitialDataConstants.INITIAL_GROWTH_STAGE, 0, dateTimeUtils.currentUtcDateTime().minusDays(1));
-                    long plantId = appDatabase.virtualGardenDao().insert(initialPlant).get();
+                    long plantId = appDatabase.virtualGardenDao().insertSync(initialPlant); // SYNC
                     logger.debug(TAG, "Initial plant created with ID: " + plantId);
 
-                    // 6. Задачи-сюрпризы
-                    insertSurpriseTasksInternal(appDatabase.surpriseTaskDao(), gamificationId);
+                    insertSurpriseTasksInternalSync(appDatabase.surpriseTaskDao(), gamificationId); // SYNC
+                    insertInitialChallengeProgressInternalSync(appDatabase.challengeDao(), gamificationId); // SYNC
 
-                    // 7. Начальный прогресс для испытаний
-                    insertInitialChallengeProgressInternal(appDatabase.challengeDao(), gamificationId);
-
-                    // 8. Инициализация DataStore (ListenableFuture)
+                    // DataStore операции остаются асинхронными, но мы дожидаемся их завершения
                     userSessionManager.saveUserIdAsync(userId).get();
                     workspaceSessionManager.saveWorkspaceIdAsync(workspaceId).get();
                     gamificationDataStoreManager.saveGamificationId(gamificationId).get();
                     gamificationDataStoreManager.saveSelectedPlantId(plantId).get();
 
-                    logger.info(TAG, "TEST data initialization successful for user " + TEST_USER_EMAIL);
-                    return null; // Для Callable<Void>
+                    logger.info(TAG, "TEST data initialization (full) successful for user " + TEST_USER_EMAIL);
+                    return null;
                 });
-                return Futures.immediateFuture(null);
-            } catch (Exception e) {
-                logger.error(TAG, "Failed to initialize TEST data for " + TEST_USER_EMAIL, e);
-                return Futures.immediateFailedFuture(e);
-            }
+                return null; // для Futures.submit
+            }, ioExecutor);
         }, ioExecutor);
     }
 
-    private void ensureSessionSet(int userId) throws Exception { // Добавил throws для .get()
-        if (userSessionManager.getUserIdSync() != userId) {
-            logger.warn(TAG, "Session user ID mismatch for existing user " + userId + ". Setting session...");
-            userSessionManager.saveUserIdAsync(userId).get();
-        }
+    private ListenableFuture<Void> ensureSessionSetAsync(int userId) {
+        logger.info(TAG, "ensureSessionSetAsync started for userId: " + userId);
+        List<ListenableFuture<?>> operations = new ArrayList<>();
 
-        if (workspaceSessionManager.getWorkspaceIdSync() == 0L) {
-            // Для синхронного получения нужен другой метод в DAO или использование LiveData.getValue() с осторожностью
-            List<Workspace> workspaces = appDatabase.workspaceDao().getAllWorkspaces(userId).getValue(); // Опасно, если LiveData не инициализирована
-            if (workspaces != null && !workspaces.isEmpty()) {
-                logger.warn(TAG, "Session workspace ID missing for user " + userId + ". Setting workspace ID " + workspaces.get(0).getId());
-                workspaceSessionManager.saveWorkspaceIdAsync(workspaces.get(0).getId()).get();
-            } else {
-                logger.error(TAG, "Cannot set session workspace ID: No workspace found for user " + userId);
+        operations.add(Futures.transformAsync(userSessionManager.getUserIdFuture(), currentSessionUserId -> {
+            if (currentSessionUserId == null || currentSessionUserId != userId) {
+                return userSessionManager.saveUserIdAsync(userId);
             }
-        }
+            return Futures.immediateFuture(null);
+        }, ioExecutor));
 
-        if (gamificationDataStoreManager.getGamificationIdSync() == -1L) {
-            Gamification gamification = appDatabase.gamificationDao().getByUserId(userId).get();
-            if (gamification != null) {
-                logger.warn(TAG, "Session gamification ID missing for user " + userId + ". Setting gamification ID " + gamification.getId());
-                gamificationDataStoreManager.saveGamificationId(gamification.getId()).get();
-                ensureSelectedPlantSet(gamification.getId());
-            } else {
-                logger.error(TAG, "Cannot set session gamification ID: No gamification profile found for user " + userId);
+        operations.add(Futures.transformAsync(workspaceSessionManager.getWorkspaceIdFuture(), currentWsId -> {
+            if (currentWsId == null || currentWsId == WorkspaceSessionManager.NO_WORKSPACE_ID) {
+                // Используем синхронный вызов DAO внутри submit, так как ioExecutor уже есть
+                return Futures.submit(() -> {
+                    List<Workspace> workspaces = appDatabase.workspaceDao().getAllWorkspacesSync(userId);
+                    if (workspaces != null && !workspaces.isEmpty()) {
+                        return Futures.getDone(workspaceSessionManager.saveWorkspaceIdAsync(workspaces.get(0).getId()));
+                    }
+                    logger.error(TAG, "ensureSessionSetAsync: No workspace found in DB for user " + userId);
+                    return null;
+                }, ioExecutor);
             }
-        } else {
-            ensureSelectedPlantSet(gamificationDataStoreManager.getGamificationIdSync());
-        }
+            return Futures.immediateFuture(null);
+        }, ioExecutor));
+
+        operations.add(Futures.transformAsync(gamificationDataStoreManager.getGamificationIdFuture(), currentGamiId -> {
+            if (currentGamiId == null || currentGamiId == -1L) {
+                return Futures.submitAsync(() -> { // Для вложенных асинхронных операций
+                    Gamification gamification = appDatabase.gamificationDao().getByUserIdSync(userId); // SYNC
+                    if (gamification != null) {
+                        ListenableFuture<Void> saveGamiIdFuture = gamificationDataStoreManager.saveGamificationId(gamification.getId());
+                        return Futures.transformAsync(saveGamiIdFuture, v -> ensureSelectedPlantSetAsyncInternal(gamification.getId()), ioExecutor);
+                    }
+                    logger.error(TAG, "ensureSessionSetAsync: No gamification profile found in DB for user " + userId);
+                    return Futures.immediateFuture(null);
+                }, ioExecutor);
+            } else {
+                return ensureSelectedPlantSetAsyncInternal(currentGamiId);
+            }
+        }, ioExecutor));
+
+        return Futures.transform(Futures.allAsList(operations), input -> {
+            logger.info(TAG, "ensureSessionSetAsync finished for userId: " + userId);
+            return null;
+        }, MoreExecutors.directExecutor());
     }
 
-    private void ensureSelectedPlantSet(long gamificationId) throws Exception {
-        if (gamificationDataStoreManager.getSelectedPlantIdSync() == -1L) {
-            VirtualGarden latestPlant = appDatabase.virtualGardenDao().getLatestPlant(gamificationId).get();
-            if (latestPlant != null) {
-                logger.warn(TAG, "Session selected plant ID missing for gamification " + gamificationId + ". Setting to latest plant ID " + latestPlant.getId());
-                gamificationDataStoreManager.saveSelectedPlantId(latestPlant.getId()).get();
-            } else {
-                logger.warn(TAG, "Cannot set session selected plant ID: No plants found for gamification " + gamificationId);
+    private ListenableFuture<Void> ensureSelectedPlantSetAsyncInternal(long gamificationId) {
+        return Futures.transformAsync(gamificationDataStoreManager.getSelectedPlantIdFuture(), selectedPlantId -> {
+            if (selectedPlantId == null || selectedPlantId == -1L) {
+                return Futures.submitAsync(() -> { // Для DAO вызова
+                    VirtualGarden latestPlant = appDatabase.virtualGardenDao().getLatestPlantSync(gamificationId); // SYNC
+                    if (latestPlant != null) {
+                        return gamificationDataStoreManager.saveSelectedPlantId(latestPlant.getId());
+                    }
+                    logger.warn(TAG, "ensureSelectedPlantSetAsyncInternal: No plants for gamification " + gamificationId);
+                    return Futures.immediateFuture(null);
+                }, ioExecutor);
             }
-        }
+            return Futures.immediateFuture(null);
+        }, ioExecutor);
     }
 
-    private void insertSurpriseTasksInternal(SurpriseTaskDao surpriseTaskDao, long gamificationId) throws Exception {
-        Timber.tag(TAG).d("Inserting test surprise tasks for gamificationId: " + gamificationId);
+    private void insertSurpriseTasksInternalSync(SurpriseTaskDao surpriseTaskDao, long gamificationId) {
+        logger.debug(TAG, "Inserting test surprise tasks (SYNC) for gamificationId: " + gamificationId);
         LocalDateTime now = dateTimeUtils.currentUtcDateTime();
         List<SurpriseTask> tasks = new ArrayList<>();
-        // Добавление задач как в Kotlin, используя конструктор SurpriseTask
         tasks.add(new SurpriseTask(gamificationId, "Разминка для глаз!", REWARD_ID_SURPRISE_201, now.plusHours(1), false, null));
-
-        try {
-            surpriseTaskDao.insertAll(tasks).get(); // Блокирующий вызов
-            Timber.tag(TAG).d("Inserted " + tasks.size() + " test surprise tasks.");
-        } catch (Exception e) {
-            Timber.tag(TAG).e(e, "Error inserting test surprise tasks");
-            throw e;
-        }
+        // ...
+        surpriseTaskDao.insertAllSync(tasks); // SYNC
+        logger.debug(TAG, "Inserted " + tasks.size() + " test surprise tasks (SYNC).");
     }
 
-    private void insertInitialChallengeProgressInternal(ChallengeDao challengeDao, long gamificationId) throws Exception {
-        Timber.tag(TAG).d("Inserting initial challenge progress for gamificationId: " + gamificationId);
+    private void insertInitialChallengeProgressInternalSync(ChallengeDao challengeDao, long gamificationId) {
+        logger.debug(TAG, "Inserting initial challenge progress (SYNC) for gamificationId: " + gamificationId);
         LocalDateTime now = dateTimeUtils.currentUtcDateTime();
-        try {
-            List<Challenge> activeChallenges = challengeDao.getChallengesByStatus(ChallengeStatus.ACTIVE).get(); // Блокирующий вызов
-            if (activeChallenges.isEmpty()) {
-                Timber.tag(TAG).i("No active challenges found to initialize progress for.");
-                return;
-            }
-            Timber.tag(TAG).d("Found " + activeChallenges.size() + " active challenges to initialize progress.");
-
-            for (Challenge challenge : activeChallenges) {
-                List<ChallengeRule> rules = challengeDao.getChallengeRulesByChallengeId(challenge.getId()).get();
-                if (rules.isEmpty()) {
-                    Timber.tag(TAG).i("No rules found for active challenge " + challenge.getId() + ". Skipping.");
-                    continue;
-                }
-                for (ChallengeRule rule : rules) {
-                    GamificationChallengeProgress initialProgress = new GamificationChallengeProgress(gamificationId, challenge.getId(), rule.getId(), 0, false, now);
-                    challengeDao.insertOrUpdateProgress(initialProgress).get();
-                }
-            }
-            Timber.tag(TAG).d("Initial challenge progress insertion/update finished.");
-        } catch (Exception e) {
-            Timber.tag(TAG).e(e, "Error inserting initial challenge progress");
-            throw e;
+        List<Challenge> activeChallenges = challengeDao.getChallengesByStatusSync(ChallengeStatus.ACTIVE); // SYNC
+        if (activeChallenges.isEmpty()) {
+            logger.info(TAG, "No active challenges found (SYNC).");
+            return;
         }
+        for (Challenge challenge : activeChallenges) {
+            List<ChallengeRule> rules = challengeDao.getChallengeRulesByChallengeIdSync(challenge.getId()); // SYNC
+            if (rules.isEmpty()) continue;
+            for (ChallengeRule rule : rules) {
+                GamificationChallengeProgress progress = new GamificationChallengeProgress(gamificationId, challenge.getId(), rule.getId(), 0, false, now);
+                challengeDao.insertOrUpdateProgressSync(progress); // SYNC
+            }
+        }
+        logger.debug(TAG, "Initial challenge progress (SYNC) finished.");
     }
 }

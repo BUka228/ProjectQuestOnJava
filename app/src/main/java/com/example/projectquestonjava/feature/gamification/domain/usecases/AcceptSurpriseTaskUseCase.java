@@ -76,7 +76,7 @@ public class AcceptSurpriseTaskUseCase {
                     logger.debug(TAG, "Current gamification state: Level " + currentGamification.getLevel() + ", XP " + currentGamification.getExperience());
 
                     // Шаг 3: Применяем награду
-                    ApplyRewardUseCase.RewardApplicationResult rewardResult = Futures.getDone(applyRewardUseCase.execute(task.getGamificationId(), reward));
+                    ApplyRewardUseCase.RewardApplicationResult rewardResult = Futures.getDone((java.util.concurrent.Future<ApplyRewardUseCase.RewardApplicationResult>) applyRewardUseCase.execute(task.getGamificationId(), reward));
                     int deltaXp = rewardResult.getDeltaXp();
                     int deltaCoins = rewardResult.getDeltaCoins();
                     logger.debug(TAG, "Applied reward. Delta(XP/Coins): (" + deltaXp + "/" + deltaCoins + ")");

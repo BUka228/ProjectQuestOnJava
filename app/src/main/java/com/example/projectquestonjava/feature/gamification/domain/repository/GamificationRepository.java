@@ -13,4 +13,6 @@ public interface GamificationRepository {
     ListenableFuture<Void> deleteGamificationForUser(int userId);
 
     ListenableFuture<Gamification> getCurrentUserGamificationFuture();
+    Gamification getGamificationByIdSync(long id);
+    void updateGamificationSync(Gamification gamification);
 }

@@ -12,6 +12,7 @@ import java.util.List;
 
 @Dao
 public interface WorkspaceDao {
+    // --- ASYNC / LiveData ---
     @Query("SELECT * FROM workspace WHERE user_id = :userId")
     LiveData<List<Workspace>> getAllWorkspaces(int userId);
 
@@ -32,4 +33,23 @@ public interface WorkspaceDao {
 
     @Query("DELETE FROM workspace WHERE user_id = :userId")
     ListenableFuture<Integer> deleteWorkspacesForUser(int userId);
+
+    // --- SYNC ---
+    @Query("SELECT * FROM workspace WHERE user_id = :userId")
+    List<Workspace> getAllWorkspacesSync(int userId);
+
+    @Query("SELECT * FROM workspace WHERE id = :id AND user_id = :userId")
+    Workspace getWorkspaceByIdSync(long id, int userId);
+
+    @Insert
+    long insertWorkspaceSync(Workspace workspace);
+
+    @Update
+    int updateWorkspaceSync(Workspace workspace);
+
+    @Delete
+    int deleteWorkspaceSync(Workspace workspace);
+
+    @Query("DELETE FROM workspace WHERE id = :workspaceId AND user_id = :userId")
+    int deleteWorkspaceByIdSync(long workspaceId, int userId);
 }

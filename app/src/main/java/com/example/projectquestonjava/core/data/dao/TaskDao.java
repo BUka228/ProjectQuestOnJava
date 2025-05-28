@@ -57,4 +57,21 @@ public interface TaskDao {
 
     @Query("DELETE FROM task WHERE workspace_id = :workspaceId AND user_id = :userId")
     ListenableFuture<Void> deleteTasksForWorkspace(long workspaceId, int userId);
+
+
+    @Insert
+    long insertTaskSync(Task task);
+
+    @Transaction
+    @Query("SELECT * FROM task WHERE id = :taskId AND user_id = :userId")
+    TaskWithTags getTaskWithTagsByIdSync(long taskId, int userId);
+
+    @Query("SELECT * FROM task WHERE id = :id AND user_id = :userId")
+    Task getTaskByIdSync(long id, int userId);
+
+    @Update
+    int updateTaskSync(Task task);
+
+    @Query("UPDATE task SET status = :newStatus, updated_at = :updatedAt WHERE id = :taskId AND user_id = :userId")
+    int updateTaskStatusSync(long taskId, int userId, TaskStatus newStatus, LocalDateTime updatedAt);
 }

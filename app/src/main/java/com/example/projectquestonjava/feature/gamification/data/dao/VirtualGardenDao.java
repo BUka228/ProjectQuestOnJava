@@ -39,4 +39,16 @@ public interface VirtualGardenDao {
 
     @Query("DELETE FROM virtual_garden WHERE gamification_id = :gamificationId")
     ListenableFuture<Integer> deleteVirtualGardenForGamification(long gamificationId);
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    long insertSync(VirtualGarden plant);
+
+    @Query("SELECT * FROM virtual_garden WHERE gamification_id = :gamificationId ORDER BY id DESC LIMIT 1")
+    VirtualGarden getLatestPlantSync(long gamificationId);
+
+    @Query("SELECT * FROM virtual_garden WHERE gamification_id = :gamificationId ORDER BY id ASC")
+    List<VirtualGarden> getAllPlantsSync(long gamificationId);
+
+
+
 }

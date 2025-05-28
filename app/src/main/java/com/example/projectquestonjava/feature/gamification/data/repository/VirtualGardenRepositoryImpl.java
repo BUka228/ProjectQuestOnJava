@@ -41,6 +41,12 @@ public class VirtualGardenRepositoryImpl implements VirtualGardenRepository {
     }
 
     @Override
+    public long insertPlantSync(VirtualGarden plant) {
+        logger.debug(TAG, "SYNC Inserting plant: gamiId=" + plant.getGamificationId() + ", type=" + plant.getPlantType());
+        return virtualGardenDao.insertSync(plant); // Нужен virtualGardenDao.insertSync
+    }
+
+    @Override
     public LiveData<List<VirtualGarden>> getAllPlantsFlow() {
         logger.debug(TAG, "Getting all plants LiveData for current user");
         return Transformations.switchMap(gamificationDataStoreManager.getGamificationIdFlow(), gamificationId -> {
@@ -119,5 +125,17 @@ public class VirtualGardenRepositoryImpl implements VirtualGardenRepository {
                 },
                 ioExecutor
         );
+    }
+
+    @Override
+    public List<VirtualGarden> getAllPlantsSync(long gamificationId) {
+        logger.debug(TAG, "SYNC Getting all plants for gamiId=" + gamificationId);
+        // DAO должен иметь getAllPlantsSync(gamificationId)
+        try {
+            return virtualGardenDao.getAllPlantsSync(gamificationId);
+        } catch (Exception e) {
+            logger.error(TAG, "Error SYNC getting all plants for gamiId=" + gamificationId, e);
+            return Collections.emptyList();
+        }
     }
 }

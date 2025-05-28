@@ -64,6 +64,13 @@ public class GamificationHistoryRepositoryImpl implements GamificationHistoryRep
             return gamificationHistoryDao.getHistoryForGamificationFlow(gamificationId);
         });
     }
+    @Override
+    public long insertHistoryEntrySync(GamificationHistory entry) {
+        // Проверка gamificationId через UserSessionManager не нужна, т.к. entry уже содержит gamificationId.
+        // Но можно добавить проверку, что entry.getGamificationId() совпадает с текущим в сессии, если это требуется.
+        logger.debug(TAG, "SYNC Inserting history entry: reason=" + entry.getReason() + " for gamiId=" + entry.getGamificationId());
+        return gamificationHistoryDao.insertSync(entry); // DAO должен иметь insertSync
+    }
 
     @Override
     public ListenableFuture<List<GamificationHistory>> getHistoryForPeriod(LocalDateTime startTime, LocalDateTime endTime) {

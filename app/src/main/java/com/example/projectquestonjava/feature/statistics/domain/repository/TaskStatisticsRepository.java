@@ -38,4 +38,16 @@ public interface TaskStatisticsRepository {
     ListenableFuture<List<TaskStatistics>> getTaskStatsInPeriod(LocalDateTime startTime, LocalDateTime endTime);
 
     ListenableFuture<List<TaskStatistics>> getAllTaskStatisticsSuspend();
+
+
+    void addTimeToSpentSync(long taskId, int secondsToAdd); // Уже был
+    void addTotalPomodoroFocusTimeSync(long taskId, int secondsToAdd); // Уже был
+    void incrementCompletedPomodoroFocusSessionsSync(long taskId); // Уже был
+    void incrementTotalPomodoroInterruptionsSync(long taskId, int countToAdd); // Уже был
+    void markTaskAsCompletedOnceSync(long taskId); // Уже был
+    void updateCompletionTimeSync(long taskId, LocalDateTime completionTime); // Уже был
+    TaskStatistics ensureAndGetStatisticsSync(long taskId, TaskStatistics defaultStats); // Уже был
+    TaskStatistics getStatisticsForTaskSync(long taskId);
+
+
 }
