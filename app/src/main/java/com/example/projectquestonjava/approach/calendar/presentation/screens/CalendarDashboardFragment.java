@@ -1,6 +1,9 @@
 package com.example.projectquestonjava.approach.calendar.presentation.screens;
 
 import android.animation.ObjectAnimator;
+import android.content.Context;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -25,6 +28,7 @@ import androidx.navigation.fragment.NavHostFragment;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.projectquestonjava.R;
+import com.example.projectquestonjava.app.MainActivity;
 import com.example.projectquestonjava.approach.calendar.domain.model.CalendarTaskSummary;
 import com.example.projectquestonjava.approach.calendar.domain.model.TaskFilterOption;
 import com.example.projectquestonjava.approach.calendar.domain.model.TaskSortOption;
@@ -41,6 +45,9 @@ import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+// Убрал TabLayout, так как он скрыт
+// import com.google.android.material.tabs.TabLayout;
+// import com.google.android.material.tabs.TabLayoutMediator;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -64,16 +71,16 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
     private HorizontalScrollView horizontalScrollViewFilterTags;
     private MaterialButton buttonClearAllTags;
     private ChipGroup chipGroupFilterTags;
-    //    private TabLayout tabLayoutPagerIndicator; // Больше не нужен
+    //    private TabLayout tabLayoutPagerIndicator; // Закомментировано, так как скрыто
     private ViewPager2 viewPagerDashboardDays;
     private DashboardPagerAdapter pagerAdapter;
 
     private boolean isDetailsSheetShown = false;
     private MenuItem filterSortMenuItem;
-    private View filterIndicatorDotView; // View для точки на иконке фильтра
+    private View filterIndicatorDotView;
 
-    // Для кастомного заголовка Toolbar
-    private View customTitleView;
+    // View для кастомного заголовка Toolbar
+    private View customToolbarTitleLayout;
     private FrameLayout frameDateCircleToolbar;
     private TextView textViewDateNumberToolbar;
     private TextView textViewDayNameToolbar;
@@ -92,7 +99,11 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
                 filterSortMenuItem = menu.findItem(R.id.action_filter_sort_dashboard);
                 if (filterSortMenuItem != null && filterSortMenuItem.getActionView() != null) {
                     filterIndicatorDotView = filterSortMenuItem.getActionView().findViewById(R.id.filter_indicator_dot_view);
-                    filterSortMenuItem.getActionView().setOnClickListener(v -> onMenuItemSelected(filterSortMenuItem));
+                    // Устанавливаем OnClickListener на сам ActionView, чтобы он реагировал на клик
+                    filterSortMenuItem.getActionView().setOnClickListener(v -> {
+                        // Вызываем стандартный обработчик для MenuItem
+                        onOptionsItemSelected(filterSortMenuItem);
+                    });
                 }
 
                 MenuItem levelItem = menu.findItem(R.id.action_level_indicator_dashboard);
@@ -100,8 +111,11 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
                     View actionView = levelItem.getActionView();
                     toolbarLevelProgressBarAction = actionView.findViewById(R.id.toolbar_level_progress_bar_action);
                     toolbarLevelTextAction = actionView.findViewById(R.id.toolbar_level_text_action);
+                    // Можно добавить OnClickListener для actionView, если нужно действие по клику на уровень
+                    // actionView.setOnClickListener(v -> { /* Действие */ });
                 }
                 updateFilterIndicatorDot();
+                // Обновление данных уровня при создании меню, если ViewModel уже доступна
                 if (viewModel != null && viewModel.dashboardDataLiveData.getValue() != null) {
                     updateLevelIndicator(viewModel.dashboardDataLiveData.getValue().getGamification());
                 }
@@ -126,7 +140,7 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
+        super.onViewCreated(view, savedInstanceState); // Вызывает setupToolbar и setupFab
         viewModel = new ViewModelProvider(this).get(CalendarDashboardViewModel.class);
 
         progressBarDashboardTasks = view.findViewById(R.id.progressBar_dashboard_tasks);
@@ -136,44 +150,35 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
         // tabLayoutPagerIndicator = view.findViewById(R.id.tabLayout_pager_indicator_dashboard); // Закомментировано
         viewPagerDashboardDays = view.findViewById(R.id.viewPager_dashboard_days);
 
-        // tabLayoutPagerIndicator.setVisibility(View.GONE); // Убедимся, что он скрыт
+        // if (tabLayoutPagerIndicator != null) { // Проверка на null перед использованием
+        //     tabLayoutPagerIndicator.setVisibility(View.GONE);
+        // }
 
         buttonClearAllTags.setOnClickListener(v -> viewModel.clearTagFilters());
 
-        setupViewPager(); // Убрали индикатор из названия метода
+        setupViewPager();
         setupObservers();
     }
 
     @Override
     protected void setupToolbar() {
-        MaterialToolbar toolbar = getToolbar();
-        if (toolbar != null) {
-            // Очищаем стандартный Title, если он был установлен MainActivity
-            toolbar.setTitle("");
+        MainActivity mainActivity = getMainActivity();
+        // MaterialToolbar toolbar = getToolbar(); // Получаем Toolbar из BaseFragment (уже есть в mainActivity)
 
-            // Убираем предыдущий кастомный TitleView, если он был
-            if (customTitleView != null && customTitleView.getParent() != null) {
-                ((ViewGroup) customTitleView.getParent()).removeView(customTitleView);
-            }
+        if (mainActivity != null) {
+            // Инфлейтим наш кастомный макет для заголовка
+            LayoutInflater inflater = LayoutInflater.from(getContext());
+            customToolbarTitleLayout = inflater.inflate(R.layout.toolbar_dashboard_custom_title, mainActivity.getToolbar(), false);
+            // Не нужно устанавливать ID для customToolbarTitleLayout
 
-            // Инфлейтим и добавляем кастомный TitleView
-            LayoutInflater inflater = LayoutInflater.from(toolbar.getContext());
-            customTitleView = inflater.inflate(R.layout.toolbar_dashboard_custom_title, toolbar, false);
-            frameDateCircleToolbar = customTitleView.findViewById(R.id.frame_date_circle_toolbar);
-            textViewDateNumberToolbar = customTitleView.findViewById(R.id.textView_date_number_toolbar);
-            textViewDayNameToolbar = customTitleView.findViewById(R.id.textView_day_name_toolbar);
+            frameDateCircleToolbar = customToolbarTitleLayout.findViewById(R.id.frame_date_circle_toolbar);
+            textViewDateNumberToolbar = customToolbarTitleLayout.findViewById(R.id.textView_date_number_toolbar);
+            textViewDayNameToolbar = customToolbarTitleLayout.findViewById(R.id.textView_day_name_toolbar);
 
-            // Устанавливаем параметры для центрирования кастомного заголовка
-            MaterialToolbar.LayoutParams params = new MaterialToolbar.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-            );
-            params.gravity = Gravity.START; // Выравнивание по левому краю
-            customTitleView.setLayoutParams(params);
-            toolbar.addView(customTitleView);
+            mainActivity.setCustomToolbarTitleView(customToolbarTitleLayout);
 
             viewModel.selectedDateLiveData.observe(getViewLifecycleOwner(), selectedDate -> {
-                if (selectedDate != null) {
+                if (selectedDate != null && textViewDateNumberToolbar != null && textViewDayNameToolbar != null && frameDateCircleToolbar != null) {
                     DateTimeFormatter dayOfMonthFormatter = DateTimeFormatter.ofPattern("d");
                     DateTimeFormatter dayOfWeekFormatter = DateTimeFormatter.ofPattern("EE", new Locale("ru"));
 
@@ -181,13 +186,10 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
                     String dayOfWeekStr = selectedDate.format(dayOfWeekFormatter);
                     textViewDayNameToolbar.setText(dayOfWeekStr.substring(0, 1).toUpperCase(Locale.forLanguageTag("ru")) + dayOfWeekStr.substring(1));
 
-                    frameDateCircleToolbar.setActivated(selectedDate.toLocalDate().isEqual(LocalDate.now()));
-                    // Цвет текста внутри круга будет меняться через селектор drawable для фона
-                    if(selectedDate.toLocalDate().isEqual(LocalDate.now())){
-                        textViewDateNumberToolbar.setTextColor(ContextCompat.getColor(requireContext(), R.color.onPrimaryLight)); // Пример
-                    } else {
-                        textViewDateNumberToolbar.setTextColor(ContextCompat.getColor(requireContext(), R.color.onSurfaceVariantLight)); // Пример
-                    }
+                    boolean isToday = selectedDate.toLocalDate().isEqual(LocalDate.now());
+                    frameDateCircleToolbar.setActivated(isToday);
+                    textViewDateNumberToolbar.setTextColor(ContextCompat.getColor(requireContext(),
+                            isToday ? R.color.onPrimaryLight : R.color.onSurfaceVariantLight));
                 }
             });
         }
@@ -215,7 +217,9 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
             toolbarLevelTextAction.setText("Ур. " + gamification.getLevel());
             if (gamification.getMaxExperienceForLevel() > 0) {
                 int progress = (int) ((float) gamification.getExperience() / gamification.getMaxExperienceForLevel() * 100);
-                toolbarLevelProgressBarAction.setProgress(progress);
+                ObjectAnimator.ofInt(toolbarLevelProgressBarAction, "progress", progress)
+                        .setDuration(300)
+                        .start();
             } else {
                 toolbarLevelProgressBarAction.setProgress(0);
             }
@@ -227,7 +231,7 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
         }
     }
 
-    private void setupViewPager() { // Убрали индикатор из названия
+    private void setupViewPager() {
         List<LocalDateTime> dates = new ArrayList<>();
         for (int i = 0; i < CalendarDashboardViewModel.DATE_RANGE * 2 + 1; i++) {
             dates.add(viewModel.getDateForPage(i));
@@ -237,9 +241,6 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
 
         Integer initialPage = viewModel.currentPageLiveData.getValue();
         viewPagerDashboardDays.setCurrentItem(initialPage != null ? initialPage : CalendarDashboardViewModel.INITIAL_PAGE, false);
-
-        // TabLayout больше не используется
-        // new TabLayoutMediator(tabLayoutPagerIndicator, viewPagerDashboardDays, (tab, position) -> {}).attach();
 
         viewPagerDashboardDays.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
@@ -252,12 +253,10 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
 
     private void setupObservers() {
         viewModel.currentProgressLiveData.observe(getViewLifecycleOwner(), progress -> {
-            if (progress != null) {
-                ObjectAnimator progressAnimator = ObjectAnimator.ofInt(progressBarDashboardTasks, "progress", progressBarDashboardTasks.getProgress(), (int) (progress * 100));
-                progressAnimator.setDuration(500);
-                progressAnimator.setInterpolator(new AccelerateDecelerateInterpolator());
-                progressAnimator.start();
-            } else {
+            if (progress != null && progressBarDashboardTasks != null) {
+                ObjectAnimator.ofInt(progressBarDashboardTasks, "progress", progressBarDashboardTasks.getProgress(), (int) (progress * 100))
+                        .setDuration(500).start();
+            } else if (progressBarDashboardTasks != null) {
                 progressBarDashboardTasks.setProgress(0);
             }
         });
@@ -308,7 +307,7 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
                         R.drawable.warning,
                         () -> viewModel.confirmDeleteTask(taskSummary.getId())
                 ).show(getChildFragmentManager(), "DeleteConfirmDashboard");
-                viewModel.clearSwipeActionState();
+                viewModel.clearSwipeActionState(); // Сбрасываем состояние после показа диалога
             }
         });
 
@@ -338,6 +337,7 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
                         .show(getChildFragmentManager(), "TaskDetailsDashboardSheet");
                 isDetailsSheetShown = true;
             } else if (summary == null && isDetailsSheetShown) {
+                // Эта логика может быть избыточной, если BottomSheet сам себя закрывает при отсутствии данных
                 Fragment existingSheet = getChildFragmentManager().findFragmentByTag("TaskDetailsDashboardSheet");
                 if (existingSheet instanceof TaskDetailsBottomSheetFragment && existingSheet.isVisible()) {
                     ((TaskDetailsBottomSheetFragment) existingSheet).dismissAllowingStateLoss();
@@ -346,13 +346,17 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
             }
         });
     }
-
     private void updateFilterIndicatorDot() {
+        if (filterIndicatorDotView == null && filterSortMenuItem != null && filterSortMenuItem.getActionView() != null) {
+            filterIndicatorDotView = filterSortMenuItem.getActionView().findViewById(R.id.filter_indicator_dot_view);
+        }
         if (filterIndicatorDotView == null) return;
+
         Set<TaskFilterOption> filters = viewModel.filterOptionsLiveData.getValue();
         TaskSortOption sort = viewModel.sortOptionLiveData.getValue();
         boolean hasActiveFilters = (filters != null && (!filters.contains(TaskFilterOption.ALL) || filters.size() > 1));
         boolean activeSortNotDefault = (sort != null && sort != TaskSortOption.TIME_ASC);
+
         filterIndicatorDotView.setVisibility(hasActiveFilters || activeSortNotDefault ? View.VISIBLE : View.GONE);
     }
 
@@ -381,31 +385,41 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
         viewModel.clearRequestedTaskDetails();
     }
 
-    // Реализация интерфейса OnTaskItemClickListener (заглушки, т.к. логика в ViewModel)
-    @Override public void onTaskClick(CalendarTaskSummary task) {}
-    @Override public void onTaskCheckedChange(CalendarTaskSummary task, boolean isChecked) {}
-    @Override public void onEditTask(CalendarTaskSummary task) {}
-    @Override public void onPomodoroStart(CalendarTaskSummary task) {}
-    @Override public void onTagClick(Tag tag) {}
+    // Реализация интерфейса OnTaskItemClickListener (заглушки)
+    @Override public void onTaskClick(CalendarTaskSummary task) { viewModel.showTaskDetailsBottomSheet(task); }
+    @Override public void onTaskCheckedChange(CalendarTaskSummary task, boolean isChecked) {
+        viewModel.handleSwipeAction(task.getId(), CalendarDashboardViewModel.SwipeDirection.RIGHT);
+    }
+    @Override public void onEditTask(CalendarTaskSummary task) { viewModel.editTask(task.getId()); }
+    @Override public void onPomodoroStart(CalendarTaskSummary task) { viewModel.startPomodoroForTask(task.getId()); }
+    @Override public void onTagClick(Tag tag) { viewModel.addTagToFilter(tag); }
+
 
     @Override
     public void onDestroyView() {
-        super.onDestroyView();
-        // Обнуляем ссылки на View
-        progressBarDashboardTasks = null;
-        horizontalScrollViewFilterTags = null;
-        buttonClearAllTags = null;
-        chipGroupFilterTags = null;
-        // tabLayoutPagerIndicator = null;
-        viewPagerDashboardDays = null;
-        pagerAdapter = null;
-        filterSortMenuItem = null;
-        filterIndicatorDotView = null;
-        customTitleView = null;
+        MainActivity mainActivity = getMainActivity();
+        if (mainActivity != null && customToolbarTitleLayout != null) {
+            mainActivity.setCustomToolbarTitleView(null);
+        }
+        customToolbarTitleLayout = null;
         frameDateCircleToolbar = null;
         textViewDateNumberToolbar = null;
         textViewDayNameToolbar = null;
         toolbarLevelProgressBarAction = null;
         toolbarLevelTextAction = null;
+
+        progressBarDashboardTasks = null;
+        horizontalScrollViewFilterTags = null;
+        buttonClearAllTags = null;
+        chipGroupFilterTags = null;
+        // tabLayoutPagerIndicator = null;
+        if (viewPagerDashboardDays != null) {
+            viewPagerDashboardDays.setAdapter(null); // Отвязываем адаптер
+        }
+        viewPagerDashboardDays = null;
+        pagerAdapter = null;
+        filterSortMenuItem = null;
+        filterIndicatorDotView = null;
+        super.onDestroyView();
     }
 }

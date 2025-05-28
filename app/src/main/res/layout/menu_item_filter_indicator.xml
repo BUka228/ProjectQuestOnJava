@@ -1,14 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?>
+<!-- res/layout/menu_item_filter_indicator.xml -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
     xmlns:tools="http://schemas.android.com/tools"
-    android:clipToPadding="false"
-    android:padding="8dp">
+    android:layout_width="wrap_content"
+    android:layout_height="?attr/actionBarSize"
+    android:minWidth="?attr/actionBarSize"
+    android:paddingHorizontal="12dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:background="?attr/actionBarItemBackground">
 
     <ImageView
         android:layout_width="24dp"
         android:layout_height="24dp"
+        android:layout_gravity="center"
         android:src="@drawable/filter_list"
         android:contentDescription="Фильтр и Сортировка"/>
 
@@ -17,8 +21,8 @@
         android:layout_width="8dp"
         android:layout_height="8dp"
         android:layout_gravity="top|end"
-        android:layout_marginTop="2dp"
-        android:layout_marginEnd="2dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="10dp"
         android:background="@drawable/dot_indicator_background"
         android:visibility="gone"
         tools:visibility="visible"/>

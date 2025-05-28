@@ -2,11 +2,11 @@
 package com.example.projectquestonjava.app;
 
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -22,13 +22,15 @@ import androidx.navigation.ui.NavigationUI;
 import com.example.projectquestonjava.R;
 import com.example.projectquestonjava.core.managers.SnackbarManager;
 import com.example.projectquestonjava.core.managers.SnackbarMessage;
-import com.google.android.material.appbar.AppBarLayout; // Добавлен импорт
+import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import javax.inject.Inject;
 import dagger.hilt.android.AndroidEntryPoint;
@@ -39,12 +41,13 @@ public class MainActivity extends AppCompatActivity {
 
     @Getter
     private MaterialToolbar toolbar;
-    private AppBarLayout appBarLayout; // Добавили AppBarLayout
+    private AppBarLayout appBarLayout;
     private BottomNavigationView bottomNavigationView;
     private FloatingActionButton fabStandard;
     private ExtendedFloatingActionButton fabExtended;
     private CoordinatorLayout coordinatorLayout;
 
+    @Nullable private View currentCustomTitleView = null;
 
     @Inject
     SnackbarManager snackbarManager;
@@ -52,11 +55,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // androidx.activity.EdgeToEdge.enable(this); // Если используется
         setContentView(R.layout.activity_main);
 
         toolbar = findViewById(R.id.toolbar_main);
-        appBarLayout = findViewById(R.id.appBarLayout_main); // Инициализируем AppBarLayout
+        appBarLayout = findViewById(R.id.appBarLayout_main);
         setSupportActionBar(toolbar);
 
         coordinatorLayout = findViewById(R.id.coordinatorLayout_main);
@@ -99,32 +101,20 @@ public class MainActivity extends AppCompatActivity {
             fabExtended.hide();
             fabExtended.shrink();
 
-            // Очищаем кастомный title view из Toolbar, если он был добавлен фрагментом
-            if (toolbar.getChildCount() > 1) { // Обычно 0 или 1 (стандартный Title)
-                for (int i = toolbar.getChildCount() - 1; i >= 0; i--) {
-                    View child = toolbar.getChildAt(i);
-                    // Не удаляем стандартные элементы Toolbar (NavigationIcon, Title TextView, ActionMenuView)
-                    // Простой способ - удалять всё, что не является TextView или ImageView с системным ID
-                    // Более надежно - если фрагменты сами удаляют свои кастомные View из Toolbar в onDestroyView.
-                    // Здесь более простой подход, предполагая, что кастомный title - это единственный дополнительный View.
-                    if (!(child instanceof TextView && ((TextView) child).getText().equals(destination.getLabel())) &&
-                            !(child instanceof androidx.appcompat.widget.ActionMenuView) &&
-                            !(child instanceof ImageView && child.getId() == androidx.appcompat.R.id.home) && // Стандартная иконка "назад" или "бургер"
-                            !(child.getId() == androidx.appcompat.R.id.action_bar_title || child.getId() == androidx.appcompat.R.id.action_bar_subtitle)) { // Стандартные TextView для title/subtitle
-                        // Для простоты, если у нас есть кастомный title, он скорее всего не будет стандартным TextView с этим ID
-                        // Этот блок можно улучшить, если кастомные view будут иметь специальные теги.
-                        // Пока что, если мы используем toolbar.addView(customTitleView), то он будет последним.
-                        // Но это хрупко.
-                    }
-                }
-            }
+            // --- ОБНОВЛЕННАЯ ОЧИСТКА Toolbar ---
+            removeCurrentCustomTitleView(); // Удаляем кастомный заголовок, если он был
+            toolbar.getMenu().clear();      // Очищаем меню
 
-            if (destination.getLabel() != null) {
-                toolbar.setTitle(destination.getLabel());
+            // Устанавливаем стандартный заголовок, если он есть в NavGraph
+            // и если фрагмент сам не установит кастомный заголовок позже
+            CharSequence destinationLabel = destination.getLabel();
+            if (destinationLabel != null && !destinationLabel.toString().isEmpty()) {
+                toolbar.setTitle(destinationLabel);
             } else {
-                toolbar.setTitle(""); // Очищаем, если label нет (для кастомных заголовков)
+                toolbar.setTitle(""); // Очищаем заголовок, если label нет
             }
-            toolbar.getMenu().clear();
+            toolbar.setSubtitle(null);
+            // ------------------------------------
         });
 
         if (snackbarManager != null) {
@@ -137,46 +127,53 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
-        // Применяем отступы для fitsSystemWindows
         ViewCompat.setOnApplyWindowInsetsListener(coordinatorLayout, (v, windowInsets) -> {
             Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-
-            // Применяем отступ к AppBarLayout
             if (appBarLayout != null) {
                 ViewGroup.MarginLayoutParams appBarParams = (ViewGroup.MarginLayoutParams) appBarLayout.getLayoutParams();
-                appBarParams.topMargin = insets.top; // Отступ сверху для AppBarLayout
-                appBarLayout.setLayoutParams(appBarParams);
+                if (appBarParams.topMargin != insets.top) {
+                    appBarParams.topMargin = insets.top;
+                    appBarLayout.setLayoutParams(appBarParams);
+                }
             }
-
-            // Обновляем padding для основного контента (FragmentContainerView), чтобы он не уезжал под BottomNavigationView
-            // NavHostFragment обычно уже учитывает это, если он находится внутри CoordinatorLayout
-            // и BottomNavigationView является его якорем (через layout_behavior).
-            // Но для надежности можно применить нижний отступ к FragmentContainerView или его родителю.
-            // Здесь мы уже используем fitsSystemWindows="true" для coordinatorLayout,
-            // поэтому дополнительный padding для FragmentContainerView обычно не нужен,
-            // если AppBarLayout и BottomNavigationView правильно настроены в макете.
-
-            // Отступы для FAB, чтобы они не перекрывались системными элементами (уже учтено через fab_margin_bottom_with_nav)
-
-            // Важно вернуть НЕПОТРЕБЛЕННЫЕ insets, чтобы другие View могли их использовать
-            return WindowInsetsCompat.CONSUMED; // WindowInsetsCompat.CONSUMED; // Потребляем все, если fitsSystemWindows="true" у корневого
-            // Или: return windowInsets; // Если хотим, чтобы другие View тоже получили отступы
+            v.setPadding(insets.left, 0, insets.right, insets.bottom);
+            return windowInsets.inset(0, insets.top, 0, insets.bottom);
         });
     }
 
-    public FloatingActionButton getStandardFab() {
-        return fabStandard;
+    public void setCustomToolbarTitleView(@Nullable View customTitleView) {
+        removeCurrentCustomTitleView(); // Удаляем предыдущий
+        if (customTitleView != null) {
+            toolbar.setTitle(null); // Убираем стандартный текст заголовка
+            toolbar.setSubtitle(null);
+            // Устанавливаем параметры для центрирования, если это LinearLayout или FrameLayout
+            if (customTitleView.getLayoutParams() instanceof MaterialToolbar.LayoutParams) {
+                ((MaterialToolbar.LayoutParams) customTitleView.getLayoutParams()).gravity = Gravity.START | Gravity.CENTER_VERTICAL;
+            } else {
+                MaterialToolbar.LayoutParams params = new MaterialToolbar.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, // или MATCH_PARENT, если нужно растянуть
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                );
+                params.gravity = Gravity.START | Gravity.CENTER_VERTICAL; // Выравнивание по левому краю и по центру вертикали
+                customTitleView.setLayoutParams(params);
+            }
+            toolbar.addView(customTitleView);
+            this.currentCustomTitleView = customTitleView;
+        }
+        // Если customTitleView == null, стандартный title (если он был установлен из NavGraph) должен восстановиться,
+        // так как мы не устанавливаем его в "" здесь.
+        // NavController при смене destination снова вызовет toolbar.setTitle(destination.getLabel()).
     }
 
-    public ExtendedFloatingActionButton getExtendedFab() {
-        return fabExtended;
+    private void removeCurrentCustomTitleView() {
+        if (currentCustomTitleView != null && currentCustomTitleView.getParent() == toolbar) {
+            toolbar.removeView(currentCustomTitleView);
+        }
+        currentCustomTitleView = null;
     }
 
-    public void setCustomTopBar(View customTopBarView) {
-        // Эта логика теперь не актуальна, так как Toolbar управляется централизованно
-    }
-
-    public void setCustomFab(View customFabView) {
-        // Аналогично, FAB управляется централизованно
-    }
+    public FloatingActionButton getStandardFab() { return fabStandard; }
+    public ExtendedFloatingActionButton getExtendedFab() { return fabExtended; }
+    public void setCustomTopBar(View customTopBarView) {} // Не используется
+    public void setCustomFab(View customFabView) {} // Не используется
 }

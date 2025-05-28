@@ -1,36 +1,37 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/toolbar_custom_title_view_tag"
     android:layout_width="wrap_content"
     android:layout_height="match_parent"
     android:gravity="center_vertical"
     android:orientation="horizontal">
 
     <!-- Кружок с датой -->
-    <FrameLayout
-        android:id="@+id/frame_date_circle_toolbar"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:background="@drawable/date_indicator_background_toolbar">
+<FrameLayout
+android:id="@+id/frame_date_circle_toolbar"
+android:layout_width="40dp"
+android:layout_height="40dp"
+android:background="@drawable/date_indicator_background_toolbar">
 
-        <TextView
-            android:id="@+id/textView_date_number_toolbar"
-            style="@style/TextAppearance.Material3.TitleLarge"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:textColor="?attr/colorOnPrimary"
-            android:textStyle="bold"
-            tools:text="28" />
-    </FrameLayout>
+<TextView
+    android:id="@+id/textView_date_number_toolbar"
+    style="@style/TextAppearance.Material3.TitleLarge"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:textColor="?attr/colorOnPrimary"
+    android:textStyle="bold"
+    tools:text="28" />
+</FrameLayout>
 
     <!-- Название дня недели -->
-    <TextView
-        android:id="@+id/textView_day_name_toolbar"
-        style="@style/TextAppearance.Material3.HeadlineSmall"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:textColor="?attr/colorOnSurface"
-        android:textStyle="normal"
-        tools:text="Ср" />
-</LinearLayout>
+<TextView
+android:id="@+id/textView_day_name_toolbar"
+style="@style/TextAppearance.Material3.HeadlineSmall"
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:layout_marginStart="8dp"
+android:textColor="?attr/colorOnSurface"
+android:textStyle="normal"
+tools:text="Ср" />
+    </LinearLayout>
