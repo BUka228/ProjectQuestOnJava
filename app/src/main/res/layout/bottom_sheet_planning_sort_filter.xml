@@ -6,15 +6,13 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:paddingHorizontal="16dp"
-    android:paddingTop="8dp"
-    android:paddingBottom="24dp"
     android:background="?attr/colorSurfaceContainerHigh"
     app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
 
     <com.google.android.material.bottomsheet.BottomSheetDragHandleView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp"/>
 
     <TextView
@@ -23,104 +21,116 @@
         android:text="Сортировка и фильтры"
         style="@style/TextAppearance.Material3.TitleLarge"
         android:textColor="?attr/colorPrimary"
-        android:layout_marginBottom="16dp"/>
+        android:layout_marginBottom="16dp"
+        android:paddingHorizontal="16dp"/> <!-- Отступ для заголовка -->
 
-    <!-- СОРТИРОВКА -->
-    <TextView
-        style="@style/SettingsSectionTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Сортировать по"
-        android:layout_marginBottom="12dp"/>
-
-    <TextView style="@style/SortFilterGroupLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Срок выполнения:"/>
-    <com.google.android.material.button.MaterialButtonToggleGroup
-        android:id="@+id/toggle_sort_time_planning"
-        style="@style/Widget.App.ButtonToggleGroup"
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
-        <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_time_asc_planning" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Ранние" app:icon="@drawable/keyboard_double_arrow_up"/>
-        <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_time_desc_planning" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Поздние" app:icon="@drawable/keyboard_double_arrow_down"/>
-    </com.google.android.material.button.MaterialButtonToggleGroup>
 
-    <TextView style="@style/SortFilterGroupLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Приоритет:"/>
-    <com.google.android.material.button.MaterialButtonToggleGroup
-        android:id="@+id/toggle_sort_priority_planning"
-        style="@style/Widget.App.ButtonToggleGroup"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_priority_desc_planning" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Важные" app:icon="@drawable/priority_high"/>
-        <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_priority_asc_planning" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Неважные" app:icon="@drawable/low_priority"/>
-    </com.google.android.material.button.MaterialButtonToggleGroup>
-
-    <TextView style="@style/SortFilterGroupLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Статус:"/>
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/button_sort_status_planning"
-        style="?attr/materialButtonOutlinedStyle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textAlignment="viewStart"
-        android:gravity="center_vertical|start"
-        android:text="Сначала невыполненные"
-        app:icon="@drawable/check_box_outline_blank" />
-
-    <TextView style="@style/SortFilterGroupLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Дата создания:"/>
-    <com.google.android.material.button.MaterialButtonToggleGroup
-        android:id="@+id/toggle_sort_created_planning"
-        style="@style/Widget.App.ButtonToggleGroup"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_created_newest_planning" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Новые" app:icon="@drawable/update"/>
-        <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_created_oldest_planning" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Старые" app:icon="@drawable/history"/>
-    </com.google.android.material.button.MaterialButtonToggleGroup>
-
-
-    <com.google.android.material.divider.MaterialDivider style="@style/SettingsDivider" android:layout_marginTop="20dp" android:layout_marginBottom="16dp"/>
-
-    <!-- ФИЛЬТРЫ -->
-    <TextView style="@style/SettingsSectionTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Фильтровать по" android:layout_marginBottom="12dp"/>
-
-    <TextView style="@style/SortFilterGroupLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Статус выполнения:"/>
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/chipGroup_filters_status_planning"
-        style="@style/Widget.App.ChipGroup.Filter"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_all_planning" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Все"/>
-        <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_incomplete_planning" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Невыполненные"/>
-        <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_complete_planning" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Выполненные"/>
-        <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_overdue_planning" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Просроченные"/>
-    </com.google.android.material.chip.ChipGroup>
-
-    <TextView style="@style/SortFilterGroupLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Приоритет:"/>
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/chipGroup_filters_priority_planning"
-        style="@style/Widget.App.ChipGroup.Filter"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_critical_planning" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Критический"/>
-        <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_high_planning" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Высокий"/>
-    </com.google.android.material.chip.ChipGroup>
-
-
-    <Space android:layout_width="match_parent" android:layout_height="24dp"/>
-
-    <LinearLayout
-        style="@style/BottomSheetActionButtonsContainer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <Button
-            android:id="@+id/button_reset_filters_planning"
-            style="@style/Widget.App.Button.Outlined.Destructive"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Сбросить"/>
-        <Button
-            android:id="@+id/button_apply_filters_planning"
-            style="@style/Widget.App.Button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="Применить"/>
-    </LinearLayout>
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingBottom="24dp"> <!-- Нижний отступ для контента в скролле -->
+
+            <!-- СОРТИРОВКА -->
+            <TextView
+                style="@style/SettingsSectionTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Сортировать по"
+                android:layout_marginBottom="12dp"/>
+
+            <TextView style="@style/SortFilterGroupLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Срок выполнения:"/>
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/toggle_sort_time_planning"
+                style="@style/Widget.App.ButtonToggleGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_time_asc_planning" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Ранние" app:icon="@drawable/keyboard_double_arrow_up"/>
+                <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_time_desc_planning" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Поздние" app:icon="@drawable/keyboard_double_arrow_down"/>
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <TextView style="@style/SortFilterGroupLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Приоритет:"/>
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/toggle_sort_priority_planning"
+                style="@style/Widget.App.ButtonToggleGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_priority_desc_planning" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Важные" app:icon="@drawable/priority_high"/>
+                <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_priority_asc_planning" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Неважные" app:icon="@drawable/low_priority"/>
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <TextView style="@style/SortFilterGroupLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Статус:"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_sort_status_planning"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAlignment="viewStart"
+                android:gravity="center_vertical|start"
+                android:text="Сначала невыполненные"
+                app:icon="@drawable/check_box_outline_blank" />
+
+            <TextView style="@style/SortFilterGroupLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Дата создания:"/>
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/toggle_sort_created_planning"
+                style="@style/Widget.App.ButtonToggleGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_created_newest_planning" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Новые" app:icon="@drawable/update"/>
+                <Button style="@style/Widget.App.ButtonToggle" android:id="@+id/button_sort_created_oldest_planning" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Старые" app:icon="@drawable/history"/>
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <com.google.android.material.divider.MaterialDivider style="@style/SettingsDivider" android:layout_marginTop="20dp" android:layout_marginBottom="16dp"/>
+
+            <!-- ФИЛЬТРЫ -->
+            <TextView style="@style/SettingsSectionTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Фильтровать по" android:layout_marginBottom="12dp"/>
+
+            <TextView style="@style/SortFilterGroupLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Статус выполнения:"/>
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroup_filters_status_planning"
+                style="@style/Widget.App.ChipGroup.Filter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_all_planning" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Все"/>
+                <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_incomplete_planning" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Невыполненные"/>
+                <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_complete_planning" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Выполненные"/>
+                <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_overdue_planning" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Просроченные"/>
+            </com.google.android.material.chip.ChipGroup>
+
+            <TextView style="@style/SortFilterGroupLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Приоритет:"/>
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroup_filters_priority_planning"
+                style="@style/Widget.App.ChipGroup.Filter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_critical_planning" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Критический"/>
+                <com.google.android.material.chip.Chip style="@style/Widget.App.Chip.Filter" android:id="@+id/chip_filter_high_planning" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Высокий"/>
+            </com.google.android.material.chip.ChipGroup>
+
+            <Space android:layout_width="match_parent" android:layout_height="24dp"/>
+
+            <LinearLayout
+                style="@style/BottomSheetActionButtonsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <Button
+                    android:id="@+id/button_reset_filters_planning"
+                    style="@style/Widget.App.Button.Outlined.Destructive"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Сбросить"/>
+                <Button
+                    android:id="@+id/button_apply_filters_planning"
+                    style="@style/Widget.App.Button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="Применить"/>
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
 </LinearLayout>
