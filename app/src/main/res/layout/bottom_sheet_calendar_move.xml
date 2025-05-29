@@ -6,7 +6,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="?attr/colorSurface">
+    android:background="?attr/colorSurfaceContainer">
 
     <com.google.android.material.bottomsheet.BottomSheetDragHandleView
         android:layout_width="match_parent"
@@ -50,8 +50,8 @@
         android:layout_height="wrap_content"
         app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
         app:spanCount="7"
-        tools:listitem="@layout/item_day_cell_planning"
-        tools:layout_height="240dp"/> <!-- Примерная высота для 5-6 недель -->
+        tools:listitem="@layout/item_day_cell_move_sheet"
+    tools:layout_height="240dp"/>
 
     <Button
         android:id="@+id/button_cancel_move_sheet"
