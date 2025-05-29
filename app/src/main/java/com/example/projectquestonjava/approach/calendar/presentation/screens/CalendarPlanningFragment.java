@@ -100,14 +100,6 @@ public class CalendarPlanningFragment extends BaseFragment
         setupCalendarViewPager();
         setupTasksRecyclerView();
         setupObservers();
-
-        // Для обработки результата от CalendarMoveSheetFragment (если он устанавливает результат)
-        // getChildFragmentManager().setFragmentResultListener("moveTaskDateSelected", getViewLifecycleOwner(), (requestKey, bundle) -> {
-        //     LocalDate selectedDate = (LocalDate) bundle.getSerializable("selectedDate");
-        //     if (selectedDate != null) {
-        //         viewModel.onMoveDateSelected(selectedDate);
-        //     }
-        // });
     }
 
     @Override
@@ -121,11 +113,6 @@ public class CalendarPlanningFragment extends BaseFragment
                     mainToolbar.setTitle(formattedMonthYear);
                 }
             });
-
-            // Управление иконкой раскрытия календаря
-            // Можно сделать кастомный title view или использовать action view
-            // Для простоты, пока оставим только текст месяца
-            // mainToolbar.setNavigationIcon(null); // Убираем стандартную иконку назад, если она не нужна
             mainToolbar.setOnClickListener(v -> viewModel.toggleCalendarExpanded());
         }
     }
@@ -137,20 +124,20 @@ public class CalendarPlanningFragment extends BaseFragment
 
     private void setupCalendarViewPager() {
         YearMonth initialMonth = viewModel.currentMonthLiveData.getValue();
-        if (initialMonth == null) initialMonth = YearMonth.now(); // Фоллбэк
+        if (initialMonth == null) initialMonth = YearMonth.now();
 
         calendarPagerAdapter = new CalendarViewPagerAdapter(getChildFragmentManager(), getLifecycle(), initialMonth);
         calendarViewPager.setAdapter(calendarPagerAdapter);
         calendarViewPager.setCurrentItem(CalendarViewPagerAdapter.INITIAL_PAGE, false);
 
-        final YearMonth finalInitialMonth = initialMonth; // Для лямбды
+        final YearMonth finalInitialMonth = initialMonth;
         calendarViewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             private boolean firstSelection = true;
             @Override
             public void onPageSelected(int position) {
                 super.onPageSelected(position);
                 if (firstSelection && position == CalendarViewPagerAdapter.INITIAL_PAGE) {
-                    firstSelection = false; // Игнорируем первый автоматический выбор начальной страницы
+                    firstSelection = false;
                     return;
                 }
                 YearMonth selectedMonth = finalInitialMonth.plusMonths((long) position - CalendarViewPagerAdapter.INITIAL_PAGE);
@@ -196,7 +183,6 @@ public class CalendarPlanningFragment extends BaseFragment
         });
 
         viewModel.calendarExpandedLiveData.observe(getViewLifecycleOwner(), isExpanded -> {
-            // Анимация для calendarViewContainer
             float targetAlpha = Boolean.TRUE.equals(isExpanded) ? 1.0f : 0.0f;
             int targetVisibility = Boolean.TRUE.equals(isExpanded) ? View.VISIBLE : View.GONE;
 
@@ -211,7 +197,6 @@ public class CalendarPlanningFragment extends BaseFragment
                     }).start();
                 }
             }
-            // TODO: Анимация иконки в Toolbar (сложнее без кастомного View)
         });
 
         viewModel.filteredTasksLiveData.observe(getViewLifecycleOwner(), tasks -> {
@@ -238,16 +223,13 @@ public class CalendarPlanningFragment extends BaseFragment
                 if (currentMonthForSheet != null) {
                     CalendarMoveSheetFragment.newInstance(currentMonthForSheet)
                             .show(getChildFragmentManager(), "MoveTaskSheetPlanning");
-                    // Сброс флага в ViewModel после показа
-                    // viewModel.onMoveSheetShown(); // Нужен такой метод
                 }
             }
         });
 
-        // Для деталей задачи (если используется TaskDetailsBottomSheetFragment)
         viewModel.taskDetailsForBottomSheetLiveData.observe(getViewLifecycleOwner(), summary -> {
             if (summary != null && !isTaskDetailsSheetShown) {
-                TaskDetailsBottomSheetFragment.newInstance(summary.getId(), false) // isDashboard = false
+                TaskDetailsBottomSheetFragment.newInstance(summary.getId(), false)
                         .show(getChildFragmentManager(), "PlanningTaskDetailsSheet");
                 isTaskDetailsSheetShown = true;
             } else if (summary == null && isTaskDetailsSheetShown) {
@@ -260,7 +242,6 @@ public class CalendarPlanningFragment extends BaseFragment
         });
     }
 
-    // --- OnPlanningTaskItemClickListener ---
     @Override
     public void onTaskCardClick(CalendarTaskSummary task) {
         viewModel.showTaskDetails(task);
@@ -280,7 +261,6 @@ public class CalendarPlanningFragment extends BaseFragment
         NavHostFragment.findNavController(this).navigate(R.id.action_global_to_pomodoroFragment, args);
     }
 
-    // --- SwipeToDeleteMoveCallback.SwipeListener ---
     @Override
     public void onTaskDeleteRequested(int position) {
         if (tasksAdapter != null && position != RecyclerView.NO_POSITION && position < tasksAdapter.getCurrentList().size()) {
@@ -305,9 +285,8 @@ public class CalendarPlanningFragment extends BaseFragment
         if (tasksAdapter != null) tasksAdapter.notifyItemChanged(position);
     }
 
-    // Метод, который может быть вызван из TaskDetailsBottomSheetFragment при его закрытии
     public void onDetailsSheetDismissed() {
         isTaskDetailsSheetShown = false;
-        viewModel.clearTaskDetails(); // Метод для сброса _taskDetailsForBottomSheet в ViewModel
+        viewModel.clearTaskDetails();
     }
 }

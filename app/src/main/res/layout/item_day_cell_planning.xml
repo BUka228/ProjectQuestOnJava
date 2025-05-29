@@ -1,31 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/layout_day_cell"
+    android:id="@+id/layout_day_cell_root"
     android:layout_width="match_parent"
-    android:layout_height="40dp"
-    android:orientation="vertical"
-    android:gravity="center"
+    android:layout_height="44dp"
     android:background="?attr/selectableItemBackgroundBorderless"
     android:clickable="true"
-    android:focusable="true">
+    android:focusable="true"
+    android:clipChildren="false"
+    android:clipToPadding="false">
 
-    <TextView
-        android:id="@+id/textView_day_number"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        style="@style/TextAppearance.App.BodyMedium"
-        tools:text="15"/>
+    <FrameLayout
+        android:id="@+id/frame_day_background_container"
+        android:layout_width="38dp"
+        android:layout_height="38dp"
+        android:layout_gravity="center_horizontal|top"
+        android:layout_marginTop="1dp"
+        tools:background="@drawable/day_selected_background_oval_placeholder">
+
+        <TextView
+            android:id="@+id/textView_day_number"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            style="@style/TextAppearance.App.BodyMedium"
+            tools:text="15"/>
+    </FrameLayout>
 
     <LinearLayout
         android:id="@+id/layout_task_indicator_dots"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="2dp"
-        android:gravity="center_horizontal">
-        <!-- Точки будут добавлены программно -->
-    </LinearLayout>
+        android:layout_gravity="center_horizontal|bottom"
+        android:layout_marginBottom="0dp"
+    android:gravity="center_horizontal">
+    <!-- Точки будут добавлены программно -->
 </LinearLayout>
+    </FrameLayout>

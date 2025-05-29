@@ -144,5 +144,10 @@
 
 
 
+    <!-- Для res/values-night/colors.xml (темная тема) -->
+    <color name="calendar_selected_day_bg_dark">#A5D6A7</color> <!-- Тот же светло-зеленый -->
+    <color name="calendar_selected_day_text_dark">#212121</color> <!-- Тот же темный текст -->
+    <color name="calendar_inactive_day_text_dark">#616161</color>
+
     
 </resources>

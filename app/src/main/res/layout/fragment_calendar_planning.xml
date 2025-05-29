@@ -19,9 +19,7 @@
         <FrameLayout
             android:id="@+id/frameLayout_calendar_view_container_planning"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/colorSurfaceContainerLow"> <!-- Фон для календаря -->
-            <!-- Сюда можно инфлейтить или добавлять ViewPager2 и заголовки дней недели -->
+            android:layout_height="wrap_content">
             <include layout="@layout/view_calendar_planning_content" />
         </FrameLayout>
 

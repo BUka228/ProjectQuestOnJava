@@ -1,6 +1,7 @@
 package com.example.projectquestonjava.approach.calendar.presentation.ui_parts;
 
 import android.app.Dialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
@@ -24,10 +25,16 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
+import androidx.fragment.app.Fragment; // Импорт для Fragment
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.fragment.NavHostFragment; // Для навигации
 import com.example.projectquestonjava.R;
 import com.example.projectquestonjava.approach.calendar.domain.model.CalendarTaskSummary;
+import com.example.projectquestonjava.approach.calendar.presentation.screens.CalendarDashboardFragment; // Для instanceof
+import com.example.projectquestonjava.approach.calendar.presentation.screens.CalendarPlanningFragment; // Для instanceof
+import com.example.projectquestonjava.approach.calendar.presentation.screens.TaskPlanningListAdapter; // Для интерфейса
 import com.example.projectquestonjava.approach.calendar.presentation.viewmodels.CalendarDashboardViewModel;
+import com.example.projectquestonjava.approach.calendar.presentation.viewmodels.CalendarPlanningViewModel; // Импорт
 import com.example.projectquestonjava.core.data.model.core.Tag;
 import com.example.projectquestonjava.core.data.model.enums.Priority;
 import com.example.projectquestonjava.core.data.model.enums.TaskStatus;
@@ -38,14 +45,16 @@ import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import dagger.hilt.android.AndroidEntryPoint; // Добавил, если используется Hilt
 
+@AndroidEntryPoint // Добавил, если используется Hilt
 public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
 
     private static final String ARG_TASK_ID_FOR_DETAILS = "arg_task_id_for_details";
     private static final String ARG_IS_DASHBOARD_VIEW = "arg_is_dashboard_view";
 
     private CalendarDashboardViewModel dashboardViewModel;
-    // private CalendarPlanningViewModel planningViewModel; // Если будет использоваться и для Планирования
+    private CalendarPlanningViewModel planningViewModel; // Добавлено поле
 
     private long currentTaskId = -1L;
     private boolean isDashboardSource = true;
@@ -60,6 +69,9 @@ public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
     private ImageButton deleteButton, editButton;
     private View spacerAfterDesc, spacerAfterPriority, spacerAfterTags;
 
+    // Listener для колбэков в родительский фрагмент (для Planning)
+    private TaskPlanningListAdapter.OnPlanningTaskItemClickListener planningTaskClickListener;
+
 
     public static TaskDetailsBottomSheetFragment newInstance(long taskId, boolean isFromDashboard) {
         TaskDetailsBottomSheetFragment fragment = new TaskDetailsBottomSheetFragment();
@@ -73,6 +85,17 @@ public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
     public TaskDetailsBottomSheetFragment() {}
 
     @Override
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+        Fragment parent = getParentFragment();
+        if (!isDashboardSource && parent instanceof TaskPlanningListAdapter.OnPlanningTaskItemClickListener) {
+            planningTaskClickListener = (TaskPlanningListAdapter.OnPlanningTaskItemClickListener) parent;
+        }
+        // Для dashboardClickListener аналогично, если бы он был нужен для прямых вызовов
+    }
+
+
+    @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
@@ -83,7 +106,7 @@ public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
         if (isDashboardSource) {
             dashboardViewModel = new ViewModelProvider(requireParentFragment()).get(CalendarDashboardViewModel.class);
         } else {
-            // planningViewModel = new ViewModelProvider(requireParentFragment()).get(CalendarPlanningViewModel.class);
+            planningViewModel = new ViewModelProvider(requireParentFragment()).get(CalendarPlanningViewModel.class);
         }
     }
 
@@ -117,18 +140,23 @@ public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
             return;
         }
 
-        /*if (isDashboardSource && dashboardViewModel != null) {
-            dashboardViewModel.getTaskDetailsForBottomSheet(currentTaskId) // Этот метод теперь просто триггерит _requestedTaskIdForDetails
-                    .observe(getViewLifecycleOwner(), summary -> { // Наблюдаем за taskDetailsForBottomSheetLiveData
-                        if (summary != null && summary.getId() == currentTaskId) { // Убедимся, что это та задача
-                            populateViews(summary);
-                        } else if (summary == null && isVisible()) {
-                            // Если задача стала null (например, удалена), закрываем диалог
-                            dismissAllowingStateLoss();
-                        }
-                    });
+        if (isDashboardSource && dashboardViewModel != null) {
+            dashboardViewModel.taskDetailsForBottomSheetLiveData.observe(getViewLifecycleOwner(), summary -> {
+                if (summary != null && summary.getId() == currentTaskId) {
+                    populateViews(summary);
+                } else if (summary == null && isVisible()) {
+                    dismissAllowingStateLoss();
+                }
+            });
+        } else if (!isDashboardSource && planningViewModel != null) {
+            planningViewModel.taskDetailsForBottomSheetLiveData.observe(getViewLifecycleOwner(), summary -> {
+                if (summary != null && summary.getId() == currentTaskId) {
+                    populateViews(summary);
+                } else if (summary == null && isVisible()) {
+                    dismissAllowingStateLoss();
+                }
+            });
         }
-        // TODO: Аналогично для planningViewModel*/
     }
 
     private void bindViewsFromLayout(View view) {
@@ -155,7 +183,7 @@ public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
 
     private void populateViews(CalendarTaskSummary summary) {
         titleView.setText(summary.getTitle());
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("EEEE, d MMM", new Locale("ru"));
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM", new Locale("ru"));
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
         dateView.setText(summary.getDueDate().format(dateFormatter));
         timeView.setText(summary.getDueDate().format(timeFormatter));
@@ -175,30 +203,27 @@ public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
         if (priority != null) {
             priorityBadgeLayout.setVisibility(View.VISIBLE);
             spacerAfterPriority.setVisibility(View.VISIBLE);
-            int colorRes = R.color.priority_low_container_bg; // Дефолтный
-            int iconRes = R.drawable.low_priority; // Дефолтный
+            int colorRes = R.color.priority_low_container_bg;
+            int iconRes = R.drawable.low_priority;
             String priorityText = "Низкий";
 
             switch (priority) {
                 case CRITICAL:
                     colorRes = R.color.priority_critical_container_bg;
-                    iconRes = R.drawable.priority_high; // Или спец. для критического
+                    iconRes = R.drawable.priority_high;
                     priorityText = "Критический";
                     break;
                 case HIGH:
-                    colorRes = R.color.priority_high_container_bg; // Создать эти цвета
+                    colorRes = R.color.priority_high_container_bg;
                     iconRes = R.drawable.priority_high;
                     priorityText = "Высокий";
                     break;
                 case MEDIUM:
                     colorRes = R.color.priority_medium_container_bg;
-                    iconRes = R.drawable.priority_medium_icon; // Создать иконку
+                    iconRes = R.drawable.priority_medium_icon;
                     priorityText = "Средний";
                     break;
-                case LOW:
-                    colorRes = R.color.priority_low_container_bg;
-                    iconRes = R.drawable.low_priority;
-                    priorityText = "Низкий";
+                case LOW: // Уже установлено по умолчанию
                     break;
             }
             priorityIconView.setImageResource(iconRes);
@@ -209,11 +234,10 @@ public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
             } else {
                 priorityBadgeLayout.setBackgroundColor(ContextCompat.getColor(requireContext(), colorRes));
             }
-            // Цвет иконки и текста внутри badge должен быть контрастным к colorRes
             priorityLabelText.setText(priorityText);
-            priorityLabelText.setTextColor(Color.BLACK); // Пример, лучше из темы
+            // TODO: Установить цвет текста и иконки в badge в зависимости от colorRes для контраста
+            priorityLabelText.setTextColor(Color.BLACK); // Пример
             ImageViewCompat.setImageTintList(priorityIconView, ColorStateList.valueOf(Color.BLACK));
-
 
         } else {
             priorityBadgeLayout.setVisibility(View.GONE);
@@ -222,8 +246,11 @@ public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
 
         pomodoroCountText.setText(String.valueOf(summary.getPomodoroCount()));
         pomodoroContainerLayout.setOnClickListener(v -> {
-            if (isDashboardSource) dashboardViewModel.startPomodoroForTask(summary.getId());
-            // else planningViewModel.startPomodoroForTask(summary.getId());
+            if (isDashboardSource && dashboardViewModel != null) {
+                dashboardViewModel.startPomodoroForTask(summary.getId());
+            } else if (!isDashboardSource && planningTaskClickListener != null) {
+                planningTaskClickListener.onPomodoroStartRequest(summary);
+            }
             dismiss();
         });
 
@@ -233,13 +260,13 @@ public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
             tagsChipGroup.setVisibility(View.VISIBLE);
             spacerAfterTags.setVisibility(View.VISIBLE);
             for (Tag tag : summary.getTags()) {
-                Chip chip = new Chip(requireContext());
+                Chip chip = (Chip) LayoutInflater.from(getContext()).inflate(R.layout.chip_tag_item_details, tagsChipGroup, false);
                 chip.setText(tag.getName());
-                chip.setChipBackgroundColorResource(R.color.chip_background_color);
-                chip.setTextColor(ContextCompat.getColor(requireContext(), R.color.chip_text_color));
                 chip.setOnClickListener(v -> {
-                    if (isDashboardSource) dashboardViewModel.addTagToFilter(tag);
-                    // else planningViewModel.addTagToFilter(tag);
+                    if (isDashboardSource && dashboardViewModel != null) {
+                        dashboardViewModel.addTagToFilter(tag);
+                    }
+                    // Для планирования клик по тегу в деталях может не делать ничего или закрывать
                     dismiss();
                 });
                 tagsChipGroup.addView(chip);
@@ -250,15 +277,13 @@ public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
             spacerAfterTags.setVisibility(View.GONE);
         }
 
-        if (isDashboardSource) {
+        if (isDashboardSource && dashboardViewModel != null) {
             doneCheckbox.setVisibility(View.VISIBLE);
-            doneCheckbox.setChecked(summary.getStatus() == TaskStatus.DONE);
-            doneCheckbox.setOnCheckedChangeListener(null); // Сбрасываем слушатель перед установкой значения
+            doneCheckbox.setOnCheckedChangeListener(null);
             doneCheckbox.setChecked(summary.getStatus() == TaskStatus.DONE);
             doneCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                if (buttonView.isPressed()) { // Реагируем только на клик пользователя
+                if (buttonView.isPressed()) {
                     dashboardViewModel.handleSwipeAction(summary.getId(), CalendarDashboardViewModel.SwipeDirection.RIGHT);
-                    // Не закрываем сразу, пусть LiveData обновит UI
                 }
             });
         } else {
@@ -266,20 +291,32 @@ public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
         }
 
         pomodoroActionButton.setOnClickListener(v -> {
-            if (isDashboardSource) dashboardViewModel.startPomodoroForTask(summary.getId());
-            // else planningViewModel.startPomodoroForTask(summary.getId());
+            if (isDashboardSource && dashboardViewModel != null) {
+                dashboardViewModel.startPomodoroForTask(summary.getId());
+            } else if (!isDashboardSource && planningTaskClickListener != null) {
+                planningTaskClickListener.onPomodoroStartRequest(summary);
+            }
             dismiss();
         });
 
         deleteButton.setOnClickListener(v -> {
-            if (isDashboardSource) dashboardViewModel.handleSwipeAction(summary.getId(), CalendarDashboardViewModel.SwipeDirection.LEFT);
-            // else planningViewModel.deleteTaskWithConfirmation(summary.getId()); // Предполагаем такой метод
+            if (isDashboardSource && dashboardViewModel != null) {
+                dashboardViewModel.handleSwipeAction(summary.getId(), CalendarDashboardViewModel.SwipeDirection.LEFT);
+            } else if (!isDashboardSource && planningViewModel != null) {
+                // Для планировщика, возможно, нужно показать диалог подтверждения перед удалением
+                // Или вызвать метод ViewModel, который это сделает.
+                // Для простоты пока прямой вызов:
+                planningViewModel.deleteTask(summary.getId());
+            }
             dismiss();
         });
 
         editButton.setOnClickListener(v -> {
-            if (isDashboardSource) dashboardViewModel.editTask(summary.getId());
-            // else planningViewModel.editTask(summary.getId());
+            if (isDashboardSource && dashboardViewModel != null) {
+                dashboardViewModel.editTask(summary.getId());
+            } else if (!isDashboardSource && planningTaskClickListener != null) {
+                planningTaskClickListener.onTaskEditRequest(summary);
+            }
             dismiss();
         });
     }
@@ -287,12 +324,28 @@ public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
     @Override
     public void onDismiss(@NonNull DialogInterface dialog) {
         super.onDismiss(dialog);
-        // Сбрасываем запрошенный ID в ViewModel, чтобы диалог не открылся снова при пересоздании View
         if (isDashboardSource && dashboardViewModel != null) {
-            dashboardViewModel.clearRequestedTaskDetails(); // Нужен такой метод в ViewModel
+            dashboardViewModel.clearRequestedTaskDetails();
+        } else if (!isDashboardSource && planningViewModel != null) {
+            planningViewModel.clearTaskDetails();
         }
-        // else if (planningViewModel != null) {
-        //     planningViewModel.clearRequestedTaskDetails();
-        // }
+
+        Fragment parent = getParentFragment();
+        if (parent instanceof CalendarPlanningFragment) {
+            ((CalendarPlanningFragment) parent).onDetailsSheetDismissed();
+        } else if (parent instanceof CalendarDashboardFragment) {
+            ((CalendarDashboardFragment) parent).onDetailsSheetDismissed();
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // Очистка ссылок на View
+        titleView = null; dateView = null; timeView = null; descLabel = null; descView = null;
+        priorityLabelText = null; pomodoroCountText = null; tagsLabel = null; doneCheckbox = null;
+        priorityBadgeLayout = null; pomodoroContainerLayout = null; priorityIconView = null;
+        tagsChipGroup = null; pomodoroActionButton = null; deleteButton = null; editButton = null;
+        spacerAfterDesc = null; spacerAfterPriority = null; spacerAfterTags = null;
     }
 }

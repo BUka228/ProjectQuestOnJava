@@ -1,0 +1,4 @@
+<!-- res/drawable/day_selected_background_oval_placeholder.xml -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="#4CAF50" /> <!-- Ярко-зеленый для видимости в preview -->
+</shape>

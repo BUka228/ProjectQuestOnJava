@@ -9,7 +9,7 @@
     android:paddingHorizontal="24dp"
     android:paddingTop="8dp"
     android:paddingBottom="32dp"
-    android:background="?attr/colorSurfaceContainerHigh"
+    android:background="?attr/colorSurface"
     app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
 
     <com.google.android.material.bottomsheet.BottomSheetDragHandleView
