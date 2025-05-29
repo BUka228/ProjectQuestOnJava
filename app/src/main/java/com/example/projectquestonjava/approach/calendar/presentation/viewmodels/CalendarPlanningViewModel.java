@@ -1,9 +1,11 @@
 package com.example.projectquestonjava.approach.calendar.presentation.viewmodels;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer; // Для Observer в конструкторе MediatorLiveData
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 import com.example.projectquestonjava.approach.calendar.domain.model.CalendarMonthData;
@@ -41,8 +43,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -57,10 +59,16 @@ public class CalendarPlanningViewModel extends ViewModel {
 
     private static final String TAG = "CalendarPlanningVM";
 
+    private final CalendarRepository calendarRepository;
+    private final GetCalendarMonthDataUseCase getCalendarMonthDataUseCase;
     private final UpdateCalendarTaskUseCase updateTaskUseCase;
     private final DeleteTaskUseCase deleteTaskUseCase;
+    private final WorkspaceSessionManager workspaceSessionManager;
+    private final PriorityResolver priorityResolver;
+    private final DateTimeUtils dateTimeUtils;
     private final SnackbarManager snackbarManager;
     private final Logger logger;
+    private final Executor ioExecutor;
 
     private final MutableLiveData<PlanningUiState> _uiStateLiveData = new MutableLiveData<>(new PlanningUiState());
     public LiveData<PlanningUiState> uiStateLiveData = _uiStateLiveData;
@@ -68,7 +76,7 @@ public class CalendarPlanningViewModel extends ViewModel {
     private final MutableLiveData<YearMonth> _currentMonthLiveData = new MutableLiveData<>(YearMonth.now());
     public LiveData<YearMonth> currentMonthLiveData = _currentMonthLiveData;
 
-    private final MutableLiveData<LocalDate> _selectedDateLiveData = new MutableLiveData<>(null);
+    private final MutableLiveData<LocalDate> _selectedDateLiveData = new MutableLiveData<>(null); // Изначально день не выбран
     public LiveData<LocalDate> selectedDateLiveData = _selectedDateLiveData;
 
     private final MutableLiveData<Boolean> _calendarExpandedLiveData = new MutableLiveData<>(true);
@@ -89,11 +97,10 @@ public class CalendarPlanningViewModel extends ViewModel {
     private final MutableLiveData<CalendarTaskSummary> _taskDetailsForBottomSheet = new MutableLiveData<>(null);
     public LiveData<CalendarTaskSummary> taskDetailsForBottomSheetLiveData = _taskDetailsForBottomSheet;
 
-    // LiveData для CalendarMonthData, который будет результатом switchMap
+    private final LiveData<Long> workspaceIdSourceLiveData; // Источник для workspaceId
     private final LiveData<CalendarMonthData> calendarDataLiveData;
-
-    // Отфильтрованные и отсортированные задачи
     public final LiveData<List<CalendarTaskSummary>> filteredTasksLiveData;
+    public final LiveData<Map<LocalDate, Integer>> dailyTaskCountsLiveData;
 
 
     @Inject
@@ -108,84 +115,148 @@ public class CalendarPlanningViewModel extends ViewModel {
             DateTimeUtils dateTimeUtils,
             @IODispatcher Executor ioExecutor,
             Logger logger) {
-        // Нужен для getTasksForDay
+        this.getCalendarMonthDataUseCase = getCalendarMonthDataUseCase;
+        this.calendarRepository = calendarRepository;
         this.updateTaskUseCase = updateTaskUseCase;
         this.deleteTaskUseCase = deleteTaskUseCase;
+        this.workspaceSessionManager = workspaceSessionManager;
+        this.priorityResolver = priorityResolver;
+        this.dateTimeUtils = dateTimeUtils;
         this.snackbarManager = snackbarManager;
         this.logger = logger;
+        this.ioExecutor = ioExecutor;
 
-        // Объединяем источники для calendarDataLiveData
-        MediatorLiveData<Triple<YearMonth, LocalDate, Long>> triggerLiveData = new MediatorLiveData<>();
-        triggerLiveData.addSource(_currentMonthLiveData, month -> triggerLiveData.setValue(new Triple<>(month, _selectedDateLiveData.getValue(), workspaceSessionManager.getWorkspaceIdLiveData().getValue())));
-        triggerLiveData.addSource(_selectedDateLiveData, date -> triggerLiveData.setValue(new Triple<>(_currentMonthLiveData.getValue(), date, workspaceSessionManager.getWorkspaceIdLiveData().getValue())));
-        triggerLiveData.addSource(workspaceSessionManager.getWorkspaceIdLiveData(), wsId -> triggerLiveData.setValue(new Triple<>(_currentMonthLiveData.getValue(), _selectedDateLiveData.getValue(), wsId)));
-        // Инициализация начальным значением
-        triggerLiveData.setValue(new Triple<>(_currentMonthLiveData.getValue(), _selectedDateLiveData.getValue(), workspaceSessionManager.getWorkspaceIdLiveData().getValue()));
+        logger.info(TAG, "ViewModel initialized. Instance: " + this.hashCode());
+
+        workspaceIdSourceLiveData = this.workspaceSessionManager.getWorkspaceIdLiveData();
+
+        MediatorLiveData<TriggerData> triggerLiveData = new MediatorLiveData<>();
+
+        Observer<Object> commonTriggerObserver = o -> {
+            YearMonth month = _currentMonthLiveData.getValue();
+            LocalDate date = _selectedDateLiveData.getValue();
+            Long wsId = workspaceIdSourceLiveData.getValue(); // Берем из отдельного LiveData
+            // Только если все триггеры не null (кроме date, который может быть null)
+            if (month != null && wsId != null) {
+                triggerLiveData.setValue(new TriggerData(month, date, wsId));
+            } else {
+                logger.warn(TAG, "commonTriggerObserver: One of the essential triggers (month or wsId) is null. Month: " + month + ", WsId: " + wsId);
+            }
+        };
+
+        triggerLiveData.addSource(_currentMonthLiveData, commonTriggerObserver);
+        triggerLiveData.addSource(_selectedDateLiveData, commonTriggerObserver);
+        triggerLiveData.addSource(workspaceIdSourceLiveData, commonTriggerObserver);
+
+        // Установка начального значения, если возможно
+        YearMonth initialMonth = _currentMonthLiveData.getValue();
+        LocalDate initialDate = _selectedDateLiveData.getValue();
+        Long initialWsId = workspaceIdSourceLiveData.getValue();
+        if (initialMonth != null && initialWsId != null) {
+            triggerLiveData.setValue(new TriggerData(initialMonth, initialDate, initialWsId));
+        } else {
+            logger.debug(TAG, "Initial trigger values not all set yet. Month: " + initialMonth + ", WsId: " + initialWsId);
+        }
 
 
         calendarDataLiveData = Transformations.switchMap(triggerLiveData, trigger -> {
-            YearMonth month = trigger.first;
-            LocalDate date = trigger.second;
-            Long workspaceId = trigger.third;
-
-            if (workspaceId == null || workspaceId == 0L) {
-                logger.warn(TAG, "No active workspace, returning empty CalendarMonthData LiveData.");
+            if (trigger == null) { // Добавлена проверка на null для триггера
+                logger.warn(TAG, "calendarDataLiveData: Trigger is null. Returning EMPTY.");
                 MutableLiveData<CalendarMonthData> emptyData = new MutableLiveData<>();
                 emptyData.setValue(CalendarMonthData.EMPTY);
                 return emptyData;
             }
-            updateUiState(s -> s.copyWithLoading(true));
+            YearMonth month = trigger.month; // Не может быть null из-за проверки выше
+            LocalDate date = trigger.date;   // Может быть null
+            Long workspaceId = trigger.workspaceId; // Не может быть null
 
-            if (date != null) { // Загрузка для выбранного дня
-                logger.debug(TAG, "Fetching data LiveData for selected date: " + date + ", workspace: " + workspaceId);
+            logger.debug(TAG, "calendarDataLiveData: Processing Trigger. Month=" + month + ", Date=" + date + ", WsId=" + workspaceId);
+
+            if (workspaceId == null || workspaceId == WorkspaceSessionManager.NO_WORKSPACE_ID) { // Проверяем NO_WORKSPACE_ID
+                logger.warn(TAG, "calendarDataLiveData: No active workspace (wsId: " + workspaceId + "). Returning EMPTY.");
+                MutableLiveData<CalendarMonthData> emptyData = new MutableLiveData<>();
+                emptyData.setValue(CalendarMonthData.EMPTY);
+                return emptyData;
+            }
+            updateUiState(s -> s.copyWithLoading(true).copyWithError(null));
+
+            if (date != null) {
+                logger.debug(TAG, "calendarDataLiveData: Fetching data for selected date: " + date);
                 LiveData<List<CalendarTaskWithTagsAndPomodoro>> tasksForDay = calendarRepository.getTasksForDay(workspaceId, date.atStartOfDay());
                 return Transformations.map(tasksForDay, tasksWithDetails -> {
                     updateUiState(s -> s.copyWithLoading(false));
-                    if (tasksWithDetails == null) return CalendarMonthData.EMPTY;
+                    if (tasksWithDetails == null) {
+                        logger.warn(TAG, "calendarDataLiveData: tasksForDay returned null for date " + date + ". Using EMPTY.");
+                        return CalendarMonthData.EMPTY;
+                    }
+                    logger.debug(TAG, "calendarDataLiveData: Received " + tasksWithDetails.size() + " tasks for date " + date);
                     List<CalendarTaskSummary> summaries = CalendarExtensions.toTaskSummaries(tasksWithDetails, priorityResolver, dateTimeUtils);
                     Map<LocalDate, Integer> counts = Collections.singletonMap(date, summaries.size());
                     return new CalendarMonthData(summaries, counts);
                 });
-            } else { // Загрузка для месяца
-                logger.debug(TAG, "Fetching data LiveData for month: " + month + ", workspace: " + workspaceId);
-                // getCalendarMonthDataUseCase.execute() уже возвращает LiveData<CalendarMonthData>
-                LiveData<CalendarMonthData> monthData = getCalendarMonthDataUseCase.execute(month.atDay(1));
-                // Просто добавляем обработку isLoading
-                MediatorLiveData<CalendarMonthData> mediatedMonthData = new MediatorLiveData<>();
-                mediatedMonthData.addSource(monthData, data -> {
+            } else { // date is null, fetch for month
+                logger.debug(TAG, "calendarDataLiveData: Fetching data for month: " + month);
+                LiveData<CalendarMonthData> monthData = getCalendarMonthDataUseCase.execute(month.atDay(1)); // UseCase ожидает LocalDate
+                // Обертка для установки isLoading=false после получения данных от UseCase
+                MediatorLiveData<CalendarMonthData> mediatedResult = new MediatorLiveData<>();
+                mediatedResult.addSource(monthData, data -> {
                     updateUiState(s -> s.copyWithLoading(false));
-                    mediatedMonthData.setValue(data != null ? data : CalendarMonthData.EMPTY);
+                    logger.debug(TAG, "calendarDataLiveData: Received data for month " + month + ". Tasks: " + (data != null ? data.getTasks().size() : "null_data") + ", Counts: " + (data != null ? data.getDailyTaskCounts().size() : "null_counts"));
+                    mediatedResult.setValue(data != null ? data : CalendarMonthData.EMPTY);
                 });
-                return mediatedMonthData;
+                return mediatedResult;
             }
         });
 
-        // LiveData для dailyTaskCounts
-        // _dailyTaskCountsLiveData теперь не нужен отдельно, он часть calendarDataLiveData
+        dailyTaskCountsLiveData = Transformations.map(calendarDataLiveData, monthData -> {
+            if (monthData == null) return Collections.emptyMap();
+            logger.debug(TAG, "dailyTaskCountsLiveData updated with " + monthData.getDailyTaskCounts().size() + " entries.");
+            return monthData.getDailyTaskCounts();
+        });
 
-        // filteredTasksLiveData
         MediatorLiveData<Quartet<List<CalendarTaskSummary>, Set<TaskFilterOption>, TaskSortOption, LocalDate>> filterSortTrigger = new MediatorLiveData<>();
-        filterSortTrigger.addSource(Transformations.map(calendarDataLiveData, CalendarMonthData::getTasks), tasks -> updateFilterSortTrigger(filterSortTrigger));
-        filterSortTrigger.addSource(_filterOptionsLiveData, filters -> updateFilterSortTrigger(filterSortTrigger));
-        filterSortTrigger.addSource(_sortOptionLiveData, sort -> updateFilterSortTrigger(filterSortTrigger));
-        filterSortTrigger.addSource(_selectedDateLiveData, date -> updateFilterSortTrigger(filterSortTrigger));
-        // Инициализация
-        updateFilterSortTrigger(filterSortTrigger);
-
+        // Источник 1: Задачи из calendarDataLiveData
+        filterSortTrigger.addSource(Transformations.map(calendarDataLiveData, CalendarMonthData::getTasks), tasks -> {
+            logger.debug(TAG, "filterSortTrigger: Tasks updated, count: " + (tasks != null ? tasks.size() : "null"));
+            updateFilterSortTriggerValue(filterSortTrigger);
+        });
+        // Источник 2: Опции фильтрации
+        filterSortTrigger.addSource(_filterOptionsLiveData, filters -> {
+            logger.debug(TAG, "filterSortTrigger: Filter options updated: " + filters);
+            updateFilterSortTriggerValue(filterSortTrigger);
+        });
+        // Источник 3: Опция сортировки
+        filterSortTrigger.addSource(_sortOptionLiveData, sort -> {
+            logger.debug(TAG, "filterSortTrigger: Sort option updated: " + sort);
+            updateFilterSortTriggerValue(filterSortTrigger);
+        });
+        // Источник 4: Выбранная дата (для контекста фильтров)
+        filterSortTrigger.addSource(_selectedDateLiveData, date -> {
+            logger.debug(TAG, "filterSortTrigger: Selected date updated: " + date);
+            updateFilterSortTriggerValue(filterSortTrigger);
+        });
+        updateFilterSortTriggerValue(filterSortTrigger); // Initial call
 
         filteredTasksLiveData = Transformations.map(filterSortTrigger, trigger -> {
-            if (trigger == null) return Collections.emptyList();
+            if (trigger == null || trigger.first == null) {
+                logger.debug(TAG, "filteredTasksLiveData: Trigger or tasks in trigger is null, returning empty list.");
+                return Collections.emptyList();
+            }
             return filterAndSortTasks(trigger.first, trigger.fourth, trigger.second, trigger.third);
         });
     }
 
-    private void updateFilterSortTrigger(MediatorLiveData<Quartet<List<CalendarTaskSummary>, Set<TaskFilterOption>, TaskSortOption, LocalDate>> mediator) {
-        List<CalendarTaskSummary> tasks = calendarDataLiveData.getValue() != null ? calendarDataLiveData.getValue().getTasks() : Collections.emptyList();
+    private void updateFilterSortTriggerValue(MediatorLiveData<Quartet<List<CalendarTaskSummary>, Set<TaskFilterOption>, TaskSortOption, LocalDate>> mediator) {
+        List<CalendarTaskSummary> tasks = calendarDataLiveData.getValue() != null ? calendarDataLiveData.getValue().getTasks() : null; // Может быть null, если calendarDataLiveData еще не загрузилось
         Set<TaskFilterOption> filters = _filterOptionsLiveData.getValue();
         TaskSortOption sort = _sortOptionLiveData.getValue();
         LocalDate date = _selectedDateLiveData.getValue();
-        if (filters != null && sort != null) { // date может быть null
+
+        if (tasks != null && filters != null && sort != null) { // tasks могут быть null на старте
+            logger.debug(TAG, "updateFilterSortTriggerValue: All components ready. Tasks: " + tasks.size() + ", Date: " + date + ", Filters: " + filters + ", Sort: " + sort);
             mediator.setValue(new Quartet<>(tasks, filters, sort, date));
+        } else {
+            logger.debug(TAG, "updateFilterSortTriggerValue: Not all components ready. Tasks: " + (tasks != null) + ", Filters: " + (filters != null) + ", Sort: " + (sort != null));
         }
     }
 
@@ -195,92 +266,89 @@ public class CalendarPlanningViewModel extends ViewModel {
     }
 
     @FunctionalInterface
-    interface UiStateUpdaterPlanning {
-        PlanningUiState update(PlanningUiState currentState);
-    }
+    interface UiStateUpdaterPlanning { PlanningUiState update(PlanningUiState currentState); }
 
-    // --- Методы управления UI ---
     public void updateMonth(YearMonth month) {
         if (!Objects.equals(_currentMonthLiveData.getValue(), month)) {
-            logger.debug(TAG, "Updating current month to: " + month);
+            logger.info(TAG, "updateMonth: New month selected: " + month);
             _currentMonthLiveData.setValue(month);
-            _selectedDateLiveData.setValue(null); // Сброс даты
+            if (_selectedDateLiveData.getValue() != null) { // Если был выбран день, сбрасываем его
+                logger.debug(TAG, "updateMonth: Resetting selectedDate as month changed.");
+                _selectedDateLiveData.setValue(null);
+            }
         }
     }
 
     public void selectDate(LocalDate date) {
-        LocalDate newSelectedDate = Objects.equals(_selectedDateLiveData.getValue(), date) ? null : date;
-        logger.debug(TAG, "Updating selected date to: " + newSelectedDate);
+        LocalDate currentSelected = _selectedDateLiveData.getValue();
+        LocalDate newSelectedDate = Objects.equals(currentSelected, date) ? null : date;
+        logger.info(TAG, "selectDate: User clicked on date. CurrentSelected=" + currentSelected + ", ClickedDate=" + date + ", NewSelectedDate=" + newSelectedDate);
         _selectedDateLiveData.setValue(newSelectedDate);
+
+        if (newSelectedDate != null) {
+            YearMonth monthOfNewDate = YearMonth.from(newSelectedDate);
+            if (!Objects.equals(monthOfNewDate, _currentMonthLiveData.getValue())) {
+                logger.debug(TAG, "selectDate: Month ("+ _currentMonthLiveData.getValue() +") also changed to: " + monthOfNewDate + " due to date selection.");
+                _currentMonthLiveData.setValue(monthOfNewDate);
+            }
+        }
     }
 
     public void toggleCalendarExpanded() {
-        _calendarExpandedLiveData.setValue(!Objects.requireNonNull(_calendarExpandedLiveData.getValue()));
+        boolean newState = !Objects.requireNonNull(_calendarExpandedLiveData.getValue());
+        _calendarExpandedLiveData.setValue(newState);
+        logger.debug(TAG, "Calendar expanded toggled to: " + newState);
     }
     public void updateSortOption(TaskSortOption option) {
         logger.debug(TAG, "Updating sort option to: " + option);
         _sortOptionLiveData.setValue(option);
     }
-
-    public void showTaskDetails(CalendarTaskSummary task) {
-        _taskDetailsForBottomSheet.setValue(task);
-    }
-
-    public void clearTaskDetails() {
-        _taskDetailsForBottomSheet.setValue(null);
-    }
-
-    public void onMoveSheetShown() { // Если нужно сбрасывать флаг после показа
-        _showMoveTaskSheetLiveData.setValue(false);
-    }
-
     public void toggleFilterOption(TaskFilterOption option) {
         Set<TaskFilterOption> currentOptions = new HashSet<>(Objects.requireNonNull(_filterOptionsLiveData.getValue()));
         Set<TaskFilterOption> newOptions;
         if (option == TaskFilterOption.ALL) {
             newOptions = Collections.singleton(TaskFilterOption.ALL);
-        } else if (currentOptions.contains(TaskFilterOption.ALL)) {
-            newOptions = Collections.singleton(option);
-        } else if (currentOptions.contains(option)) {
-            currentOptions.remove(option);
-            newOptions = currentOptions.isEmpty() ? Collections.singleton(TaskFilterOption.INCOMPLETE) : currentOptions;
         } else {
-            currentOptions.remove(TaskFilterOption.ALL); // Если был ALL, убираем его
-            currentOptions.add(option);
-            newOptions = currentOptions;
+            currentOptions.remove(TaskFilterOption.ALL);
+            if (currentOptions.contains(option)) {
+                currentOptions.remove(option);
+            } else {
+                currentOptions.add(option);
+            }
+            newOptions = currentOptions.isEmpty() ? Collections.singleton(TaskFilterOption.INCOMPLETE) : currentOptions;
         }
         logger.debug(TAG, "Updating filter options to: " + newOptions);
         _filterOptionsLiveData.setValue(newOptions);
     }
-
-
     public void resetSortAndFilters() {
         logger.debug(TAG, "Resetting sort and filters to default");
         _sortOptionLiveData.setValue(TaskSortOption.TIME_ASC);
         _filterOptionsLiveData.setValue(Collections.singleton(TaskFilterOption.INCOMPLETE));
     }
-    public void clearError() { updateUiState(s -> s.copy(null,null, null)); }
-    public void clearSuccessMessage() { updateUiState(s -> s.copy(null,null, null)); }
 
+    public void showTaskDetails(CalendarTaskSummary task) { _taskDetailsForBottomSheet.setValue(task); }
+    public void clearTaskDetails() { _taskDetailsForBottomSheet.setValue(null); }
+    public void onMoveSheetShown() { _showMoveTaskSheetLiveData.setValue(false); }
+    public void clearError() { updateUiState(s -> s.copy(null, null, null)); } // Используем новый copy
+    public void clearSuccessMessage() { updateUiState(s -> s.copy(null, null, null)); } // Используем новый copy
 
     public void deleteTask(long taskId) {
         logger.debug(TAG, "Attempting to delete task: taskId=" + taskId);
-        updateUiState(s -> s.copyWithLoading(true));
+        updateUiState(s -> s.copy(true, null, null));
         ListenableFuture<Void> future = deleteTaskUseCase.execute(taskId);
         Futures.addCallback(future, new FutureCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
                 logger.info(TAG, "Task " + taskId + " deleted successfully.");
-                updateUiState(s -> s.copyWithLoading(false));
-                snackbarManager.showMessage("Задача удалена");
+                updateUiState(s -> s.copy(false, null, "Задача удалена"));
+                refreshCurrentData(); // Обновляем данные
             }
             @Override
             public void onFailure(@NonNull Throwable t) {
                 logger.error(TAG, "Error deleting task " + taskId, t);
                 updateUiState(s -> s.copy(false, "Ошибка удаления: " + t.getMessage(), null));
-                snackbarManager.showMessage("Ошибка удаления: " + t.getMessage());
             }
-        }, MoreExecutors.directExecutor());
+        }, ioExecutor);
     }
 
     public void requestMoveTask(long taskId) {
@@ -293,83 +361,103 @@ public class CalendarPlanningViewModel extends ViewModel {
         _showMoveTaskSheetLiveData.setValue(false);
         Long taskId = _taskToMoveIdLiveData.getValue();
         if (taskId == null) {
-            onMoveCancelled();
-            return;
+            logger.warn(TAG, "onMoveDateSelected: taskToMoveId is null. Move cancelled.");
+            onMoveCancelled(); return;
         }
         logger.debug(TAG, "Attempting to move task " + taskId + " to " + newDate);
-        updateUiState(s ->  s.copyWithLoading(true));
+        updateUiState(s -> s.copy(true, null, null));
 
-        // Получаем текущую задачу (может быть сложно без блокировки или изменения filteredTasksLiveData на ListenableFuture)
-        // Для простоты, предположим, что мы можем найти ее в текущем значении LiveData
-        List<CalendarTaskSummary> currentTasks = filteredTasksLiveData.getValue();
-        CalendarTaskSummary originalTaskSummary = null;
-        if (currentTasks != null) {
-            for (CalendarTaskSummary summary : currentTasks) {
-                if (summary.getId() == taskId) {
-                    originalTaskSummary = summary;
-                    break;
-                }
-            }
+        List<CalendarTaskSummary> tasksSource = calendarDataLiveData.getValue() != null ? calendarDataLiveData.getValue().getTasks() : Collections.emptyList();
+        if (tasksSource.isEmpty() && filteredTasksLiveData.getValue() != null) { // Фоллбэк на filteredTasks
+            tasksSource = filteredTasksLiveData.getValue();
         }
 
-        if (originalTaskSummary == null) {
-            logger.error(TAG, "Task " + taskId + " not found for move.");
-            updateUiState(s -> s.copy(false, "Задача не найдена", null));
-            onMoveCancelled();
-            return;
+        CalendarTaskSummary taskToMove = tasksSource.stream().filter(t -> t.getId() == taskId).findFirst().orElse(null);
+
+        if (taskToMove == null) {
+            logger.error(TAG, "Task " + taskId + " not found in current data for move.");
+            updateUiState(s -> s.copy(false, "Задача для перемещения не найдена", null));
+            onMoveCancelled(); return;
         }
 
-        LocalDateTime originalTime = LocalDateTime.from(originalTaskSummary.getDueDate().toLocalTime());
-        LocalDateTime newDateTime = LocalDateTime.of(newDate, LocalTime.from(originalTime));
+        LocalDateTime newDateTime = LocalDateTime.of(newDate, taskToMove.getDueDate().toLocalTime());
         TaskInput taskInput = new TaskInput(
-                originalTaskSummary.getId(),
-                originalTaskSummary.getTitle(),
-                originalTaskSummary.getDescription(),
-                newDateTime, // Локальное время
-                originalTaskSummary.getRecurrenceRule(),
-                new HashSet<>(originalTaskSummary.getTags())
+                taskToMove.getId(), taskToMove.getTitle(), taskToMove.getDescription(),
+                newDateTime, taskToMove.getRecurrenceRule(), new HashSet<>(taskToMove.getTags())
         );
 
         ListenableFuture<Void> updateFuture = updateTaskUseCase.execute(taskInput);
-        final CalendarTaskSummary finalOriginalTaskSummary = originalTaskSummary; // для лямбды
+        final long finalTaskId = taskId;
+        final LocalDate originalDate = taskToMove.getDueDate().toLocalDate();
         Futures.addCallback(updateFuture, new FutureCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
-                logger.info(TAG, "Task " + finalOriginalTaskSummary.getId() + " successfully moved to " + newDate + ".");
-                updateUiState(s -> s.copyWithLoading(false));
-                snackbarManager.showMessage("Задача перемещена на " + newDate.format(DateTimeFormatter.ofPattern("d MMMM")));
-                // Логика обновления месяца
-                YearMonth newMonth = YearMonth.from(newDate);
-                if (!Objects.equals(newMonth, _currentMonthLiveData.getValue()) && _selectedDateLiveData.getValue() == null) {
-                    updateMonth(newMonth); // Вызываем синхронно, т.к. это обновление LiveData
+                logger.info(TAG, "Task " + finalTaskId + " successfully moved to " + newDate + ".");
+                updateUiState(s -> s.copy(false, null, "Задача перемещена на " + newDate.format(DateTimeFormatter.ofPattern("d MMMM", new Locale("ru")))));
+                onMoveCancelled();
+                // Обновляем данные для нового и старого месяца/дня
+                refreshDataForDate(newDate); // Новый день/месяц
+                if (!Objects.equals(YearMonth.from(newDate), YearMonth.from(originalDate))) { // Если месяц изменился
+                    refreshDataForMonth(YearMonth.from(originalDate));
+                } else if (!Objects.equals(newDate, originalDate)) { // Если день изменился в том же месяце
+                    refreshDataForDate(originalDate);
+                } else if (_selectedDateLiveData.getValue() == null){ // Если был выбран месяц и дата не изменилась (маловероятно, но для полноты)
+                    refreshDataForMonth(_currentMonthLiveData.getValue());
                 }
-                onMoveCancelled(); // Сбрасываем taskToMoveId
             }
             @Override
             public void onFailure(@NonNull Throwable t) {
-                logger.error(TAG, "Error moving task " + finalOriginalTaskSummary.getId(), t);
+                logger.error(TAG, "Error moving task " + finalTaskId, t);
                 updateUiState(s -> s.copy(false, "Ошибка перемещения: " + t.getMessage(), null));
                 onMoveCancelled();
             }
-        }, MoreExecutors.directExecutor());
+        }, ioExecutor);
     }
 
-
     public void onMoveCancelled() {
-        logger.debug(TAG, "Move cancelled");
         _taskToMoveIdLiveData.setValue(null);
         _showMoveTaskSheetLiveData.setValue(false);
     }
 
+    public void refreshCurrentData() {
+        LocalDate date = _selectedDateLiveData.getValue();
+        YearMonth month = _currentMonthLiveData.getValue();
+        logger.info(TAG, "refreshCurrentData called. SelectedDate=" + date + ", CurrentMonth=" + month);
+        if (date != null) {
+            _selectedDateLiveData.setValue(LocalDate.from(date)); // Создаем новый объект, чтобы триггернуть LiveData
+        } else if (month != null) {
+            _currentMonthLiveData.setValue(YearMonth.from(month)); // Аналогично
+        }
+    }
+
+    private void refreshDataForDate(LocalDate dateToRefresh) {
+        LocalDate currentSelected = _selectedDateLiveData.getValue();
+        YearMonth currentMonth = _currentMonthLiveData.getValue();
+        logger.debug(TAG, "refreshDataForDate: " + dateToRefresh + ". Current selected: " + currentSelected + ", current month: " + currentMonth);
+
+        if (Objects.equals(currentSelected, dateToRefresh)) {
+            _selectedDateLiveData.setValue(LocalDate.from(dateToRefresh));
+        }
+        // Если дата не выбрана (режим месяца) И обновляемая дата в текущем месяце
+        else if (currentSelected == null && currentMonth != null && YearMonth.from(dateToRefresh).equals(currentMonth)) {
+            _currentMonthLiveData.setValue(YearMonth.from(currentMonth));
+        }
+    }
+    private void refreshDataForMonth(YearMonth monthToRefresh) {
+        if (_selectedDateLiveData.getValue() == null && Objects.equals(_currentMonthLiveData.getValue(), monthToRefresh)) {
+            logger.debug(TAG, "refreshDataForMonth: " + monthToRefresh);
+            _currentMonthLiveData.setValue(YearMonth.from(monthToRefresh));
+        }
+    }
+
     private List<CalendarTaskSummary> filterAndSortTasks(
-            List<CalendarTaskSummary> tasks,
-            LocalDate selectedDate,
-            Set<TaskFilterOption> filterOptions,
-            TaskSortOption sortOption
+            @Nullable List<CalendarTaskSummary> tasks, @Nullable LocalDate selectedDate,
+            @NonNull Set<TaskFilterOption> filterOptions, @NonNull TaskSortOption sortOption
     ) {
         if (tasks == null) return Collections.emptyList();
+        logger.debug(TAG, "filterAndSortTasks: Input " + tasks.size() + " tasks. Date: " + selectedDate + ", Filters: " + filterOptions + ", Sort: " + sortOption);
         Stream<CalendarTaskSummary> stream = tasks.stream();
-        LocalDate today = LocalDate.now();
+        LocalDate today = dateTimeUtils.currentLocalDate();
 
         if (!filterOptions.contains(TaskFilterOption.ALL)) {
             stream = stream.filter(task -> {
@@ -378,26 +466,25 @@ public class CalendarPlanningViewModel extends ViewModel {
                 else if (filterOptions.contains(TaskFilterOption.HIGH_PRIORITY)) passesPriority = task.getPriority() == Priority.HIGH || task.getPriority() == Priority.CRITICAL;
 
                 boolean passesDateSpecific = true;
-                if (selectedDate == null) { // Только если НЕ выбран конкретный день
+                // Фильтры "Сегодня" и "Просроченные" применяются только если конкретный день НЕ выбран (т.е. смотрим задачи месяца)
+                if (selectedDate == null) {
                     if (filterOptions.contains(TaskFilterOption.TODAY)) passesDateSpecific = task.getDueDate().toLocalDate().isEqual(today);
                     else if (filterOptions.contains(TaskFilterOption.OVERDUE)) passesDateSpecific = task.getDueDate().toLocalDate().isBefore(today) && task.getStatus() != TaskStatus.DONE;
                 }
 
                 boolean passesCompletion = true;
-                // Если выбраны оба (COMPLETE и INCOMPLETE) или ни один из них (кроме ALL), то пропускаем все по статусу
-                boolean onlyComplete = filterOptions.contains(TaskFilterOption.COMPLETE);
-                boolean onlyIncomplete = filterOptions.contains(TaskFilterOption.INCOMPLETE);
+                boolean hasCompleteFilter = filterOptions.contains(TaskFilterOption.COMPLETE);
+                boolean hasIncompleteFilter = filterOptions.contains(TaskFilterOption.INCOMPLETE);
 
-                if (onlyComplete && !onlyIncomplete) passesCompletion = task.getStatus() == TaskStatus.DONE;
-                else if (!onlyComplete && onlyIncomplete) passesCompletion = task.getStatus() != TaskStatus.DONE;
-                // Если выбраны оба или ни один, passesCompletion остается true
+                if (hasCompleteFilter && !hasIncompleteFilter) passesCompletion = (task.getStatus() == TaskStatus.DONE);
+                else if (!hasCompleteFilter && hasIncompleteFilter) passesCompletion = (task.getStatus() != TaskStatus.DONE);
+                // Если выбраны оба (COMPLETE и INCOMPLETE) или ни один из них, то все задачи проходят этот фильтр по статусу.
 
                 return passesPriority && passesDateSpecific && passesCompletion;
             });
         }
-
         List<CalendarTaskSummary> filteredList = stream.collect(Collectors.toList());
-
+        // ... (сортировка без изменений) ...
         switch (sortOption) {
             case TIME_ASC: filteredList.sort(Comparator.comparing(CalendarTaskSummary::getDueDate)); break;
             case TIME_DESC: filteredList.sort(Comparator.comparing(CalendarTaskSummary::getDueDate).reversed()); break;
@@ -407,35 +494,36 @@ public class CalendarPlanningViewModel extends ViewModel {
             case PRIORITY_ASC: filteredList.sort(Comparator.comparing((CalendarTaskSummary t) -> t.getPriority().ordinal())); break;
             case STATUS: filteredList.sort(Comparator.comparing(t -> t.getStatus() == TaskStatus.DONE)); break;
         }
+        logger.debug(TAG, "filterAndSortTasks: Resulting " + filteredList.size() + " tasks.");
         return filteredList;
     }
 
-    // Вспомогательные классы для MediatorLiveData
-    private static class Triple<F, S, T> {
-        final F first;
-        final S second;
-        final T third;
-        Triple(F f, S s, T t) { first = f; second = s; third = t; }
+    private static class TriggerData {
+        final YearMonth month; final LocalDate date; final Long workspaceId;
+        TriggerData(YearMonth m, LocalDate d, Long wsId) { month = m; date = d; workspaceId = wsId; }
+        @Override public boolean equals(Object o) {
+            if (this == o) return true; if (o == null || getClass() != o.getClass()) return false;
+            TriggerData that = (TriggerData) o;
+            return Objects.equals(month, that.month) && Objects.equals(date, that.date) && Objects.equals(workspaceId, that.workspaceId);
+        }
+        @Override public int hashCode() { return Objects.hash(month, date, workspaceId); }
     }
     private static class Quartet<F, S, T, U> {
-        final F first;
-        final S second;
-        final T third;
-        final U fourth;
+        final F first; final S second; final T third; final U fourth;
         Quartet(F f, S s, T t, U u) { first = f; second = s; third = t; fourth = u; }
+        @Override public boolean equals(Object o) {
+            if (this == o) return true; if (o == null || getClass() != o.getClass()) return false;
+            Quartet<?, ?, ?, ?> quartet = (Quartet<?, ?, ?, ?>) o;
+            return Objects.equals(first, quartet.first) && Objects.equals(second, quartet.second) && Objects.equals(third, quartet.third) && Objects.equals(fourth, quartet.fourth);
+        }
+        @Override public int hashCode() { return Objects.hash(first, second, third, fourth); }
     }
 
-    public android.graphics.Color getPriorityColor(Priority priority) {
-        // Заглушка, т.к. ViewModel не должна знать о цветах Compose
-        // В реальном приложении это будет решаться в UI на основе данных из ViewModel
-        return switch (priority) {
-            case CRITICAL -> new android.graphics.Color(); // android.graphics.Color.RED;
-            case HIGH ->
-                    new android.graphics.Color(); // android.graphics.Color.rgb(255, 165, 0); // Orange
-            case MEDIUM -> new android.graphics.Color(); // android.graphics.Color.YELLOW;
-            case LOW -> new android.graphics.Color(); // android.graphics.Color.GREEN;
+    public android.graphics.Color getPriorityColor(Priority priority) { return new android.graphics.Color(); }
 
-        };
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+        logger.info(TAG, "ViewModel cleared. Instance: " + this.hashCode());
     }
-
 }
