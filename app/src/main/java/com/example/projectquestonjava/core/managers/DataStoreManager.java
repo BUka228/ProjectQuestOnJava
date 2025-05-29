@@ -1,6 +1,7 @@
 package com.example.projectquestonjava.core.managers;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.datastore.preferences.core.MutablePreferences;
 import androidx.datastore.preferences.core.Preferences;
 import androidx.datastore.rxjava3.RxDataStore;
@@ -11,6 +12,8 @@ import com.example.projectquestonjava.core.utils.Logger;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import java.io.IOException;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.concurrent.Executor;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -25,7 +28,7 @@ public class DataStoreManager {
     private static final String TAG = "DataStoreManager";
     private final RxDataStore<Preferences> dataStore;
     private final Logger logger;
-    private final Executor ioExecutor; // Для выполнения операций DataStore
+    private final Executor ioExecutor;
 
     @Inject
     public DataStoreManager(
@@ -41,68 +44,71 @@ public class DataStoreManager {
      * Получает LiveData для значения из DataStore.
      *
      * @param key          Ключ Preferences.
-     * @param defaultValue Значение по умолчанию, если ключ отсутствует.
+     * @param defaultValue Значение по умолчанию. Для строковых ключей, если вы хотите, чтобы LiveData эмитил null,
+     *                     когда ключ отсутствует, передайте сюда специальное не-null значение (например, пустую строку),
+     *                     а затем преобразуйте его в null в Transformations.map в вашем репозитории или ViewModel.
+     *                     Либо, если тип T это Optional<String>, то можно передавать Optional.empty().
+     *                     RxJava map оператор не должен возвращать null.
      * @param <T>          Тип значения.
      * @return LiveData, эмитящий значения.
      */
-    public <T> LiveData<T> getPreferenceLiveData(@NonNull Preferences.Key<T> key, T defaultValue) {
+    public <T> LiveData<T> getPreferenceLiveData(@NonNull Preferences.Key<T> key, @NonNull T defaultValue) {
         Flowable<T> flowable = dataStore.data()
                 .map(prefs -> {
-                    // Objects.requireNonNullElse() требует API 24, используем явную проверку
                     T value = prefs.get(key);
+                    // map не должен возвращать null. Если value null, мы обязаны вернуть defaultValue.
+                    // defaultValue здесь должен быть не-null.
                     return value != null ? value : defaultValue;
                 })
                 .onErrorReturn(error -> {
-                    logger.error(TAG, "Error reading preference for key: " + key.getName(), error);
-                    return defaultValue; // Возвращаем значение по умолчанию при ошибке
+                    logger.error(TAG, "Error reading preference for key: " + key.getName() + " in LiveData stream. Returning defaultValue.", error);
+                    return defaultValue;
                 })
-                .subscribeOn(Schedulers.from(ioExecutor)); // Выполняем чтение на IO потоке
+                .subscribeOn(Schedulers.from(ioExecutor));
 
         return LiveDataReactiveStreams.fromPublisher(flowable);
     }
 
-    /**
-     * Получает значение из DataStore асинхронно, возвращая ListenableFuture.
-     *
-     * @param key          Ключ Preferences.
-     * @param defaultValue Значение по умолчанию.
-     * @param <T>          Тип значения.
-     * @return ListenableFuture с результатом.
-     */
-    public <T> ListenableFuture<T> getValueFuture(@NonNull Preferences.Key<T> key, T defaultValue) {
+
+    public <T> ListenableFuture<T> getValueFuture(@NonNull Preferences.Key<T> key, @Nullable T defaultValue) {
         SettableFuture<T> settableFuture = SettableFuture.create();
         Disposable disposable = dataStore.data().firstOrError()
                 .map(prefs -> {
                     T value = prefs.get(key);
-                    return value != null ? value : defaultValue;
+                    if (value != null) {
+                        return value;
+                    }
+                    // Если значение отсутствует и defaultValue предоставлен (не null), возвращаем его.
+                    if (defaultValue != null) {
+                        return defaultValue;
+                    }
+                    // Если значение отсутствует и defaultValue тоже null, Future должен завершиться ошибкой.
+                    throw new NoSuchElementException("Key " + key.getName() + " not found and no non-null defaultValue provided.");
                 })
                 .subscribeOn(Schedulers.from(ioExecutor))
                 .subscribe(
-                        settableFuture::set, // Успех
-                        throwable -> {      // Ошибка
-                            logger.error(TAG, "Error getting value for key: " + key.getName() + " with Future", throwable);
-                            settableFuture.setException(new IOException("Failed to get value for " + key.getName(), throwable));
+                        settableFuture::set,
+                        throwable -> {
+                            if (throwable instanceof NoSuchElementException) {
+                                // Это ожидаемая ошибка, если ключ не найден и defaultValue был null.
+                                // Завершаем Future с этой ошибкой.
+                                logger.warn(TAG, throwable.getMessage() + " (Future fails with NoSuchElementException).");
+                                settableFuture.setException(throwable);
+                            } else {
+                                logger.error(TAG, "Error getting value for key: " + key.getName() + " with Future.", throwable);
+                                settableFuture.setException(new IOException("Failed to get value for " + key.getName(), throwable));
+                            }
                         }
                 );
 
         settableFuture.addListener(() -> {
             if (settableFuture.isCancelled() && !disposable.isDisposed()) {
                 disposable.dispose();
-                logger.debug(TAG, "RxJava subscription disposed due to ListenableFuture cancellation for key: " + key.getName());
             }
-        }, ioExecutor); // Используем ioExecutor или MoreExecutors.directExecutor()
+        }, ioExecutor);
         return settableFuture;
     }
-
-
-    /**
-     * Сохраняет значение в DataStore асинхронно.
-     *
-     * @param key   Ключ Preferences.
-     * @param value Значение для сохранения.
-     * @param <T>   Тип значения.
-     * @return ListenableFuture<Void> для отслеживания завершения.
-     */
+    // ... (saveValueFuture, clearValueFuture без изменений) ...
     public <T> ListenableFuture<Void> saveValueFuture(@NonNull Preferences.Key<T> key, @NonNull T value) {
         SettableFuture<Void> settableFuture = SettableFuture.create();
         Disposable disposable = dataStore.updateDataAsync(prefsIn -> {
@@ -129,13 +135,6 @@ public class DataStoreManager {
         return settableFuture;
     }
 
-    /**
-     * Очищает значение из DataStore асинхронно.
-     *
-     * @param key Ключ Preferences для удаления.
-     * @param <T> Тип значения (не используется при удалении, но нужен для сигнатуры ключа).
-     * @return ListenableFuture<Void> для отслеживания завершения.
-     */
     public <T> ListenableFuture<Void> clearValueFuture(@NonNull Preferences.Key<T> key) {
         SettableFuture<Void> settableFuture = SettableFuture.create();
         Disposable disposable = dataStore.updateDataAsync(prefsIn -> {

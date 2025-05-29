@@ -232,44 +232,77 @@ public class PomodoroViewModel extends ViewModel {
         settingsRepository.getSettingsFlow().observeForever(settingsObserver);
         taskRepository.getUpcomingTasks().observeForever(upcomingTasksRepoObserver);
 
-        loadInitialTaskFromSavedState();
+        loadInitialTaskFromSavedState(savedStateHandle);
         bindToService();
     }
 
     // ... (loadInitialTaskFromSavedState, initializeDefaultUiState, bindToService, unbindFromService, subscribeToServiceState, unsubscribeFromServiceState)
     // Эти методы остаются такими же, как в предыдущей версии, но с учетом правильной инициализации LiveData полей.
 
-    private void loadInitialTaskFromSavedState() {
-        ioExecutor.execute(() -> {
-            try {
-                String taskIdString = savedStateHandle.get("taskId");
-                Long taskId = (taskIdString != null) ? Long.parseLong(taskIdString) : null;
-                PomodoroSettings initialSettings = Futures.getDone(settingsRepository.getSettings());
+    private void loadInitialTaskFromSavedState(SavedStateHandle handle) {
+        // isLoading устанавливается в true перед вызовом этого метода или в начале
+        updateUiState(s -> s.copy(null, null, null, null, null, null, null, null, null, null, null, null, null, true, true)); // isLoading = true, clearError=true, clearSuccess=true
 
-                if (taskId != null && taskId != -1L) {
-                    Task initialTask = Futures.getDone(taskRepository.getTaskById(taskId));
-                    if (initialTask != null) {
-                        _currentTaskLiveData.postValue(initialTask);
-                        int defaultMinutes = initialSettings.getWorkDurationMinutes();
-                        updateUiState(s -> s.copy(null, null, null, null, null, null, null,
-                                defaultMinutes / 60, defaultMinutes % 60, initialSettings, null, null, true, false, false));
-                        updateGeneratedPhasesForCurrentEstimatedTime(defaultMinutes / 60, defaultMinutes % 60, initialTask);
-                        logger.info(TAG, "Initial task loaded from SavedStateHandle: ID " + taskId);
-                    } else {
-                        logger.warn(TAG, "Task with ID " + taskId + " from SavedStateHandle not found. Using defaults.");
-                        initializeDefaultUiState(initialSettings);
+
+        ListenableFuture<PomodoroSettings> settingsFuture = settingsRepository.getSettings();
+
+        Futures.addCallback(settingsFuture, new FutureCallback<PomodoroSettings>() {
+            @Override
+            public void onSuccess(@Nullable PomodoroSettings initialSettingsLoaded) {
+                final PomodoroSettings settingsToUse = (initialSettingsLoaded != null) ? initialSettingsLoaded : new PomodoroSettings();
+
+                ioExecutor.execute(() -> { // Операции с taskId и taskRepository выполняем на ioExecutor
+                    try {
+                        Long taskId = null;
+                        Object taskIdObject = handle.get("taskId");
+                        if (taskIdObject instanceof Long) {
+                            taskId = (Long) taskIdObject;
+                        } else if (taskIdObject instanceof String) {
+                            try { taskId = Long.parseLong((String) taskIdObject); }
+                            catch (NumberFormatException e) { logger.warn(TAG, "Could not parse taskId from String: " + taskIdObject); }
+                        }
+                        logger.debug(TAG, "loadInitialTaskFromSavedState - Parsed TaskId: " + taskId);
+
+                        if (taskId != null && taskId != -1L) {
+                            Task initialTask = Futures.getDone(taskRepository.getTaskById(taskId)); // Блокирующий вызов на ioExecutor
+                            if (initialTask != null) {
+                                _currentTaskLiveData.postValue(initialTask);
+                                int defaultMinutes = settingsToUse.getWorkDurationMinutes();
+                                updateUiState(s -> s.copy(null, null, null, null, null, null, null,
+                                        defaultMinutes / 60, defaultMinutes % 60, settingsToUse,
+                                        false, false, true, // showLongTaskWarning, isCompletingTaskEarly, isTimeSetupMode
+                                        true, true)); // clearError, clearSuccessMessage
+                                updateGeneratedPhasesForCurrentEstimatedTime(defaultMinutes / 60, defaultMinutes % 60, initialTask);
+                                logger.info(TAG, "Initial task loaded: ID " + taskId);
+                            } else {
+                                logger.warn(TAG, "Task with ID " + taskId + " not found. Using defaults.");
+                                initializeDefaultUiState(settingsToUse);
+                            }
+                        } else {
+                            logger.debug(TAG, "No taskId. Initializing with default settings.");
+                            initializeDefaultUiState(settingsToUse);
+                        }
+                    } catch (Exception e) {
+                        logger.error(TAG, "Error in ioExecutor block of loadInitialTaskFromSavedState", e);
+                        initializeDefaultUiState(new PomodoroSettings());
+                        updateUiState(s -> s.copy(null,null, null, "Ошибка загрузки задачи",null,null,null,null,null,null,null,null,null, false, true));
+                    } finally {
+                        // Сбрасываем isLoading после всех операций
+                        updateUiState(s -> s.copy(null, null, null, null, null, null, null, null, null, null, null, null, false, false, false)); // isLoading = false
                     }
-                } else {
-                    logger.debug(TAG, "No taskId in SavedStateHandle. Initializing with default settings.");
-                    initializeDefaultUiState(initialSettings);
-                }
-            } catch (Exception e) {
-                logger.error(TAG, "Error loading initial task/settings", e);
-                initializeDefaultUiState(new PomodoroSettings());
-                updateUiState(s -> s.copy(null,null, null, "Ошибка загрузки задачи",null,null,null,null,null,null,null,null,null, false, true));
+                });
             }
-        });
+
+            @Override
+            public void onFailure(@NonNull Throwable t) {
+                logger.error(TAG, "Failed to load initial settings for PomodoroViewModel", t);
+                initializeDefaultUiState(new PomodoroSettings());
+                updateUiState(s -> s.copy(null,null,null, "Ошибка загрузки настроек",null,null,null,null,null,null,null,null, false, // isLoading = false
+                        false, true));
+            }
+        }, MoreExecutors.directExecutor()); // Коллбэк для settingsFuture можно выполнить на directExecutor, так как он просто запускает другую задачу
     }
+
     private void initializeDefaultUiState(PomodoroSettings settings) {
         int defaultMinutes = settings.getWorkDurationMinutes();
         _uiStateLiveData.postValue(new PomodoroUiState(

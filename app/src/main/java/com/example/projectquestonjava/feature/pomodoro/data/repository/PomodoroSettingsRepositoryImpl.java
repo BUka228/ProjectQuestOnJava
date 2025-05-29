@@ -4,6 +4,7 @@ import androidx.datastore.preferences.core.Preferences;
 import androidx.datastore.preferences.core.PreferencesKeys;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
+import androidx.lifecycle.Transformations; // Добавлен импорт
 import com.example.projectquestonjava.core.managers.DataStoreManager;
 import com.example.projectquestonjava.core.utils.Logger;
 import com.example.projectquestonjava.feature.pomodoro.domain.model.PomodoroSettings;
@@ -14,6 +15,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 import javax.inject.Inject;
@@ -28,9 +30,13 @@ public class PomodoroSettingsRepositoryImpl implements PomodoroSettingsRepositor
     private static final Preferences.Key<String> BREAK_SOUND_URI_KEY = PreferencesKeys.stringKey("break_sound_uri");
     private static final Preferences.Key<Boolean> VIBRATION_ENABLED_KEY = PreferencesKeys.booleanKey("vibration_enabled");
 
+    private static final String TAG = "PomodoroSettingsRepo";
+
     private static final int DEFAULT_WORK_DURATION = 25;
     private static final int DEFAULT_BREAK_DURATION = 5;
-    private static final boolean DEFAULT_VIBRATION_ENABLED = true; // Добавим значение по умолчанию
+    // Используем пустую строку как defaultValue для DataStoreManager, если хотим эмитить null в LiveData
+    private static final String EMPTY_STRING_DEFAULT = "";
+    private static final boolean DEFAULT_VIBRATION_ENABLED = true;
 
     private final DataStoreManager dataStoreManager;
     private final Logger logger;
@@ -47,68 +53,94 @@ public class PomodoroSettingsRepositoryImpl implements PomodoroSettingsRepositor
     public LiveData<PomodoroSettings> getSettingsFlow() {
         MediatorLiveData<PomodoroSettings> settingsLiveData = new MediatorLiveData<>();
 
+        // DataStoreManager.getPreferenceLiveData теперь ожидает НЕ-NULL defaultValue.
+        // Для строк, где null означает "не установлено", передаем EMPTY_STRING_DEFAULT.
         LiveData<Integer> workDurationLiveData = dataStoreManager.getPreferenceLiveData(WORK_DURATION_KEY, DEFAULT_WORK_DURATION);
         LiveData<Integer> breakDurationLiveData = dataStoreManager.getPreferenceLiveData(BREAK_DURATION_KEY, DEFAULT_BREAK_DURATION);
-        LiveData<String> focusSoundUriLiveData = dataStoreManager.getPreferenceLiveData(FOCUS_SOUND_URI_KEY, null); // null как defaultValue
-        LiveData<String> breakSoundUriLiveData = dataStoreManager.getPreferenceLiveData(BREAK_SOUND_URI_KEY, null); // null как defaultValue
+        LiveData<String> focusSoundUriFromStoreLiveData = dataStoreManager.getPreferenceLiveData(FOCUS_SOUND_URI_KEY, EMPTY_STRING_DEFAULT);
+        LiveData<String> breakSoundUriFromStoreLiveData = dataStoreManager.getPreferenceLiveData(BREAK_SOUND_URI_KEY, EMPTY_STRING_DEFAULT);
         LiveData<Boolean> vibrationEnabledLiveData = dataStoreManager.getPreferenceLiveData(VIBRATION_ENABLED_KEY, DEFAULT_VIBRATION_ENABLED);
 
-        // Локальные переменные для хранения последних значений из LiveData
-        final Integer[] workHolder = new Integer[1];
-        final Integer[] breakHolder = new Integer[1];
-        final String[] focusSoundHolder = new String[1];
-        final String[] breakSoundHolder = new String[1];
-        final Boolean[] vibrationHolder = new Boolean[1];
-        final int[] sourcesInitializedCount = {0}; // Счетчик инициализированных источников
+        // Преобразуем пустые строки в null для URI
+        LiveData<String> focusSoundUriLiveData = Transformations.map(focusSoundUriFromStoreLiveData, uri -> uri.isEmpty() ? null : uri);
+        LiveData<String> breakSoundUriLiveData = Transformations.map(breakSoundUriFromStoreLiveData, uri -> uri.isEmpty() ? null : uri);
+
+
+        final Integer[] workHolder = {null};
+        final Integer[] breakHolder = {null};
+        // Для focusSoundHolder и breakSoundHolder, мы теперь можем ожидать null после Transformations.map
+        final String[] focusSoundHolder = {null}; // Может быть null, это его начальное "не загруженное" состояние
+        final boolean[] focusSoundReported = {false}; // Отдельный флаг для отслеживания первого эмита (включая null)
+        final String[] breakSoundHolder = {null};
+        final boolean[] breakSoundReported = {false};
+        final Boolean[] vibrationHolder = {null};
+        final int[] sourcesReported = {0};
+        final int TOTAL_SOURCES = 5;
 
         Runnable updateCombinedSettings = () -> {
-            if (sourcesInitializedCount[0] == 5) { // Обновляем только когда все 5 источников прислали значение
+            if (sourcesReported[0] == TOTAL_SOURCES && focusSoundReported[0] && breakSoundReported[0]) {
                 settingsLiveData.setValue(new PomodoroSettings(
                         workHolder[0] != null ? workHolder[0] : DEFAULT_WORK_DURATION,
                         breakHolder[0] != null ? breakHolder[0] : DEFAULT_BREAK_DURATION,
-                        focusSoundHolder[0], // Может быть null
-                        breakSoundHolder[0], // Может быть null
+                        focusSoundHolder[0], // Теперь может быть null напрямую
+                        breakSoundHolder[0], // Теперь может быть null напрямую
                         vibrationHolder[0] != null ? vibrationHolder[0] : DEFAULT_VIBRATION_ENABLED
                 ));
             }
         };
 
         settingsLiveData.addSource(workDurationLiveData, value -> {
+            if (workHolder[0] == null && value != null) sourcesReported[0]++; // Считаем только первый не-null эмит
             workHolder[0] = value;
-            if (value != null && sourcesInitializedCount[0] < 5 && workHolder[0] == value) sourcesInitializedCount[0]++;
             updateCombinedSettings.run();
         });
         settingsLiveData.addSource(breakDurationLiveData, value -> {
+            if (breakHolder[0] == null && value != null) sourcesReported[0]++;
             breakHolder[0] = value;
-            if (value != null && sourcesInitializedCount[0] < 5 && breakHolder[0] == value) sourcesInitializedCount[0]++;
             updateCombinedSettings.run();
         });
-        settingsLiveData.addSource(focusSoundUriLiveData, value -> {
-            focusSoundHolder[0] = value;
-            // Для nullable полей, считаем инициализированным, даже если value null
-            if (sourcesInitializedCount[0] < 5 && (focusSoundHolder[0] == value || focusSoundHolder[0] == null)) sourcesInitializedCount[0]++;
+        settingsLiveData.addSource(focusSoundUriLiveData, value -> { // Подписываемся на преобразованный LiveData
+            if (!focusSoundReported[0]) {
+                sourcesReported[0]++;
+                focusSoundReported[0] = true;
+            }
+            focusSoundHolder[0] = value; // value теперь может быть null
             updateCombinedSettings.run();
         });
-        settingsLiveData.addSource(breakSoundUriLiveData, value -> {
-            breakSoundHolder[0] = value;
-            if (sourcesInitializedCount[0] < 5 && (breakSoundHolder[0] == value || breakSoundHolder[0] == null)) sourcesInitializedCount[0]++;
+        settingsLiveData.addSource(breakSoundUriLiveData, value -> { // Подписываемся на преобразованный LiveData
+            if (!breakSoundReported[0]) {
+                sourcesReported[0]++;
+                breakSoundReported[0] = true;
+            }
+            breakSoundHolder[0] = value; // value теперь может быть null
             updateCombinedSettings.run();
         });
         settingsLiveData.addSource(vibrationEnabledLiveData, value -> {
+            if (vibrationHolder[0] == null && value != null) sourcesReported[0]++;
             vibrationHolder[0] = value;
-            if (value != null && sourcesInitializedCount[0] < 5 && vibrationHolder[0] == value) sourcesInitializedCount[0]++;
             updateCombinedSettings.run();
         });
 
         return settingsLiveData;
     }
 
+
     @Override
     public ListenableFuture<PomodoroSettings> getSettings() {
+        // DataStoreManager.getValueFuture для строк теперь бросит NoSuchElementException, если ключ не найден и defaultValue null.
+        // Мы используем Futures.catching для обработки этого и возврата дефолтного значения.
         ListenableFuture<Integer> workFuture = dataStoreManager.getValueFuture(WORK_DURATION_KEY, DEFAULT_WORK_DURATION);
         ListenableFuture<Integer> breakFuture = dataStoreManager.getValueFuture(BREAK_DURATION_KEY, DEFAULT_BREAK_DURATION);
-        ListenableFuture<String> focusSoundFuture = dataStoreManager.getValueFuture(FOCUS_SOUND_URI_KEY, null);
-        ListenableFuture<String> breakSoundFuture = dataStoreManager.getValueFuture(BREAK_SOUND_URI_KEY, null);
+        // Для строковых URI, если они не найдены, getValueFuture с defaultValue=null бросит NoSuchElementException.
+        // Мы перехватываем это и возвращаем null (наш реальный default для URI).
+        ListenableFuture<String> focusSoundFuture = Futures.catching(
+                dataStoreManager.getValueFuture(FOCUS_SOUND_URI_KEY, null), // Передаем null как defaultValue в DataStoreManager
+                NoSuchElementException.class, e -> null, directExecutor
+        );
+        ListenableFuture<String> breakSoundFuture = Futures.catching(
+                dataStoreManager.getValueFuture(BREAK_SOUND_URI_KEY, null),
+                NoSuchElementException.class, e -> null, directExecutor
+        );
         ListenableFuture<Boolean> vibrationFuture = dataStoreManager.getValueFuture(VIBRATION_ENABLED_KEY, DEFAULT_VIBRATION_ENABLED);
 
         List<ListenableFuture<?>> futuresList = new ArrayList<>();
@@ -119,16 +151,14 @@ public class PomodoroSettingsRepositoryImpl implements PomodoroSettingsRepositor
         futuresList.add(vibrationFuture);
 
         return Futures.transform(Futures.allAsList(futuresList), results -> {
-            if (results == null || results.size() < 5) try {
-                throw new IOException("Failed to read all settings from DataStore");
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            if (results == null || results.size() < 5) {
+                logger.error(TAG, "Failed to read all settings from DataStore, results list is null or incomplete.");
+                return new PomodoroSettings(DEFAULT_WORK_DURATION, DEFAULT_BREAK_DURATION, null, null, DEFAULT_VIBRATION_ENABLED);
             }
-            // Явное приведение типов, так как allAsList возвращает List<Object>
             Integer work = (Integer) results.get(0);
             Integer breakD = (Integer) results.get(1);
-            String focusSound = (String) results.get(2);
-            String breakSound = (String) results.get(3);
+            String focusSound = (String) results.get(2); // Может быть null
+            String breakSound = (String) results.get(3); // Может быть null
             Boolean vibration = (Boolean) results.get(4);
 
             return new PomodoroSettings(
@@ -140,19 +170,19 @@ public class PomodoroSettingsRepositoryImpl implements PomodoroSettingsRepositor
             );
         }, directExecutor);
     }
-
+    // ... (saveSettings без изменений) ...
     @Override
     public ListenableFuture<Void> saveSettings(PomodoroSettings settings) {
         List<ListenableFuture<Void>> saveOperations = new ArrayList<>();
         saveOperations.add(dataStoreManager.saveValueFuture(WORK_DURATION_KEY, settings.getWorkDurationMinutes()));
         saveOperations.add(dataStoreManager.saveValueFuture(BREAK_DURATION_KEY, settings.getBreakDurationMinutes()));
 
-        if (settings.getFocusSoundUri() != null) {
+        if (settings.getFocusSoundUri() != null && !settings.getFocusSoundUri().isEmpty()) { // Проверяем на непустоту перед сохранением
             saveOperations.add(dataStoreManager.saveValueFuture(FOCUS_SOUND_URI_KEY, settings.getFocusSoundUri()));
         } else {
             saveOperations.add(dataStoreManager.clearValueFuture(FOCUS_SOUND_URI_KEY));
         }
-        if (settings.getBreakSoundUri() != null) {
+        if (settings.getBreakSoundUri() != null && !settings.getBreakSoundUri().isEmpty()) { // Проверяем на непустоту
             saveOperations.add(dataStoreManager.saveValueFuture(BREAK_SOUND_URI_KEY, settings.getBreakSoundUri()));
         } else {
             saveOperations.add(dataStoreManager.clearValueFuture(BREAK_SOUND_URI_KEY));

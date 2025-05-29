@@ -128,34 +128,46 @@ public class TimerEngine {
     private void loadInitialSettings() {
         settingsExecutor.execute(() -> {
             try {
-                // settingsRepository.getSettings() возвращает ListenableFuture<PomodoroSettings>
                 ListenableFuture<PomodoroSettings> settingsFuture = settingsRepository.getSettings();
-                PomodoroSettings settings = settingsFuture.get(); // Блокирующий вызов на settingsExecutor
+                // Используем addCallback вместо прямого get() чтобы обработать возможные ошибки Future
+                Futures.addCallback(settingsFuture, new FutureCallback<PomodoroSettings>() {
+                    @Override
+                    public void onSuccess(@Nullable PomodoroSettings settings) {
+                        if (settings == null) { // Дополнительная проверка, если Future вернул null
+                            logger.error(TAG, "Initial settings loaded as null. Using defaults.");
+                            currentSettingsRef.set(new PomodoroSettings());
+                        } else {
+                            currentSettingsRef.set(settings);
+                            logger.debug(TAG, "Initial settings loaded: " + settings);
+                        }
+                        // Обновляем состояние Idle только если оно текущее и нет активных фаз
+                        TimerState currentTimerState = _timerStateLiveData.getValue();
+                        List<PomodoroPhase> currentPhases = _pomodoroPhasesLiveData.getValue();
+                        if (currentTimerState instanceof TimerState.Idle &&
+                                (currentPhases == null || currentPhases.isEmpty())) {
+                            _timerStateLiveData.postValue(TimerState.Idle.getInstance());
+                        }
+                    }
 
-                currentSettingsRef.set(settings);
-                logger.debug(TAG, "Initial settings loaded: " + settings);
+                    @Override
+                    public void onFailure(@NonNull Throwable t) {
+                        logger.error(TAG, "Failed to load initial settings due to Future failure. Using defaults.", t);
+                        currentSettingsRef.set(new PomodoroSettings());
+                        // Обновляем состояние Idle, если это уместно
+                        TimerState currentTimerState = _timerStateLiveData.getValue();
+                        List<PomodoroPhase> currentPhases = _pomodoroPhasesLiveData.getValue();
+                        if (currentTimerState instanceof TimerState.Idle &&
+                                (currentPhases == null || currentPhases.isEmpty())) {
+                            _timerStateLiveData.postValue(TimerState.Idle.getInstance());
+                        }
+                    }
+                }, MoreExecutors.directExecutor()); // Коллбэк на том же потоке (settingsExecutor)
 
-                TimerState currentTimerState = _timerStateLiveData.getValue();
-                List<PomodoroPhase> currentPhases = _pomodoroPhasesLiveData.getValue();
-
-                if (currentTimerState instanceof TimerState.Idle &&
-                        (currentPhases == null || currentPhases.isEmpty())) {
-                    _timerStateLiveData.postValue(TimerState.Idle.getInstance());
-                }
-            } catch (InterruptedException e) {
-                logger.error(TAG, "Settings loading was interrupted", e);
-                Thread.currentThread().interrupt(); // Восстанавливаем флаг прерывания
-                currentSettingsRef.set(new PomodoroSettings()); // Используем дефолтные
-            } catch (ExecutionException e) {
-                logger.error(TAG, "Failed to load initial settings due to execution error", e.getCause());
-                currentSettingsRef.set(new PomodoroSettings()); // Используем дефолтные
-            } catch (Exception e) { // Ловим другие возможные RuntimeException
-                logger.error(TAG, "Unexpected error loading initial settings", e);
-                currentSettingsRef.set(new PomodoroSettings()); // Используем дефолтные
+            } catch (Exception e) { // Ловим другие возможные RuntimeException на случай, если settingsRepository.getSettings() их кидает
+                logger.error(TAG, "Unexpected error during initial settings load trigger", e);
+                currentSettingsRef.set(new PomodoroSettings());
             }
         });
-
-        // Подписка на изменения настроек через LiveData (остается без изменений)
         settingsRepository.getSettingsFlow().observeForever(settingsObserver);
     }
 
