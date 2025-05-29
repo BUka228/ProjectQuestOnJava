@@ -50,5 +50,12 @@ public interface VirtualGardenDao {
     List<VirtualGarden> getAllPlantsSync(long gamificationId);
 
 
+    @Query("SELECT * FROM virtual_garden WHERE id = :plantId")
+    VirtualGarden getPlantByIdSync(long plantId);
+
+    @Update
+    int updateSync(VirtualGarden plant);
+
+
 
 }

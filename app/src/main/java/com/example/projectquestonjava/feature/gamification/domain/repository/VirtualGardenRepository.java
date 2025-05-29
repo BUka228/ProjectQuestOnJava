@@ -20,4 +20,6 @@ public interface VirtualGardenRepository {
     long insertPlantSync(VirtualGarden plant);
     ListenableFuture<List<VirtualGarden>> getAllPlantsFuture();
     List<VirtualGarden> getAllPlantsSync(long gamificationId);
+    VirtualGarden getPlantSync(long plantId); // НОВЫЙ
+    void updatePlantSync(VirtualGarden plant); // НОВЫЙ
 }

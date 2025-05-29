@@ -138,4 +138,30 @@ public class VirtualGardenRepositoryImpl implements VirtualGardenRepository {
             return Collections.emptyList();
         }
     }
+
+    @Override
+    public VirtualGarden getPlantSync(long plantId) {
+        logger.debug(TAG, "SYNC Getting plant by id=" + plantId);
+        try {
+
+            return virtualGardenDao.getPlantByIdSync(plantId);
+        } catch (Exception e) {
+            logger.error(TAG, "Error SYNC getting plant by id=" + plantId, e);
+            return null;
+        }
+    }
+
+    // НОВЫЙ СИНХРОННЫЙ МЕТОД
+    @Override
+    public void updatePlantSync(VirtualGarden plant) {
+        logger.debug(TAG, "SYNC Updating plant: id=" + plant.getId());
+        try {
+            int updatedRows = virtualGardenDao.updateSync(plant);
+            if(updatedRows == 0) logger.warn(TAG, "SYNC updatePlant affected 0 rows for plantId=" + plant.getId());
+        } catch (Exception e) {
+            logger.error(TAG, "Error SYNC updating plant id=" + plant.getId(), e);
+            throw new RuntimeException("Sync updatePlant failed", e);
+        }
+    }
+
 }

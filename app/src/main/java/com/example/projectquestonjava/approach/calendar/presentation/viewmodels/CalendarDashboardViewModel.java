@@ -12,6 +12,7 @@ import com.example.projectquestonjava.core.data.model.core.Tag;
 import com.example.projectquestonjava.core.data.model.enums.Priority;
 import com.example.projectquestonjava.core.data.model.enums.TaskStatus;
 import com.example.projectquestonjava.core.di.IODispatcher;
+import com.example.projectquestonjava.core.di.MainExecutor; // Добавляем импорт
 import com.example.projectquestonjava.core.domain.usecases.DeleteTaskUseCase;
 import com.example.projectquestonjava.core.managers.SnackbarManager;
 import com.example.projectquestonjava.core.utils.DateTimeUtils;
@@ -78,6 +79,7 @@ public class CalendarDashboardViewModel extends ViewModel {
     private final SnackbarManager snackbarManager;
     private final Logger logger;
     private final Executor ioExecutor;
+    private final Executor mainExecutor; // Добавляем поле
 
     private final MutableLiveData<LocalDateTime> _selectedDateLiveData;
     public final LiveData<LocalDateTime> selectedDateLiveData;
@@ -101,8 +103,8 @@ public class CalendarDashboardViewModel extends ViewModel {
     public final LiveData<SwipeActionState> swipeActionStateLiveData;
 
     private final LiveData<CalendarDashboardData> _rawDataForSelectedDate;
-    public final LiveData<CalendarDashboardData> dashboardDataLiveData; // Отфильтрованные данные для текущей даты
-    public final LiveData<Map<LocalDate, CalendarDashboardData>> pagerDataLiveData; // Данные для пейджера (пока упрощено)
+    public final LiveData<CalendarDashboardData> dashboardDataLiveData;
+    public final LiveData<Map<LocalDate, CalendarDashboardData>> pagerDataLiveData;
 
     public final LiveData<Float> currentProgressLiveData;
 
@@ -116,7 +118,6 @@ public class CalendarDashboardViewModel extends ViewModel {
     private final SingleLiveEvent<Long> _navigateToPomodoroEvent;
     public LiveData<Long> navigateToPomodoroEvent;
 
-    // Триггер для объединения сырых данных с фильтрами
     private final MediatorLiveData<CombinedDataTrigger> dataProcessingTrigger = new MediatorLiveData<>();
 
     @Inject
@@ -128,7 +129,8 @@ public class CalendarDashboardViewModel extends ViewModel {
             DateTimeUtils dateTimeUtils,
             SnackbarManager snackbarManager,
             Logger logger,
-            @IODispatcher Executor ioExecutor) {
+            @IODispatcher Executor ioExecutor,
+            @MainExecutor Executor mainExecutor) { // Внедряем MainExecutor
 
         this.getDashboardDataUseCase = getDashboardDataUseCase;
         this.processTaskCompletionUseCase = processTaskCompletionUseCase;
@@ -138,6 +140,7 @@ public class CalendarDashboardViewModel extends ViewModel {
         this.snackbarManager = snackbarManager;
         this.logger = logger;
         this.ioExecutor = ioExecutor;
+        this.mainExecutor = mainExecutor; // Сохраняем MainExecutor
 
         logger.info(TAG, "ViewModel initialized. Instance: " + this.hashCode());
 
@@ -162,13 +165,11 @@ public class CalendarDashboardViewModel extends ViewModel {
                 .mapToObj(offset -> dateTimeUtils.currentLocalDateTime().plusDays((long) offset - INITIAL_PAGE).with(LocalTime.NOON))
                 .collect(Collectors.toList());
 
-        // 1. _rawDataForSelectedDate - результат usecase для _selectedDateLiveData
         _rawDataForSelectedDate = Transformations.switchMap(_selectedDateLiveData, date -> {
             logger.debug(TAG, "_rawDataForSelectedDate triggered by selectedDate change: " + date.toLocalDate());
             return getDashboardDataUseCase.execute(date);
         });
 
-        // 2. Настраиваем dataProcessingTrigger
         dataProcessingTrigger.addSource(_rawDataForSelectedDate, rawData -> {
             logger.debug(TAG, "dataProcessingTrigger: _rawDataForSelectedDate emitted " + (rawData != null && rawData.getTasks() != null ? rawData.getTasks().size() : "null/0") + " tasks.");
             dataProcessingTrigger.setValue(buildDataTrigger(rawData));
@@ -177,7 +178,6 @@ public class CalendarDashboardViewModel extends ViewModel {
         dataProcessingTrigger.addSource(_sortOptionLiveData, sort -> dataProcessingTrigger.setValue(buildDataTrigger(_rawDataForSelectedDate.getValue())));
         dataProcessingTrigger.addSource(_filterOptionsLiveData, filters -> dataProcessingTrigger.setValue(buildDataTrigger(_rawDataForSelectedDate.getValue())));
 
-        // 3. dashboardDataLiveData - результат применения фильтров к _rawDataForSelectedDate
         dashboardDataLiveData = Transformations.map(dataProcessingTrigger, trigger -> {
             LocalDateTime currentSelectedDateVal = _selectedDateLiveData.getValue();
             String dateLog = (currentSelectedDateVal != null) ? currentSelectedDateVal.toLocalDate().toString() : "null_date";
@@ -189,30 +189,20 @@ public class CalendarDashboardViewModel extends ViewModel {
             return applyFiltersAndSorting(trigger.rawData, trigger.tags, trigger.sortOption, trigger.filterOptions);
         });
 
-        // 4. pagerDataLiveData - данные для пейджера (пока упрощенная заглушка)
         pagerDataLiveData = Transformations.switchMap(dataProcessingTrigger, trigger -> {
-            // Эта реализация будет обновлять весь Map при каждом изменении триггера.
-            // Для оптимизации, если только _currentPageLiveData меняется, можно обновлять только данные для диапазона.
             MediatorLiveData<Map<LocalDate, CalendarDashboardData>> pageDataMediator = new MediatorLiveData<>();
             Integer currentPage = _currentPageLiveData.getValue();
             if (currentPage == null || trigger == null) {
                 pageDataMediator.setValue(Collections.emptyMap());
                 return pageDataMediator;
             }
-
             List<LocalDate> datesInRange = getDatesForPagerRange(currentPage);
             Map<LocalDate, CalendarDashboardData> rangeDataMap = new HashMap<>();
-
-            // Флаг, чтобы эмитить только когда все данные для диапазона (потенциально) загружены
             AtomicInteger loadedDataCount = new AtomicInteger(0);
             int totalDatesToLoad = datesInRange.size();
 
             for (LocalDate dateKey : datesInRange) {
-                // Для каждой даты в диапазоне получаем ее "сырые" данные
                 LiveData<CalendarDashboardData> rawDataForDateKey = getDashboardDataUseCase.execute(dateKey.atTime(LocalTime.NOON));
-                // Добавляем источник для каждой даты.
-                // Важно: нужно управлять отпиской от старых источников при смене диапазона (смене currentPage).
-                // Transformations.switchMap для _currentPageLiveData уже должен это делать для всего pageDataMediator.
                 pageDataMediator.addSource(rawDataForDateKey, rawData -> {
                     if (rawData != null) {
                         CalendarDashboardData filteredData = applyFiltersAndSorting(rawData, trigger.tags, trigger.sortOption, trigger.filterOptions);
@@ -220,7 +210,6 @@ public class CalendarDashboardViewModel extends ViewModel {
                     } else {
                         rangeDataMap.put(dateKey, CalendarDashboardData.EMPTY);
                     }
-                    // Эмитим, когда все данные для текущего диапазона обработаны (упрощенно)
                     if (rangeDataMap.size() == totalDatesToLoad) {
                         logger.debug(TAG, "pagerDataLiveData: All data for range around page " + currentPage + " processed. Emitting map with " + rangeDataMap.size() + " entries.");
                         pageDataMediator.setValue(new HashMap<>(rangeDataMap));
@@ -229,7 +218,6 @@ public class CalendarDashboardViewModel extends ViewModel {
             }
             return pageDataMediator;
         });
-
 
         currentProgressLiveData = Transformations.map(dashboardDataLiveData, data -> {
             if (data == null || data.getTasks() == null || data.getTasks().isEmpty()) return 0f;
@@ -265,7 +253,7 @@ public class CalendarDashboardViewModel extends ViewModel {
 
     private List<LocalDate> getDatesForPagerRange(int currentPage) {
         List<LocalDate> dates = new ArrayList<>();
-        int prefetch = 1; // Сколько дней в каждую сторону от текущей страницы пейджера грузить
+        int prefetch = 1;
         LocalDate centerDate = getDateForPageInternal(currentPage).toLocalDate();
         for (int i = -prefetch; i <= prefetch; i++) {
             dates.add(centerDate.plusDays(i));
@@ -277,11 +265,11 @@ public class CalendarDashboardViewModel extends ViewModel {
         logger.info(TAG, "refreshDataForCurrentPage called.");
         LocalDateTime currentDate = _selectedDateLiveData.getValue();
         if (currentDate != null) {
-            // "Пинаем" LiveData, чтобы вызвать его перерасчет, если Transformations.switchMap это поддерживает
-            // Если нет, то нужно иметь какой-то явный триггер для getDashboardDataUseCase.
-            // Простое setValue(currentDate) может не сработать, если объект тот же.
-            // Создадим новый объект с тем же значением.
-            _selectedDateLiveData.setValue(LocalDateTime.of(currentDate.toLocalDate(), currentDate.toLocalTime()));
+            // Используем postValue, если есть вероятность вызова не из MainThread,
+            // но так как этот метод вызывается из коллбэка Future, который может быть на ioExecutor,
+            // лучше переключить обновление LiveData на главный поток.
+            final LocalDateTime newDateObject = LocalDateTime.of(currentDate.toLocalDate(), currentDate.toLocalTime());
+            mainExecutor.execute(() -> _selectedDateLiveData.setValue(newDateObject));
         }
     }
 
@@ -317,13 +305,11 @@ public class CalendarDashboardViewModel extends ViewModel {
                         hasSpecificStatusFilter = true;
                     }
                     if (filterOptions.contains(TaskFilterOption.INCOMPLETE)) {
-                        if (hasSpecificStatusFilter && passesStatus) { /* Complete и Incomplete одновременно не могут быть */ passesStatus = false; }
+                        if (hasSpecificStatusFilter && passesStatus) { passesStatus = false; }
                         else if (!hasSpecificStatusFilter) { passesStatus = (task.getStatus() != TaskStatus.DONE); }
-                        // Если уже был Complete и он true, а теперь Incomplete, то passesStatus станет false
-                        // Если был Complete и он false, а теперь Incomplete, то passesStatus зависит от Incomplete
                         hasSpecificStatusFilter = true;
                     }
-                    if (!hasSpecificStatusFilter) passesStatus = true; // Если нет фильтров по статусу, все проходят
+                    if (!hasSpecificStatusFilter) passesStatus = true;
 
                     boolean passesPriority = true;
                     if (filterOptions.contains(TaskFilterOption.CRITICAL_PRIORITY) && task.getPriority() != Priority.CRITICAL) passesPriority = false;
@@ -334,7 +320,6 @@ public class CalendarDashboardViewModel extends ViewModel {
                 .collect(Collectors.toList());
         logger.debug(TAG, "applyFiltersAndSorting: Tasks after filtering: " + filteredTasks.size());
 
-        // Сортировка (без изменений)
         switch (sortOption) {
             case TIME_ASC: filteredTasks.sort(Comparator.comparing(CalendarTaskSummary::getDueDate)); break;
             case TIME_DESC: filteredTasks.sort(Comparator.comparing(CalendarTaskSummary::getDueDate).reversed()); break;
@@ -348,7 +333,6 @@ public class CalendarDashboardViewModel extends ViewModel {
         return new CalendarDashboardData(filteredTasks, data.getGamification());
     }
 
-
     public void updateSortOption(TaskSortOption option) { _sortOptionLiveData.setValue(option); }
     public void toggleFilterOption(TaskFilterOption option) {
         Set<TaskFilterOption> currentOptions = new HashSet<>(Objects.requireNonNull(_filterOptionsLiveData.getValue()));
@@ -356,7 +340,7 @@ public class CalendarDashboardViewModel extends ViewModel {
         if (option == TaskFilterOption.ALL) {
             newOptions = Collections.singleton(TaskFilterOption.ALL);
         } else {
-            currentOptions.remove(TaskFilterOption.ALL); // Убираем ALL, если выбран конкретный фильтр
+            currentOptions.remove(TaskFilterOption.ALL);
             if (currentOptions.contains(option)) {
                 currentOptions.remove(option);
             } else {
@@ -386,8 +370,8 @@ public class CalendarDashboardViewModel extends ViewModel {
     public void onPageChanged(int page) {
         if (Objects.equals(_currentPageLiveData.getValue(), page)) return;
         if (page >= 0 && page < pageDates.size()) {
-            _currentPageLiveData.setValue(page); // Триггер для pagerDataLiveData
-            _selectedDateLiveData.setValue(getDateForPageInternal(page)); // Триггер для _rawDataForSelectedDate и dashboardDataLiveData
+            _currentPageLiveData.postValue(page); // Используем postValue, т.к. может быть вызван из ViewPager callback
+            _selectedDateLiveData.postValue(getDateForPageInternal(page));
             logger.debug(TAG, "onPageChanged: Page set to " + page + ", SelectedDate: " + getDateForPageInternal(page).toLocalDate());
         } else {
             logger.warn(TAG, "Attempted to change to invalid page index: " + page);
@@ -403,8 +387,8 @@ public class CalendarDashboardViewModel extends ViewModel {
 
         if (targetPage >= 0 && targetPage < pageDates.size()) {
             logger.info(TAG, "selectDate: New date selected " + normalizedNewDate.toLocalDate() + ", targetPage " + targetPage);
-            _selectedDateLiveData.setValue(normalizedNewDate); // Обновит _rawDataForSelectedDate и dashboardDataLiveData
-            _currentPageLiveData.setValue(targetPage); // Обновит pagerDataLiveData (если его логика доделана)
+            _selectedDateLiveData.setValue(normalizedNewDate);
+            _currentPageLiveData.setValue(targetPage);
         } else {
             logger.warn(TAG, "Selected date " + targetDate + " is outside the pager range (targetPage=" + targetPage + ").");
             snackbarManager.showMessage("Выбранная дата вне доступного диапазона.");
@@ -430,14 +414,16 @@ public class CalendarDashboardViewModel extends ViewModel {
 
         Futures.addCallback(future, new FutureCallback<Void>() {
             @Override public void onSuccess(Void result) {
-                logger.info(TAG, "Task status updated successfully for taskId=" + taskId + ". Triggering refresh.");
+                // ЭТОТ ЛОГ КРИТИЧЕСКИ ВАЖЕН
+                logger.info(TAG, "ViewModel: Task status update UC successful for taskId=" + taskId + ". Triggering refresh.");
                 refreshDataForCurrentPage();
             }
             @Override public void onFailure(@NonNull Throwable t) {
-                snackbarManager.showMessage("Ошибка обновления статуса: " + t.getMessage());
-                logger.error(TAG, "Failed to update task status for " + taskId, t);
+                // И ЭТОТ ЛОГ
+                logger.error(TAG, "ViewModel: Task status update UC FAILED for " + taskId, t);
+                mainExecutor.execute(() -> snackbarManager.showMessage("Ошибка обновления статуса: " + t.getMessage()));
             }
-        }, ioExecutor); // ioExecutor, т.к. refreshDataForCurrentPage пинает LiveData, которые могут грузить данные
+        }, ioExecutor); // ioExecutor, так как refreshDataForCurrentPage пинает LiveData
     }
 
     private void requestDeleteConfirmation(CalendarTaskSummary taskSummary) {
@@ -446,15 +432,15 @@ public class CalendarDashboardViewModel extends ViewModel {
 
     public void confirmDeleteTask(long taskId) {
         logger.debug(TAG, "Deleting task confirmed: taskId=" + taskId);
-        _swipeActionStateLiveData.setValue(SwipeActionState.Idle.getInstance());
+        _swipeActionStateLiveData.postValue(SwipeActionState.Idle.getInstance()); // Используем postValue
         ListenableFuture<Void> future = deleteTaskUseCase.execute(taskId);
         Futures.addCallback(future, new FutureCallback<Void>() {
             @Override public void onSuccess(Void result) {
-                snackbarManager.showMessage("Задача удалена");
+                mainExecutor.execute(() -> snackbarManager.showMessage("Задача удалена")); // Обновление UI на главном потоке
                 refreshDataForCurrentPage();
             }
             @Override public void onFailure(@NonNull Throwable t) {
-                snackbarManager.showMessage("Ошибка удаления: " + t.getMessage());
+                mainExecutor.execute(() -> snackbarManager.showMessage("Ошибка удаления: " + t.getMessage()));
                 logger.error(TAG, "Failed to delete task " + taskId, t);
             }
         }, ioExecutor);
@@ -462,15 +448,12 @@ public class CalendarDashboardViewModel extends ViewModel {
 
     public void clearSwipeActionState() {
         if (!(_swipeActionStateLiveData.getValue() instanceof SwipeActionState.Idle)) {
-            _swipeActionStateLiveData.setValue(SwipeActionState.Idle.getInstance());
+            _swipeActionStateLiveData.postValue(SwipeActionState.Idle.getInstance()); // Используем postValue
         }
     }
     public void handleSwipeAction(long taskId, SwipeDirection direction) {
-        // ... (без изменений) ...
         LocalDateTime currentSelectedDateTime = _selectedDateLiveData.getValue();
         if (currentSelectedDateTime == null) { logger.error(TAG, "selectedDate is null in handleSwipeAction"); return; }
-        LocalDate selectedDateKey = currentSelectedDateTime.toLocalDate();
-        // Для получения данных используется dashboardDataLiveData, который уже отфильтрован
         CalendarDashboardData dataForSelectedDay = dashboardDataLiveData.getValue();
 
         if (dataForSelectedDay == null || dataForSelectedDay.getTasks() == null) {
@@ -496,7 +479,6 @@ public class CalendarDashboardViewModel extends ViewModel {
     public void clearNavigateToEditTask() { _navigateToEditTaskEvent.setValue(null); }
     public void clearNavigateToPomodoro() { _navigateToPomodoroEvent.setValue(null); }
 
-    // Вспомогательный класс-обертка для триггера MediatorLiveData
     private static class CombinedDataTrigger {
         final CalendarDashboardData rawData;
         final Set<Tag> tags;
