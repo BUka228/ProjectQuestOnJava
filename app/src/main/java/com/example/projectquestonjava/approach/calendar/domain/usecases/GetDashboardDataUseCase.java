@@ -1,11 +1,9 @@
 package com.example.projectquestonjava.approach.calendar.domain.usecases;
 
-import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
-import androidx.lifecycle.Observer;
+import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
-import com.example.projectquestonjava.core.di.IODispatcher;
 import com.example.projectquestonjava.core.domain.repository.PriorityResolver;
 import com.example.projectquestonjava.core.managers.WorkspaceSessionManager;
 import com.example.projectquestonjava.core.utils.DateTimeUtils;
@@ -17,15 +15,10 @@ import com.example.projectquestonjava.approach.calendar.domain.repository.Calend
 import com.example.projectquestonjava.approach.calendar.extensions.CalendarExtensions;
 import com.example.projectquestonjava.feature.gamification.data.model.Gamification;
 import com.example.projectquestonjava.feature.gamification.domain.repository.GamificationRepository;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Executor;
 import javax.inject.Inject;
 
 public class GetDashboardDataUseCase {
@@ -36,7 +29,6 @@ public class GetDashboardDataUseCase {
     private final PriorityResolver priorityResolver;
     private final WorkspaceSessionManager workspaceSessionManager;
     private final DateTimeUtils dateTimeUtils;
-    private final Executor ioExecutor;
     private final Logger logger;
 
     @Inject
@@ -46,101 +38,78 @@ public class GetDashboardDataUseCase {
             PriorityResolver priorityResolver,
             WorkspaceSessionManager workspaceSessionManager,
             DateTimeUtils dateTimeUtils,
-            @IODispatcher Executor ioExecutor,
             Logger logger) {
         this.calendarRepository = calendarRepository;
         this.gamificationRepository = gamificationRepository;
         this.priorityResolver = priorityResolver;
         this.workspaceSessionManager = workspaceSessionManager;
         this.dateTimeUtils = dateTimeUtils;
-        this.ioExecutor = ioExecutor;
         this.logger = logger;
     }
 
-    // Изменяем возвращаемый тип на ListenableFuture
-    public ListenableFuture<CalendarDashboardData> execute(LocalDateTime date) {
-        logger.debug(TAG, "Invoked for date: " + date);
+    public LiveData<CalendarDashboardData> execute(LocalDateTime date) {
+        logger.debug(TAG, "execute: Called for date: " + date.toLocalDate());
 
-        // Получаем workspaceId асинхронно
-        ListenableFuture<Long> workspaceIdFuture = workspaceSessionManager.getWorkspaceIdFuture();
+        // LiveData для workspaceId
+        LiveData<Long> workspaceIdLiveData = workspaceSessionManager.getWorkspaceIdLiveData();
 
-        return Futures.transformAsync(workspaceIdFuture, workspaceId -> {
+        // Используем switchMap для реакции на изменение workspaceId
+        return Transformations.switchMap(workspaceIdLiveData, workspaceId -> {
             if (workspaceId == null || workspaceId == 0L) {
-                logger.warn(TAG, "No active workspace set, returning empty data future.");
-                return Futures.immediateFuture(CalendarDashboardData.EMPTY);
+                logger.warn(TAG, "execute: No active workspace set for date " + date.toLocalDate() + ". Returning EMPTY data.");
+                MutableLiveData<CalendarDashboardData> emptyData = new MutableLiveData<>();
+                emptyData.setValue(CalendarDashboardData.EMPTY);
+                return emptyData;
             }
-            logger.debug(TAG, "Using workspaceId: " + workspaceId);
+            logger.debug(TAG, "execute: Using workspaceId: " + workspaceId + " for date: " + date.toLocalDate());
 
-            // Получаем LiveData, но нам нужно преобразовать его в ListenableFuture для однократного получения
-            // Это не самый лучший способ, так как LiveData предназначен для непрерывного наблюдения.
-            // В идеале, CalendarRepository.getTasksForDay должен также возвращать ListenableFuture.
-            // Для примера, мы возьмем первое значение из LiveData.
-            LiveData<List<CalendarTaskWithTagsAndPomodoro>> tasksLiveData = calendarRepository.getTasksForDay(workspaceId, date);
-            LiveData<Gamification> gamificationLiveData = gamificationRepository.getCurrentUserGamificationFlow();
+            // Получаем LiveData задач и геймификации
+            LiveData<List<CalendarTaskWithTagsAndPomodoro>> tasksWithDetailsLiveData =
+                    calendarRepository.getTasksForDay(workspaceId, date);
+            LiveData<Gamification> gamificationLiveData =
+                    gamificationRepository.getCurrentUserGamificationFlow();
 
-            // Создаем ListenableFuture для задач, беря первое не-null значение
-            ListenableFuture<List<CalendarTaskWithTagsAndPomodoro>> tasksFuture =
-                    LiveDataToFutureConverter.toFuture(tasksLiveData, ioExecutor, Collections.emptyList());
+            // Объединяем их с помощью MediatorLiveData
+            MediatorLiveData<CalendarDashboardData> result = new MediatorLiveData<>();
+            result.setValue(CalendarDashboardData.EMPTY); // Начальное значение
 
-            // Создаем ListenableFuture для геймификации
-            ListenableFuture<Gamification> gamificationFuture =
-                    LiveDataToFutureConverter.toFuture(gamificationLiveData, ioExecutor, null);
+            final List<CalendarTaskWithTagsAndPomodoro>[] tasksHolder = new List[1];
+            final Gamification[] gamificationHolder = new Gamification[1];
+            final boolean[] tasksLoaded = {false};
+            final boolean[] gamificationLoaded = {false};
 
+            Runnable tryCombine = () -> {
+                if (tasksLoaded[0] && gamificationLoaded[0]) {
+                    List<CalendarTaskWithTagsAndPomodoro> currentTasks = tasksHolder[0];
+                    Gamification currentGamification = gamificationHolder[0];
 
-            // Объединяем два ListenableFuture
-            return Futures.whenAllSucceed(tasksFuture, gamificationFuture)
-                    .call(() -> {
-                        List<CalendarTaskWithTagsAndPomodoro> tasks = Futures.getDone(tasksFuture);
-                        Gamification gamification = Futures.getDone(gamificationFuture); // Может быть null
-
-                        List<CalendarTaskSummary> summaries = (tasks != null)
-                                ? CalendarExtensions.toTaskSummaries(tasks, priorityResolver, dateTimeUtils)
-                                : Collections.emptyList();
-
-                        logger.debug(TAG, "Combining data: " + summaries.size() + " tasks, gamification loaded: " + (gamification != null));
-                        return new CalendarDashboardData(summaries, gamification);
-                    }, ioExecutor); // Выполняем финальное преобразование на ioExecutor
-
-        }, ioExecutor); // Выполняем transformAsync для workspaceIdFuture на ioExecutor
-    }
-
-    // Вспомогательный класс для конвертации LiveData в ListenableFuture (однократное получение)
-    private static class LiveDataToFutureConverter {
-        public static <T> ListenableFuture<T> toFuture(LiveData<T> liveData, Executor executor, @Nullable T defaultValueIfNull) {
-            com.google.common.util.concurrent.SettableFuture<T> settableFuture = com.google.common.util.concurrent.SettableFuture.create();
-            // Используем MoreExecutors.directExecutor(), чтобы Observer выполнился в том же потоке,
-            // что и LiveData.postValue/setValue. Если LiveData обновляется на UI потоке, это нормально.
-            // Если LiveData обновляется на фоновом потоке, executor здесь должен быть UI executor.
-            // Но так как мы сразу отписываемся, это менее критично.
-            Observer<T> observer = new Observer<T>() {
-                @Override
-                public void onChanged(T t) {
-                    liveData.removeObserver(this); // Отписываемся после получения первого значения
-                    settableFuture.set(t != null ? t : defaultValueIfNull);
+                    List<CalendarTaskSummary> summaries = (currentTasks != null)
+                            ? CalendarExtensions.toTaskSummaries(currentTasks, priorityResolver, dateTimeUtils)
+                            : Collections.emptyList();
+                    logger.debug(TAG, "execute: Combining data for " + date.toLocalDate() + ". Tasks: " + summaries.size() +
+                            ", Gamification loaded: " + (currentGamification != null));
+                    result.setValue(new CalendarDashboardData(summaries, currentGamification));
+                } else {
+                    logger.debug(TAG, "execute: tryCombine - Not all data loaded yet for " + date.toLocalDate() +
+                            ". Tasks loaded: " + tasksLoaded[0] + ", Gami loaded: " + gamificationLoaded[0]);
                 }
             };
-            // Мы должны подписаться на главном потоке, если LiveData обновляется на нем.
-            // Для простоты, предположим, что подписка с UI потока безопасна.
-            // Если LiveData может эмитить null и это валидное первое значение, то
-            // нужно будет дождаться не-null значения или предусмотреть таймаут.
-            // В данном случае, если первое значение null, мы его и вернем (или defaultValueIfNull).
-            MoreExecutors.directExecutor().execute(() -> liveData.observeForever(observer));
 
-            // На случай, если LiveData уже имеет значение
-            T initialValue = liveData.getValue();
-            if (initialValue != null) {
-                liveData.removeObserver(observer);
-                settableFuture.set(initialValue);
-            }
+            result.addSource(tasksWithDetailsLiveData, tasks -> {
+                logger.debug(TAG, "execute: tasksWithDetailsLiveData emitted for " + date.toLocalDate() + ". Count: " + (tasks != null ? tasks.size() : "null"));
+                tasksHolder[0] = tasks;
+                tasksLoaded[0] = true;
+                tryCombine.run();
+            });
 
-            // Добавляем listener, чтобы отписаться, если Future отменили
-            settableFuture.addListener(() -> {
-                if (settableFuture.isCancelled()) {
-                    MoreExecutors.directExecutor().execute(() -> liveData.removeObserver(observer));
-                }
-            }, executor);
+            result.addSource(gamificationLiveData, gamification -> {
+                logger.debug(TAG, "execute: gamificationLiveData emitted for " + date.toLocalDate() + ". Loaded: " + (gamification != null));
+                gamificationHolder[0] = gamification;
+                gamificationLoaded[0] = true;
+                tryCombine.run();
+            });
 
-            return settableFuture;
-        }
+            return result;
+        });
     }
 }

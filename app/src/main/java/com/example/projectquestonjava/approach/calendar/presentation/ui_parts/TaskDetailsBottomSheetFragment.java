@@ -117,7 +117,7 @@ public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
             return;
         }
 
-        if (isDashboardSource && dashboardViewModel != null) {
+        /*if (isDashboardSource && dashboardViewModel != null) {
             dashboardViewModel.getTaskDetailsForBottomSheet(currentTaskId) // Этот метод теперь просто триггерит _requestedTaskIdForDetails
                     .observe(getViewLifecycleOwner(), summary -> { // Наблюдаем за taskDetailsForBottomSheetLiveData
                         if (summary != null && summary.getId() == currentTaskId) { // Убедимся, что это та задача
@@ -128,7 +128,7 @@ public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
                         }
                     });
         }
-        // TODO: Аналогично для planningViewModel
+        // TODO: Аналогично для planningViewModel*/
     }
 
     private void bindViewsFromLayout(View view) {

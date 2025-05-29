@@ -45,7 +45,7 @@ public class AppModule {
 
     @Provides
     @Singleton
-    @MainExecutor // Добавляем квалификатор для главного потока
+    @MainExecutor
     public Executor provideMainExecutor(@ApplicationContext Context context) {
         return ContextCompat.getMainExecutor(context);
     }
