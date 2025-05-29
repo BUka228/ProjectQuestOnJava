@@ -9,7 +9,7 @@
     android:layout_height="wrap_content"
     android:layout_marginBottom="12dp"
     app:cardElevation="4dp"
-    app:cardBackgroundColor="?attr/colorSurfaceContainer">
+    app:cardBackgroundColor="?attr/colorSurfaceContainer"> <!-- Убедимся, что фон задан -->
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -23,79 +23,80 @@
             android:id="@+id/layout_task_time_priority"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:gravity="center_horizontal"
-        android:paddingEnd="12dp">
-
-        <TextView
-            android:id="@+id/text_task_hour"
-            style="@style/TextAppearance.App.HeadlineMedium"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="?attr/colorOnSurface"
-            tools:text="14"/>
-
-        <View
-            android:id="@+id/view_priority_indicator"
-            android:layout_width="28dp"
-            android:layout_height="6dp"
-            android:layout_marginTop="1dp"
-            android:layout_marginBottom="1dp"
-            android:background="@drawable/rounded_priority_indicator" />
-
-        <TextView
-            android:id="@+id/text_task_minute"
-            style="@style/TextAppearance.App.HeadlineMedium"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="?attr/colorOnSurface"
-            tools:text="30"/>
-    </LinearLayout>
-
-    <!-- Правая часть: Заголовок, Чекбокс, Доп. Инфо -->
-    <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:orientation="vertical"
-        android:paddingEnd="8dp"> <!-- Отступ справа от чекбокса -->
-
-        <!-- Заголовок и Чекбокс -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="top">
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingEnd="12dp">
 
             <TextView
-                android:id="@+id/text_task_title"
-                style="@style/TextAppearance.App.TitleLarge"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="3"
-                android:paddingEnd="8dp"
-                android:textStyle="bold"
-                tools:text="Очень длинное название задачи, которое может занимать несколько строк для проверки"/>
-
-            <CheckBox
-                android:id="@+id/checkbox_task_done"
+                android:id="@+id/text_task_hour"
+                style="@style/TextAppearance.App.HeadlineSmall"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                app:buttonTint="?attr/colorSecondary"/>
+                android:textColor="?attr/colorOnSurface"
+                tools:text="14"/>
+
+            <View
+                android:id="@+id/view_priority_indicator"
+                android:layout_width="28dp"
+                android:layout_height="6dp"
+                android:layout_marginTop="1dp"
+                android:layout_marginBottom="1dp"
+                android:background="@drawable/rounded_priority_indicator" />
+
+            <TextView
+                android:id="@+id/text_task_minute"
+                style="@style/TextAppearance.App.HeadlineSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="?attr/colorOnSurface"
+                tools:text="30"/>
         </LinearLayout>
 
-        <Space
-            android:layout_width="match_parent"
-            android:layout_height="8dp"/>
-
-        <!-- Дополнительные индикаторы и Теги -->
+        <!-- Правая часть: Заголовок, Чекбокс, Доп. Инфо -->
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingEnd="8dp">
+
+            <!-- Заголовок и Чекбокс -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="top">
+
+                <TextView
+                    android:id="@+id/text_task_title"
+                    style="@style/TextAppearance.App.TitleLarge"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="3"
+                    android:paddingEnd="8dp"
+                    android:textStyle="bold"
+                    tools:text="Очень длинное название задачи, которое может занимать несколько строк для проверки"/>
+
+                <CheckBox
+                    android:id="@+id/checkbox_task_done"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"
+                    app:buttonTint="@color/checkbox_tint_selector_dashboard"/>
+            </LinearLayout>
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="8dp"/>
+
+            <!-- Дополнительные индикаторы и Теги -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="37dp"
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
@@ -161,13 +162,14 @@
                     app:singleLine="true"
                     app:chipSpacingHorizontal="4dp"/>
             </HorizontalScrollView>
-            <!-- Заглушка, если тегов нет -->
+            <!-- Заглушка, если тегов нет, чтобы высота была консистентной -->
             <Space
-                android:id="@+id/spacer_tags_end"
+                android:id="@+id/spacer_tags_dashboard_end"
                 android:layout_width="0dp"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:visibility="gone"/>
+                android:visibility="gone"
+                tools:visibility="visible"/>
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

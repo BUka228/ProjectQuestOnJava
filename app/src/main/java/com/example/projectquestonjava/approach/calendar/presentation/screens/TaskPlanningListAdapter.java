@@ -1,10 +1,8 @@
-package com.example.projectquestonjava.approach.calendar.presentation.screens; // Уточните пакет
+package com.example.projectquestonjava.approach.calendar.presentation.screens;
 
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffColorFilter;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
@@ -35,17 +33,16 @@ import java.util.Objects;
 public class TaskPlanningListAdapter extends ListAdapter<CalendarTaskSummary, TaskPlanningListAdapter.PlanningTaskViewHolder> {
 
     private final OnPlanningTaskItemClickListener listener;
-    private final CalendarPlanningViewModel viewModel; // Для доступа к getPriorityColor
+    private final CalendarPlanningViewModel viewModel;
 
     public interface OnPlanningTaskItemClickListener {
         void onTaskCardClick(CalendarTaskSummary task);
-        void onTaskEditRequest(CalendarTaskSummary task); // Изменен с taskId на task
-        void onPomodoroStartRequest(CalendarTaskSummary task); // Изменен с taskId на task
-        // Свайпы теперь обрабатываются через SwipeToDeleteMoveCallback.SwipeListener во фрагменте
+        void onTaskEditRequest(CalendarTaskSummary task);
+        void onPomodoroStartRequest(CalendarTaskSummary task);
     }
 
     public TaskPlanningListAdapter(@NonNull OnPlanningTaskItemClickListener listener, @NonNull CalendarPlanningViewModel viewModel) {
-        super(DIFF_CALLBACK_PLANNING); // Используем свой DiffUtil
+        super(DIFF_CALLBACK_PLANNING);
         this.listener = listener;
         this.viewModel = viewModel;
     }
@@ -67,11 +64,11 @@ public class TaskPlanningListAdapter extends ListAdapter<CalendarTaskSummary, Ta
     static class PlanningTaskViewHolder extends RecyclerView.ViewHolder {
         private final MaterialCardView cardView;
         private final View priorityIndicator;
-        private final TextView textTaskHour, textTaskMinute, textTaskTitle, textPomodoroCount;
+        private final TextView textTaskHour, textTaskMinute, textTaskTitle, textPomodoroCount = null;
         private final ChipGroup chipGroupTags;
-        private final Space spacerTagsEnd; // Изменен ID, чтобы не конфликтовать с дашбордом
+        private final Space spacerTagsEnd;
         private final FrameLayout pomodoroContainer;
-        // private final LinearLayout layoutTimeDisplay; // Не используется напрямую в bind
+        // private final LinearLayout layoutTaskLeftPanel; // Не используется напрямую в bind, но есть в XML
 
         public PlanningTaskViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -83,8 +80,7 @@ public class TaskPlanningListAdapter extends ListAdapter<CalendarTaskSummary, Ta
             chipGroupTags = itemView.findViewById(R.id.chip_group_task_tags_planning);
             spacerTagsEnd = itemView.findViewById(R.id.spacer_tags_planning_end);
             pomodoroContainer = itemView.findViewById(R.id.pomodoro_counter_container_planning);
-            textPomodoroCount = itemView.findViewById(R.id.text_pomodoro_count_planning);
-            // layoutTimeDisplay = itemView.findViewById(R.id.layout_task_time_display_planning);
+            // layoutTaskLeftPanel = itemView.findViewById(R.id.layout_task_left_panel_planning);
         }
 
         public void bind(final CalendarTaskSummary task, final OnPlanningTaskItemClickListener listener, CalendarPlanningViewModel viewModel) {
@@ -95,18 +91,19 @@ public class TaskPlanningListAdapter extends ListAdapter<CalendarTaskSummary, Ta
             textTaskHour.setText(String.format(Locale.getDefault(), "%02d", dueTime.getHour()));
             textTaskMinute.setText(String.format(Locale.getDefault(), "%02d", dueTime.getMinute()));
 
-            // Преобразование Compose Color в Android Color
-            android.graphics.Color priorityAndroidColor = viewModel.getPriorityColor(task.getPriority());
-            Drawable priorityBg = priorityIndicator.getBackground();
-            if (priorityBg instanceof GradientDrawable) {
-                ((GradientDrawable) priorityBg.mutate()).setColor(priorityAndroidColor.toArgb());
-            } else {
-                priorityIndicator.setBackgroundColor(priorityAndroidColor.toArgb());
-            }
+            // Устанавливаем цвет текста для времени такой же, как у заголовка (onSurface)
+            int onSurfaceColor = ContextCompat.getColor(context, R.color.onSurfaceDark); // Или R.color.onSurfaceLight для светлой темы
+            // Это можно улучшить, получая цвет из атрибута темы ?attr/colorOnSurface
+            textTaskHour.setTextColor(onSurfaceColor);
+            textTaskMinute.setTextColor(onSurfaceColor);
+
+
+            Color priorityAndroidColor = viewModel.getPriorityColor(task.getPriority());
+            priorityIndicator.setBackgroundColor(priorityAndroidColor.toArgb());
 
 
             boolean isChecked = task.getStatus() == TaskStatus.DONE;
-            cardView.setAlpha(isChecked ? 0.7f : 1f);
+            cardView.setAlpha(isChecked ? 0.65f : 1f);
             if (isChecked) {
                 textTaskTitle.setPaintFlags(textTaskTitle.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
             } else {
@@ -122,25 +119,25 @@ public class TaskPlanningListAdapter extends ListAdapter<CalendarTaskSummary, Ta
             }
 
             chipGroupTags.removeAllViews();
-            if (task.getTags() != null && !task.getTags().isEmpty()) {
+            boolean hasTags = task.getTags() != null && !task.getTags().isEmpty();
+            if (hasTags) {
                 chipGroupTags.setVisibility(View.VISIBLE);
                 spacerTagsEnd.setVisibility(View.GONE);
                 for (Tag tag : task.getTags()) {
-                    Chip chip = new Chip(context, null, R.style.TextAppearance_App_Chip);
+                    Chip chip = (Chip) LayoutInflater.from(context).inflate(R.layout.item_tag, chipGroupTags, false);
                     chip.setText(tag.getName());
-                    chip.setChipBackgroundColorResource(R.color.primaryContainerLight);
-                    chip.setTextColor(ContextCompat.getColor(context, R.color.onPrimaryContainerLight));
-                    // chip.setOnClickListener(v -> listener.onTagInCardClick(tag)); // Если нужен клик по тегу на карточке
                     chipGroupTags.addView(chip);
                 }
             } else {
                 chipGroupTags.setVisibility(View.GONE);
+                // spacerTagsEnd УПРАВЛЯЕТСЯ В XML через layout_weight и minHeight,
+                // поэтому его видимость здесь менять не нужно, если он всегда должен занимать место.
+                // Если нужно динамически убирать/показывать Space, то:
                 spacerTagsEnd.setVisibility(View.VISIBLE);
             }
 
             cardView.setOnClickListener(v -> listener.onTaskCardClick(task));
             cardView.setOnLongClickListener(v -> {
-                // Показываем контекстное меню или сразу Edit
                 listener.onTaskEditRequest(task);
                 return true;
             });
