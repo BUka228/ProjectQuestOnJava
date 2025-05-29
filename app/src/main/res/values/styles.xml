@@ -414,6 +414,28 @@
     </style>
 
 
+    <style name="Widget.App.FloatingActionButton.Large" parent="Widget.Material3.FloatingActionButton.Large.Primary">
+        <!-- Можно переопределить атрибуты, если нужно, например, цвет -->
+        <!-- <item name="backgroundTint">?attr/colorPrimary</item> -->
+        <!-- <item name="tint">?attr/colorOnPrimary</item> -->
+        <!-- <item name="elevation">6dp</item> -->
+        <!-- <item name="pressedTranslationZ">12dp</item> -->
+        <!-- <item name="hoveredFocusedTranslationZ">8dp</item> -->
+    </style>
+
+    <!-- Стиль для TextInputLayout в Pomodoro для ввода времени -->
+    <style name="Widget.App.TextInputLayout.PomodoroTime" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxBackgroundColor">?attr/colorSurfaceContainer</item>
+        <item name="boxStrokeWidth">0dp</item> <!-- Убираем рамку, так как сама карточка будет рамкой -->
+        <item name="boxCornerRadiusTopStart">12dp</item> <!-- Скругление как у карточки -->
+        <item name="boxCornerRadiusTopEnd">12dp</item>
+        <item name="boxCornerRadiusBottomStart">12dp</item>
+        <item name="boxCornerRadiusBottomEnd">12dp</item>
+        <item name="android:textColorHint">?attr/colorOnSurfaceVariant</item>
+        <item name="hintEnabled">false</item> <!-- Мы используем внешний TextView для метки "Часы"/"Минуты" -->
+        <!-- Можно добавить отступы, если нужно, но TextInputEditText уже имеет paddingVertical="16dp" -->
+    </style>
+
 
 
 </resources>

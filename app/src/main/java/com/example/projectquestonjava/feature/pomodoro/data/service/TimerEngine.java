@@ -55,8 +55,8 @@ public class TimerEngine {
     private final PomodoroSettingsRepository settingsRepository;
     private final PomodoroSessionManager pomodoroSessionManager;
     private final DateTimeUtils dateTimeUtils;
-    private final ExecutorService engineExecutor; // Для основной логики таймера
-    private final ExecutorService settingsExecutor; // Отдельный для загрузки настроек
+    private final ExecutorService engineExecutor;
+    private final ExecutorService settingsExecutor;
     private Logger logger = null;
 
     private final MutableLiveData<TimerState> _timerStateLiveData = new MutableLiveData<>(TimerState.Idle.getInstance());
@@ -79,15 +79,17 @@ public class TimerEngine {
         return _currentPhaseLiveData;
     }
 
-
     private volatile Long currentTaskIdForCycle = null;
     private volatile Integer currentUserIdForCycle = null;
     private volatile Long currentDbSessionIdForPhase = null;
     private volatile LocalDateTime currentPhaseStartTime = null; // UTC
     private final AtomicInteger accumulatedInterruptionsInCurrentPhase = new AtomicInteger(0);
 
-    private volatile Future<?> activeTimerJob = null; // Future для управления задачей таймера
+    private volatile Future<?> activeTimerJob = null;
+    private final Object timerJobLock = new Object();
     private final AtomicReference<PomodoroSettings> currentSettingsRef = new AtomicReference<>(new PomodoroSettings());
+    private List<PomodoroPhase> originalPhasesForCurrentCycle = Collections.emptyList();
+
 
     @Inject
     public TimerEngine(
@@ -97,7 +99,7 @@ public class TimerEngine {
             PomodoroSettingsRepository settingsRepository,
             PomodoroSessionManager pomodoroSessionManager,
             DateTimeUtils dateTimeUtils,
-            @IODispatcher Executor ioExecutor, // Принимаем ExecutorService
+            @IODispatcher Executor ioExecutor,
             Logger logger) {
         this.soundManager = soundManager;
         this.vibrationManager = vibrationManager;
@@ -105,8 +107,8 @@ public class TimerEngine {
         this.settingsRepository = settingsRepository;
         this.pomodoroSessionManager = pomodoroSessionManager;
         this.dateTimeUtils = dateTimeUtils;
-        this.engineExecutor = (ExecutorService) ioExecutor; // Используем внедренный Executor
-        this.settingsExecutor = Executors.newSingleThreadExecutor(); // Для настроек, чтобы не блокировать engineExecutor
+        this.engineExecutor = (ExecutorService) ioExecutor;
+        this.settingsExecutor = Executors.newSingleThreadExecutor();
         this.logger = logger;
 
         _currentPhaseLiveData.addSource(_pomodoroPhasesLiveData, phases -> updateCurrentPhaseMediator());
@@ -129,18 +131,16 @@ public class TimerEngine {
         settingsExecutor.execute(() -> {
             try {
                 ListenableFuture<PomodoroSettings> settingsFuture = settingsRepository.getSettings();
-                // Используем addCallback вместо прямого get() чтобы обработать возможные ошибки Future
                 Futures.addCallback(settingsFuture, new FutureCallback<PomodoroSettings>() {
                     @Override
                     public void onSuccess(@Nullable PomodoroSettings settings) {
-                        if (settings == null) { // Дополнительная проверка, если Future вернул null
+                        if (settings == null) {
                             logger.error(TAG, "Initial settings loaded as null. Using defaults.");
                             currentSettingsRef.set(new PomodoroSettings());
                         } else {
                             currentSettingsRef.set(settings);
                             logger.debug(TAG, "Initial settings loaded: " + settings);
                         }
-                        // Обновляем состояние Idle только если оно текущее и нет активных фаз
                         TimerState currentTimerState = _timerStateLiveData.getValue();
                         List<PomodoroPhase> currentPhases = _pomodoroPhasesLiveData.getValue();
                         if (currentTimerState instanceof TimerState.Idle &&
@@ -153,7 +153,6 @@ public class TimerEngine {
                     public void onFailure(@NonNull Throwable t) {
                         logger.error(TAG, "Failed to load initial settings due to Future failure. Using defaults.", t);
                         currentSettingsRef.set(new PomodoroSettings());
-                        // Обновляем состояние Idle, если это уместно
                         TimerState currentTimerState = _timerStateLiveData.getValue();
                         List<PomodoroPhase> currentPhases = _pomodoroPhasesLiveData.getValue();
                         if (currentTimerState instanceof TimerState.Idle &&
@@ -161,9 +160,9 @@ public class TimerEngine {
                             _timerStateLiveData.postValue(TimerState.Idle.getInstance());
                         }
                     }
-                }, MoreExecutors.directExecutor()); // Коллбэк на том же потоке (settingsExecutor)
+                }, MoreExecutors.directExecutor());
 
-            } catch (Exception e) { // Ловим другие возможные RuntimeException на случай, если settingsRepository.getSettings() их кидает
+            } catch (Exception e) {
                 logger.error(TAG, "Unexpected error during initial settings load trigger", e);
                 currentSettingsRef.set(new PomodoroSettings());
             }
@@ -172,65 +171,67 @@ public class TimerEngine {
     }
 
     public void startPomodoroCycle(long taskId, int userId, List<PomodoroPhase> phases) {
-        engineExecutor.execute(() -> { // Все команды выполняем на Executor
-            logger.info(TAG, "CMD: Start Cycle. Task: " + taskId + ", User: " + userId + ", Phases: " + phases.size());
-            cancelActiveTimerJob(); // Отменяем предыдущий таймер
-            stopCurrentOperationAndSound(); // Останавливаем звук/вибрацию
+        final List<PomodoroPhase> finalPhases = new ArrayList<>(phases);
+        this.originalPhasesForCurrentCycle = new ArrayList<>(finalPhases);
 
-            if (phases.isEmpty()) {
+        engineExecutor.execute(() -> {
+            logger.info(TAG, "CMD: Start Cycle. Task: " + taskId + ", User: " + userId + ", Phases: " + finalPhases.size());
+            synchronized (timerJobLock) {
+                cancelActiveTimerJobInternal();
+            }
+            stopCurrentOperationAndSound();
+
+            if (finalPhases.isEmpty()) {
                 logger.warn(TAG, "Cannot start cycle: phase list is empty.");
-                setIdleStateAndResetCycleInternals();
+                setIdleStateAndResetCycleInternals(true);
                 return;
             }
 
-            _pomodoroPhasesLiveData.postValue(new ArrayList<>(phases)); // Копируем список
-            _currentPhaseIndexLiveData.postValue(-1);
+            _pomodoroPhasesLiveData.postValue(finalPhases);
+            _currentPhaseIndexLiveData.postValue(-1); // Этот LiveData будет обновлен в startNextPhase
             this.currentTaskIdForCycle = taskId;
             this.currentUserIdForCycle = userId;
             this.currentDbSessionIdForPhase = null;
             this.currentPhaseStartTime = null;
             this.accumulatedInterruptionsInCurrentPhase.set(0);
 
-            startNextPhaseOrStopInternal();
+            startNextPhaseOrStopInternal(finalPhases, -1);
         });
     }
 
-    private void startNextPhaseOrStopInternal() { // Должен вызываться из engineExecutor
-        cancelActiveTimerJob();
+    private void startNextPhaseOrStopInternal(List<PomodoroPhase> phasesForCycle, int completedPhaseIndex) {
+        synchronized (timerJobLock) {
+            cancelActiveTimerJobInternal();
+        }
         stopCurrentOperationAndSound();
 
-        Integer currentIndex = _currentPhaseIndexLiveData.getValue();
-        List<PomodoroPhase> currentPhases = _pomodoroPhasesLiveData.getValue();
-        if (currentIndex == null || currentPhases == null) {
-            setIdleStateAndResetCycleInternals(); return;
-        }
+        int newIndex = completedPhaseIndex + 1;
+        PomodoroPhase phaseToStart = (newIndex < phasesForCycle.size()) ? phasesForCycle.get(newIndex) : null;
 
-        int newIndex = currentIndex + 1;
-        PomodoroPhase phaseToStart = (newIndex < currentPhases.size()) ? currentPhases.get(newIndex) : null;
-
-        Long taskId = currentTaskIdForCycle; // Читаем volatile переменные
+        Long taskId = currentTaskIdForCycle;
         Integer userId = currentUserIdForCycle;
 
         if (phaseToStart == null || taskId == null || userId == null) {
-            logger.info(TAG, "All phases done or critical data missing. Cycle finished. Index: " + newIndex + ", Phases: " + currentPhases.size());
-            setIdleStateAndResetCycleInternals();
+            logger.info(TAG, "All phases done or critical data (taskId/userId) missing. Cycle finished. Next Index: " + newIndex + ", Total Phases in cycle: " + phasesForCycle.size());
+            setIdleStateAndResetCycleInternals(true);
             return;
         }
-
-        _currentPhaseIndexLiveData.postValue(newIndex); // Обновляем индекс
-        logger.info(TAG, "Engine starting phase " + (newIndex + 1) + "/" + currentPhases.size() +
+        // Обновляем LiveData, на которые подписан ViewModel, перед запуском самой фазы
+        _pomodoroPhasesLiveData.postValue(new ArrayList<>(phasesForCycle)); // Убедимся, что ViewModel видит актуальные фазы
+        _currentPhaseIndexLiveData.postValue(newIndex);
+        logger.info(TAG, "Engine starting phase " + (newIndex + 1) + "/" + phasesForCycle.size() +
                 ": " + phaseToStart.getType() + ", Duration: " + phaseToStart.getDurationSeconds() + "s");
 
         ListenableFuture<PomodoroSession> sessionFuture = pomodoroSessionManager.createNewPhaseSession(taskId, userId, phaseToStart);
         Futures.addCallback(sessionFuture, new FutureCallback<PomodoroSession>() {
             @Override
             public void onSuccess(PomodoroSession createdDbSession) {
-                if (createdDbSession == null) { // Дополнительная проверка
+                if (createdDbSession == null) {
                     onFailure(new IllegalStateException("Created DB session is null"));
                     return;
                 }
                 currentDbSessionIdForPhase = createdDbSession.getId();
-                currentPhaseStartTime = dateTimeUtils.currentUtcDateTime(); // Фиксируем время начала
+                currentPhaseStartTime = dateTimeUtils.currentUtcDateTime();
                 accumulatedInterruptionsInCurrentPhase.set(0);
 
                 TimerState.Running newTimerState = new TimerState.Running(
@@ -239,58 +240,93 @@ public class TimerEngine {
                         phaseToStart.getType(),
                         0
                 );
-                _timerStateLiveData.postValue(newTimerState); // Обновляем LiveData
+                _timerStateLiveData.postValue(newTimerState);
                 launchTimerTask(newTimerState);
             }
 
             @Override
             public void onFailure(@NonNull Throwable t) {
                 logger.error(TAG, "Failed to create DB session for phase " + phaseToStart.getType() + ". Cycle stop.", t);
-                setIdleStateAndResetCycleInternals();
+                setIdleStateAndResetCycleInternals(true);
             }
-        }, engineExecutor); // Коллбэк на том же Executor
+        }, engineExecutor);
     }
 
+
     private void launchTimerTask(TimerState.Running initialRunningState) {
-        cancelActiveTimerJob(); // Отменяем предыдущий, если есть
-        activeTimerJob = engineExecutor.submit(() -> {
+        synchronized (timerJobLock) { // Синхронизируем доступ к activeTimerJob
+            cancelActiveTimerJobInternal(); // Убедимся, что предыдущий точно отменен
             AtomicInteger remaining = new AtomicInteger(initialRunningState.getRemainingSeconds());
-            try {
-                while (remaining.get() > 0 && !Thread.currentThread().isInterrupted()) {
-                    Thread.sleep(1000);
-                    if (Thread.currentThread().isInterrupted()) break;
+            logger.debug(TAG, "Launching timer task for " + initialRunningState.getType() + " with " + remaining.get() + " seconds.");
 
-                    int currentRemaining = remaining.decrementAndGet();
-                    TimerState currentState = _timerStateLiveData.getValue(); // Читаем текущее состояние
+            activeTimerJob = engineExecutor.submit(() -> {
+                try {
+                    while (remaining.get() > 0) { // Убрали !Thread.currentThread().isInterrupted() из условия цикла
+                        if (Thread.currentThread().isInterrupted()) { // Проверяем прерывание в начале итерации
+                            logger.info(TAG, "Timer task for " + initialRunningState.getType() + " was interrupted (inside loop check). Remaining: " + remaining.get());
+                            break; // Выходим из цикла, если поток прерван
+                        }
+                        Thread.sleep(1000);
+                        // Повторная проверка на прерывание после sleep
+                        if (Thread.currentThread().isInterrupted()) {
+                            logger.info(TAG, "Timer task for " + initialRunningState.getType() + " was interrupted (after sleep). Remaining: " + remaining.get());
+                            break;
+                        }
 
-                    // Обновляем LiveData, только если мы все еще в состоянии Running
-                    if (currentState instanceof TimerState.Running && ((TimerState.Running) currentState).getType() == initialRunningState.getType()) {
-                        TimerState.Running updatedState = ((TimerState.Running) currentState).copy(
-                                currentRemaining, null, null, null
-                        );
-                        _timerStateLiveData.postValue(updatedState);
-                    } else {
-                        // Состояние изменилось (например, на Paused или Stop), выходим из цикла
-                        break;
+                        int currentRemaining = remaining.decrementAndGet();
+                        TimerState currentStateOnMainThread = _timerStateLiveData.getValue(); // Читаем на том же потоке, что и postValue
+
+                        if (currentStateOnMainThread instanceof TimerState.Running &&
+                                ((TimerState.Running) currentStateOnMainThread).getType() == initialRunningState.getType() &&
+                                // Дополнительная проверка, чтобы убедиться, что это тот же таймер
+                                Objects.equals(activeTimerJob, Thread.currentThread().isInterrupted() ? null : activeTimerJob)) {
+
+                            TimerState.Running updatedState = ((TimerState.Running) currentStateOnMainThread).copy(
+                                    currentRemaining, null, null, null
+                            );
+                            // Обновляем LiveData всегда на главном потоке, если у вас есть MainExecutor
+                            // Если нет, то postValue() безопасен
+                            _timerStateLiveData.postValue(updatedState);
+                        } else {
+                            logger.info(TAG, "Timer task for " + initialRunningState.getType() + " exiting. Current state: " +
+                                    (currentStateOnMainThread != null ? currentStateOnMainThread.getClass().getSimpleName() : "null") +
+                                    ", Expected type: " + initialRunningState.getType());
+                            break;
+                        }
                     }
+                    // Проверяем, был ли цикл прерван или завершился естественно
+                    if (remaining.get() == 0 && !Thread.currentThread().isInterrupted()) {
+                        logger.info(TAG, "Timer task for " + initialRunningState.getType() + " completed naturally.");
+                        // Вызов handleNaturalPhaseCompletionInternal должен быть на engineExecutor
+                        engineExecutor.execute(this::handleNaturalPhaseCompletionInternal);
+                    } else if (Thread.currentThread().isInterrupted()){
+                        logger.info(TAG, "Timer task for " + initialRunningState.getType() + " did not complete naturally due to interruption. Remaining: " + remaining.get());
+                    }
+                } catch (InterruptedException e) {
+                    logger.info(TAG, "Timer task for " + initialRunningState.getType() + " explicitly interrupted via InterruptedException. Remaining: " + remaining.get());
+                    Thread.currentThread().interrupt();
+                } catch (Exception e) {
+                    logger.error(TAG, "Exception in timer task for " + initialRunningState.getType(), e);
+                    engineExecutor.execute(() -> setIdleStateAndResetCycleInternals(true));
+                } finally {
+                    synchronized (timerJobLock) {
+                        // Обнуляем activeTimerJob только если это был текущий джоб
+                        if (activeTimerJob != null && activeTimerJob.isDone()) { // Проверяем, что это тот же джоб и он завершен
+                            activeTimerJob = null;
+                        }
+                    }
+                    logger.debug(TAG, "Timer task for " + initialRunningState.getType() + " finished execution block.");
                 }
-                // Проверяем, был ли цикл прерван или завершился естественно
-                if (remaining.get() == 0 && !Thread.currentThread().isInterrupted()) {
-                    handleNaturalPhaseCompletionInternal();
-                }
-            } catch (InterruptedException e) {
-                logger.info(TAG, "Timer task for " + initialRunningState.getType() + " interrupted.");
-                Thread.currentThread().interrupt(); // Восстанавливаем флаг прерывания
-            } catch (Exception e) {
-                logger.error(TAG, "Exception in timer task for " + initialRunningState.getType(), e);
-                setIdleStateAndResetCycleInternals(); // При ошибке сбрасываем состояние
-            }
-        });
+            });
+        }
     }
 
     public void pause() {
         engineExecutor.execute(() -> {
-            cancelActiveTimerJob();
+            logger.debug(TAG, "CMD: Pause");
+            synchronized (timerJobLock) {
+                cancelActiveTimerJobInternal();
+            }
             TimerState currentState = _timerStateLiveData.getValue();
             if (currentState instanceof TimerState.Running) {
                 int interruptions = accumulatedInterruptionsInCurrentPhase.incrementAndGet();
@@ -300,38 +336,44 @@ public class TimerEngine {
                         ((TimerState.Running) currentState).getType(),
                         interruptions
                 ));
+            } else {
+                logger.warn(TAG, "Cannot pause, current state is not Running: " + (currentState != null ? currentState.getClass().getSimpleName() : "null"));
             }
         });
     }
 
     public void resume() {
         engineExecutor.execute(() -> {
+            logger.debug(TAG, "CMD: Resume");
             TimerState currentState = _timerStateLiveData.getValue();
             if (currentState instanceof TimerState.Paused) {
                 TimerState.Running newRunningState = new TimerState.Running(
                         ((TimerState.Paused) currentState).getRemainingSeconds(),
                         ((TimerState.Paused) currentState).getTotalSeconds(),
                         ((TimerState.Paused) currentState).getType(),
-                        ((TimerState.Paused) currentState).getInterruptions() // Сохраняем счетчик прерываний
+                        ((TimerState.Paused) currentState).getInterruptions()
                 );
                 _timerStateLiveData.postValue(newRunningState);
                 launchTimerTask(newRunningState);
+            } else {
+                logger.warn(TAG, "Cannot resume, current state is not Paused: " + (currentState != null ? currentState.getClass().getSimpleName() : "null"));
             }
         });
     }
 
-    private void handleNaturalPhaseCompletionInternal() { // Должен вызываться из engineExecutor
+    private void handleNaturalPhaseCompletionInternal() {
         Integer phaseIndex = _currentPhaseIndexLiveData.getValue();
         List<PomodoroPhase> phases = _pomodoroPhasesLiveData.getValue();
-        if (phaseIndex == null || phases == null || phaseIndex < 0 || phaseIndex >= phases.size()) return;
-
+        if (phaseIndex == null || phases == null || phases.isEmpty() || phaseIndex < 0 || phaseIndex >= phases.size()) {
+            logger.error(TAG, "Cannot handle natural phase completion: invalid phaseIndex or phases list. Index: " + phaseIndex + ", Phases size: " + (phases != null ? phases.size() : "null"));
+            setIdleStateAndResetCycleInternals(true);
+            return;
+        }
         PomodoroPhase completedPhase = phases.get(phaseIndex);
-        finalizeAndProcessPhaseInternal(false, completedPhase);
+        finalizeAndProcessPhaseInternal(false, completedPhase, phases, phaseIndex);
     }
 
-    private void finalizeAndProcessPhaseInternal(boolean isStopCommand, PomodoroPhase phaseBeingFinalized) {
-        // Этот метод теперь вызывается из engineExecutor (например, из handleNaturalPhaseCompletionInternal или stopPomodoroCycle)
-
+    private void finalizeAndProcessPhaseInternal(boolean isStopCommand, PomodoroPhase phaseBeingFinalized, List<PomodoroPhase> cyclePhases, int currentPhaseIndexInCycle) {
         Long taskId = currentTaskIdForCycle;
         Long dbSessionId = currentDbSessionIdForPhase;
         LocalDateTime phaseStartTimeSnapshot = currentPhaseStartTime;
@@ -340,13 +382,12 @@ public class TimerEngine {
         if (phaseBeingFinalized == null || taskId == null || dbSessionId == null || phaseStartTimeSnapshot == null) {
             logger.error(TAG, "finalizeAndProcessPhase: Missing critical data for phase: " + phaseBeingFinalized);
             if (!isStopCommand && !(_timerStateLiveData.getValue() instanceof TimerState.Idle)) {
-                setIdleStateAndResetCycleInternals();
+                setIdleStateAndResetCycleInternals(true);
             }
             return;
         }
         long actualDurationLong = Duration.between(phaseStartTimeSnapshot, dateTimeUtils.currentUtcDateTime()).getSeconds();
         int actualDurationSeconds = (int) Math.max(0, actualDurationLong);
-
 
         ListenableFuture<Void> completeFuture = completePomodoroSessionUseCase.execute(
                 dbSessionId, taskId, phaseBeingFinalized.getType(),
@@ -357,47 +398,48 @@ public class TimerEngine {
             @Override
             public void onSuccess(Void result) {
                 if (!isStopCommand) {
-                    List<PomodoroPhase> currentPhases = _pomodoroPhasesLiveData.getValue();
-                    Integer currentIdx = _currentPhaseIndexLiveData.getValue();
-                    int nextPhaseTotalSeconds = (currentPhases != null && currentIdx != null && currentIdx + 1 < currentPhases.size()) ?
-                            currentPhases.get(currentIdx + 1).getDurationSeconds() :
-                            Objects.requireNonNull(currentSettingsRef.get()).getWorkDurationMinutes() * 60;
-
                     _timerStateLiveData.postValue(new TimerState.WaitingForConfirmation(
                             phaseBeingFinalized.getType(),
-                            nextPhaseTotalSeconds, // Это totalSeconds следующей фазы, или текущей если последняя? По идее завершенной.
+                            phaseBeingFinalized.getDurationSeconds(),
                             accumulatedInterruptionsInCurrentPhase.get()
                     ));
                     playCompletionSoundAndVibration(phaseBeingFinalized.getType());
                 }
-                // Если isStopCommand, состояние Idle и reset будут установлены в stopPomodoroCycle
             }
-
             @Override
             public void onFailure(@NonNull Throwable t) {
                 logger.error(TAG, "Failed to process phase finalization for session " + dbSessionId, t);
-                if (!isStopCommand) { // Если это не команда стоп, но произошла ошибка, все равно пытаемся проиграть звук
-                    _timerStateLiveData.postValue(TimerState.Idle.getInstance()); // Переводим в Idle, т.к. ошибка
-                    playCompletionSoundAndVibration(phaseBeingFinalized.getType()); // Звук об окончании (возможно, с ошибкой)
+                if (!isStopCommand) {
+                    _timerStateLiveData.postValue(TimerState.Idle.getInstance());
+                    playCompletionSoundAndVibration(phaseBeingFinalized.getType());
                 }
-                resetCycleStateInternals(); // Сбрасываем состояние цикла
+                resetCycleStateInternals(isStopCommand); // Если stop, то частичный сброс
             }
-        }, engineExecutor); // Коллбэк выполняется на engineExecutor
+        }, engineExecutor);
     }
-
 
     public void confirmCompletionAndProceed() {
         engineExecutor.execute(() -> {
-            if (_timerStateLiveData.getValue() instanceof TimerState.WaitingForConfirmation) {
+            TimerState currentState = _timerStateLiveData.getValue();
+            if (currentState instanceof TimerState.WaitingForConfirmation) {
                 stopCurrentOperationAndSound();
-                startNextPhaseOrStopInternal();
+                List<PomodoroPhase> currentPhases = _pomodoroPhasesLiveData.getValue();
+                Integer currentIndex = _currentPhaseIndexLiveData.getValue();
+                if (currentPhases != null && currentIndex != null) {
+                    startNextPhaseOrStopInternal(currentPhases, currentIndex);
+                } else {
+                    logger.error(TAG,"Cannot proceed after confirmation: phases or index is null.");
+                    setIdleStateAndResetCycleInternals(true);
+                }
             }
         });
     }
 
     public void skipCurrentBreak() {
         engineExecutor.execute(() -> {
-            cancelActiveTimerJob();
+            synchronized (timerJobLock) {
+                cancelActiveTimerJobInternal();
+            }
             Integer phaseIndex = _currentPhaseIndexLiveData.getValue();
             List<PomodoroPhase> currentPhases = _pomodoroPhasesLiveData.getValue();
 
@@ -410,23 +452,11 @@ public class TimerEngine {
             }
             logger.info(TAG, "CMD: Skip Break. Phase: " + currentPhaseSkipping.getType() + ", Index: " + phaseIndex);
             stopCurrentOperationAndSound();
-            finalizeAndProcessPhaseInternal(false, currentPhaseSkipping); // Завершаем текущий перерыв
+            finalizeAndProcessPhaseInternal(false, currentPhaseSkipping, currentPhases, phaseIndex); // Завершаем перерыв
 
-            // Ищем следующую фокус-фазу
-            int nextFocusIdx = -1;
-            for (int i = phaseIndex + 1; i < currentPhases.size(); i++) {
-                if (currentPhases.get(i).isFocus()) {
-                    nextFocusIdx = i;
-                    break;
-                }
-            }
-            if (nextFocusIdx != -1) {
-                _currentPhaseIndexLiveData.postValue(nextFocusIdx - 1); // Устанавливаем индекс ПЕРЕД следующей фокус-фазой
-                startNextPhaseOrStopInternal();
-            } else {
-                logger.info(TAG, "No more focus phases after skipping. Cycle finished.");
-                setIdleStateAndResetCycleInternals();
-            }
+            // После завершения перерыва, confirmCompletionAndProceed вызовет startNextPhaseOrStopInternal,
+            // который автоматически перейдет к следующей фазе (которая должна быть фокусом, если есть)
+            // или завершит цикл. Нам не нужно искать следующую фокус-фазу здесь.
         });
     }
 
@@ -436,7 +466,9 @@ public class TimerEngine {
             logger.info(TAG, "CMD: Stop Cycle. Save: " + saveCurrentPhaseProgress +
                     ", State: " + (currentStateSnapshot != null ? currentStateSnapshot.getClass().getSimpleName() : "null") +
                     ", Index: " + _currentPhaseIndexLiveData.getValue());
-            cancelActiveTimerJob();
+            synchronized (timerJobLock) {
+                cancelActiveTimerJobInternal();
+            }
             stopCurrentOperationAndSound();
 
             List<PomodoroPhase> currentPhases = _pomodoroPhasesLiveData.getValue();
@@ -445,62 +477,77 @@ public class TimerEngine {
             if (saveCurrentPhaseProgress &&
                     currentStateSnapshot != null &&
                     !(currentStateSnapshot instanceof TimerState.Idle) &&
-                    !(currentStateSnapshot instanceof TimerState.WaitingForConfirmation) &&
-                    currentPhases != null && currentIndex != null && currentIndex >= 0 && currentIndex < currentPhases.size() &&
+                    currentPhases != null && !currentPhases.isEmpty() &&
+                    currentIndex != null && currentIndex >= 0 && currentIndex < currentPhases.size() &&
                     currentTaskIdForCycle != null && currentDbSessionIdForPhase != null && currentPhaseStartTime != null) {
-                finalizeAndProcessPhaseInternal(true, currentPhases.get(currentIndex));
+                if (!(currentStateSnapshot instanceof TimerState.WaitingForConfirmation)) {
+                    finalizeAndProcessPhaseInternal(true, currentPhases.get(currentIndex), currentPhases, currentIndex);
+                }
             }
-            setIdleStateAndResetCycleInternals();
+            // Важно: сбрасываем состояние, но сохраняем taskId, userId и originalPhasesForCurrentCycle
+            setIdleStateAndResetCycleInternals(false);
         });
     }
 
-    private void setIdleStateAndResetCycleInternals() { // Должен вызываться из engineExecutor
+
+    private void setIdleStateAndResetCycleInternals(boolean fullReset) {
         if (!(_timerStateLiveData.getValue() instanceof TimerState.Idle)) {
             _timerStateLiveData.postValue(TimerState.Idle.getInstance());
         }
-        resetCycleStateInternals();
+        resetCycleStateInternals(fullReset);
     }
 
-    private void resetCycleStateInternals() { // Должен вызываться из engineExecutor
-        _pomodoroPhasesLiveData.postValue(Collections.emptyList());
-        _currentPhaseIndexLiveData.postValue(-1);
-        currentTaskIdForCycle = null;
-        currentUserIdForCycle = null;
+    private void resetCycleStateInternals(boolean fullReset) {
+        // LiveData для UI
+        if (_pomodoroPhasesLiveData.getValue() != null && !_pomodoroPhasesLiveData.getValue().isEmpty()) {
+            _pomodoroPhasesLiveData.postValue(fullReset ? Collections.emptyList() : new ArrayList<>(originalPhasesForCurrentCycle));
+        }
+        if (_currentPhaseIndexLiveData.getValue() != null && _currentPhaseIndexLiveData.getValue() != -1) {
+            _currentPhaseIndexLiveData.postValue(-1);
+        }
+
+        // Внутреннее состояние текущей фазы
         currentDbSessionIdForPhase = null;
         currentPhaseStartTime = null;
         accumulatedInterruptionsInCurrentPhase.set(0);
         pomodoroSessionManager.resetCurrentPhaseSessionTracking();
-        logger.debug(TAG, "Pomodoro cycle internal state has been reset.");
+
+        if (fullReset) {
+            currentTaskIdForCycle = null;
+            currentUserIdForCycle = null;
+            originalPhasesForCurrentCycle = Collections.emptyList();
+            logger.debug(TAG, "Pomodoro cycle internal state FULLY reset (including task/user/originalPhases).");
+        } else {
+            logger.debug(TAG, "Pomodoro cycle internal state reset (task/user/originalPhases preserved for potential restart).");
+        }
     }
 
-    private void stopCurrentOperationAndSound() { // Должен вызываться из engineExecutor
-        // Отменяем задачи звука/вибрации, если они запущены на engineExecutor
-        // Если они на своих Executor'ах, то SoundManager/VibrationManager сами их остановят
+    private void stopCurrentOperationAndSound() {
         soundManager.stop();
         vibrationManager.stopVibrationLoop();
     }
 
-    private void playCompletionSoundAndVibration(SessionType type) { // Должен вызываться из engineExecutor
+    private void playCompletionSoundAndVibration(SessionType type) {
         PomodoroSettings settings = currentSettingsRef.get();
+        if (settings == null) return; // Добавил проверку на null
         String soundUriString = type.isFocus() ? settings.getFocusSoundUri() : settings.getBreakSoundUri();
         if (soundUriString != null && !soundUriString.isEmpty()) {
             try {
-                soundManager.playSoundLoop(Uri.parse(soundUriString)); // SoundManager сам управляет потоком
+                soundManager.playSoundLoop(Uri.parse(soundUriString));
             } catch (Exception e) {
                 logger.error(TAG, "Failed to play sound: " + soundUriString, e);
             }
         }
         if (settings.isVibrationEnabled()) {
-            vibrationManager.startVibrationLoop(); // VibrationManager сам управляет потоком
+            vibrationManager.startVibrationLoop();
         }
     }
 
     public InterruptedPhaseInfo getCurrentInterruptedPhaseInfo() {
-        // Этот метод может быть вызван извне, поэтому доступ к volatile переменным должен быть безопасным
-        PomodoroPhase phase = _currentPhaseLiveData.getValue(); // Используем LiveData
+        PomodoroPhase phase = _currentPhaseLiveData.getValue();
         Long dbId = currentDbSessionIdForPhase;
         LocalDateTime startTime = currentPhaseStartTime;
-        Long taskId = currentTaskIdForCycle; // Для полноты информации
+        Long taskId = currentTaskIdForCycle;
         int interruptions = accumulatedInterruptionsInCurrentPhase.get();
 
         if (phase != null && dbId != null && startTime != null && taskId != null) {
@@ -509,18 +556,18 @@ public class TimerEngine {
         return null;
     }
 
-    public void shutdown() { // Вызывается при уничтожении сервиса или приложения
+    public void shutdown() {
         logger.debug(TAG, "Shutting down TimerEngine.");
-        cancelActiveTimerJob();
+        synchronized (timerJobLock) {
+            cancelActiveTimerJobInternal();
+        }
         stopCurrentOperationAndSound();
-        engineExecutor.shutdownNow(); // Останавливаем все задачи в executor
+        engineExecutor.shutdownNow();
         settingsExecutor.shutdownNow();
-        soundManager.shutdown(); // Если SoundManager имеет свой Executor
-        vibrationManager.shutdown(); // Если VibrationManager имеет свой Executor
-        // Отписка от LiveData настроек
+        soundManager.shutdown();
+        vibrationManager.shutdown();
         settingsRepository.getSettingsFlow().removeObserver(settingsObserver);
     }
-    // Экземпляр Observer для отписки
     private final Observer<PomodoroSettings> settingsObserver = settings -> {
         if (settings != null) {
             PomodoroSettings oldSettings = currentSettingsRef.getAndSet(settings);
@@ -532,16 +579,17 @@ public class TimerEngine {
             }
         }
     };
-    // Для отписки в onDestroy сервиса, если TimerEngine не Singleton
     public void removeSettingsObserver() {
         settingsRepository.getSettingsFlow().removeObserver(settingsObserver);
     }
 
-
-    private void cancelActiveTimerJob() {
-        Future<?> job = activeTimerJob; // Читаем volatile один раз
-        if (job != null) {
-            job.cancel(true); // true для прерывания потока, если он в Thread.sleep()
+    private void cancelActiveTimerJobInternal() {
+        Future<?> jobToCancel = activeTimerJob;
+        if (jobToCancel != null) {
+            if (!jobToCancel.isDone() && !jobToCancel.isCancelled()) {
+                logger.debug(TAG, "Cancelling active timer job: " + jobToCancel.hashCode());
+                jobToCancel.cancel(true);
+            }
             activeTimerJob = null;
         }
     }

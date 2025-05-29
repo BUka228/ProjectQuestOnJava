@@ -26,6 +26,10 @@ public final class PomodoroUiState {
     public final boolean isCompletingTaskEarly;
     public final boolean isTimeSetupMode;
 
+    public static final int DEFAULT_POMODORO_MINUTES = 25;
+
+
+
     public PomodoroUiState(
             TimerState timerState,
             String formattedTime,

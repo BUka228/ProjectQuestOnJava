@@ -16,7 +16,7 @@ import androidx.lifecycle.Observer;
 import androidx.lifecycle.SavedStateHandle;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
-import com.example.projectquestonjava.R; // Для ресурсов, если понадобятся
+import com.example.projectquestonjava.R;
 import com.example.projectquestonjava.core.data.model.core.Task;
 import com.example.projectquestonjava.core.di.IODispatcher;
 import com.example.projectquestonjava.core.domain.repository.TaskRepository;
@@ -49,9 +49,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.inject.Inject;
 
-// PomodoroUiState data class (как был определен ранее)
-// class PomodoroUiState { ... }
-
 @HiltViewModel
 public class PomodoroViewModel extends ViewModel {
 
@@ -67,32 +64,29 @@ public class PomodoroViewModel extends ViewModel {
     private final Context applicationContext;
     private final Executor ioExecutor;
     private final Logger logger;
-    private final SnackbarManager snackbarManager; // Добавлено
+    private final SnackbarManager snackbarManager;
 
-    // --- ИСПРАВЛЕННЫЕ И ДОБАВЛЕННЫЕ MutableLiveData ---
     private final MutableLiveData<PomodoroUiState> _uiStateLiveData;
-    public final LiveData<PomodoroUiState> uiStateLiveData; // Публичный LiveData
+    public final LiveData<PomodoroUiState> uiStateLiveData;
 
     private final MutableLiveData<Task> _currentTaskLiveData;
     public final LiveData<Task> currentTaskLiveData;
 
-    private final MutableLiveData<List<Task>> _upcomingTasksLiveData; // Был public LiveData, делаем private Mutable
+    private final MutableLiveData<List<Task>> _upcomingTasksLiveData;
     public final LiveData<List<Task>> upcomingTasksLiveData;
 
     private final MutableLiveData<Boolean> _showTaskSelectorLiveData;
     public final LiveData<Boolean> showTaskSelectorLiveData;
 
-    private final MutableLiveData<List<PomodoroPhase>> _generatedPhasesLiveData; // Был public LiveData
-    public final LiveData<List<PomodoroPhase>> generatedPhasesFlow; // Имя оставлено для совместимости с кодом
+    private final MutableLiveData<List<PomodoroPhase>> _generatedPhasesLiveData;
+    public final LiveData<List<PomodoroPhase>> generatedPhasesFlow;
 
-    private final MutableLiveData<Integer> _currentPhaseIndexLiveData; // Был public LiveData
-    public final LiveData<Integer> currentPhaseIndexFlow; // Имя оставлено
+    private final MutableLiveData<Integer> _currentPhaseIndexUiLiveData; // Для UI, может быть -1
+    public final LiveData<Integer> currentPhaseIndexFlow;
 
-    // Эти LiveData нужны для получения состояния от сервиса
     private final MutableLiveData<TimerState> _timerStateFromService;
     private final MutableLiveData<List<PomodoroPhase>> _phasesFromService;
-    // --- КОНЕЦ ИСПРАВЛЕННЫХ И ДОБАВЛЕННЫХ MutableLiveData ---
-
+    private final MutableLiveData<Integer> _phaseIndexFromService; // Реальный индекс от сервиса
 
     public final LiveData<Integer> sessionCountLiveData;
 
@@ -100,6 +94,8 @@ public class PomodoroViewModel extends ViewModel {
     private final MutableLiveData<Boolean> _serviceBoundLiveData;
     private final AtomicBoolean isBindingOperationInProgress = new AtomicBoolean(false);
     private final AtomicBoolean isUnbindingOperationInProgress = new AtomicBoolean(false);
+    private final AtomicBoolean startStopInProgress = new AtomicBoolean(false);
+
 
     private Observer<TimerState> timerStateObserverFromService;
     private Observer<List<PomodoroPhase>> phasesObserverFromService;
@@ -107,12 +103,13 @@ public class PomodoroViewModel extends ViewModel {
     private final Observer<PomodoroSettings> settingsObserver;
     private final Observer<List<Task>> upcomingTasksRepoObserver;
 
-    // Snackbar теперь через SnackbarManager, но оставим SingleLiveEvent для навигации (если нужно)
-    private final SingleLiveEvent<String> _snackbarMessageEventInternal = new SingleLiveEvent<>(); // Переименован
-    public final LiveData<String> snackbarMessageEvent = _snackbarMessageEventInternal; // Публичный доступ
+    private final SingleLiveEvent<String> _snackbarMessageEventInternal = new SingleLiveEvent<>();
+    public final LiveData<String> snackbarMessageEvent = _snackbarMessageEventInternal;
 
-    private final SingleLiveEvent<Boolean> _navigateToSettingsEvent = new SingleLiveEvent<>(); // Для навигации
-    public final LiveData<Boolean> navigateToSettingsEvent = _navigateToSettingsEvent; // Публичный доступ
+    private final SingleLiveEvent<Boolean> _navigateToSettingsEvent = new SingleLiveEvent<>();
+    public final LiveData<Boolean> navigateToSettingsEvent = _navigateToSettingsEvent;
+
+    private final MediatorLiveData<Object> triggerForUiCombination = new MediatorLiveData<>();
 
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
@@ -143,7 +140,7 @@ public class PomodoroViewModel extends ViewModel {
             PomodoroSessionRepository pomodoroSessionRepository, PomodoroSettingsRepository settingsRepository,
             PomodoroCycleGenerator pomodoroCycleGenerator, ForceCompleteTaskWithPomodoroUseCase forceCompleteTaskWithPomodoroUseCase,
             SavedStateHandle savedStateHandle, @ApplicationContext Context context,
-            @IODispatcher Executor ioExecutor, Logger logger, SnackbarManager snackbarManager) { // SnackbarManager добавлен
+            @IODispatcher Executor ioExecutor, Logger logger, SnackbarManager snackbarManager) {
         this.taskRepository = taskRepository;
         this.pomodoroManager = pomodoroManager;
         this.settingsRepository = settingsRepository;
@@ -153,7 +150,7 @@ public class PomodoroViewModel extends ViewModel {
         this.applicationContext = context;
         this.ioExecutor = ioExecutor;
         this.logger = logger;
-        this.snackbarManager = snackbarManager; // Сохраняем
+        this.snackbarManager = snackbarManager;
 
         logger.info(TAG, "ViewModel initialized. Instance: " + this.hashCode());
 
@@ -167,49 +164,41 @@ public class PomodoroViewModel extends ViewModel {
         showTaskSelectorLiveData = _showTaskSelectorLiveData;
         _generatedPhasesLiveData = new MutableLiveData<>(Collections.emptyList());
         generatedPhasesFlow = _generatedPhasesLiveData;
-        _currentPhaseIndexLiveData = new MutableLiveData<>(-1);
-        currentPhaseIndexFlow = _currentPhaseIndexLiveData;
+        _currentPhaseIndexUiLiveData = new MutableLiveData<>(-1);
+        currentPhaseIndexFlow = _currentPhaseIndexUiLiveData;
         _serviceBoundLiveData = new MutableLiveData<>(false);
 
         _timerStateFromService = new MutableLiveData<>(TimerState.Idle.getInstance());
         _phasesFromService = new MutableLiveData<>(Collections.emptyList());
+        _phaseIndexFromService = new MutableLiveData<>(-1);
 
         sessionCountLiveData = Transformations.switchMap(_currentTaskLiveData, task ->
                 (task == null || task.getId() == 0) ? new MutableLiveData<>(0) : pomodoroSessionRepository.getCompletedSessionsCount(task.getId())
         );
 
-        // Определяем Observer-ы
         timerStateObserverFromService = engineState -> {
             if (engineState != null) {
-                logger.debug(TAG, "Observed TimerState from Service: " + engineState.getClass().getSimpleName());
                 _timerStateFromService.postValue(engineState);
-                combineAndPostUiState();
             }
         };
         phasesObserverFromService = phases -> {
-            logger.debug(TAG, "Observed Phases from Service: " + (phases != null ? phases.size() : "null"));
             _phasesFromService.postValue(phases != null ? new ArrayList<>(phases) : Collections.emptyList());
-            _generatedPhasesLiveData.postValue(phases != null ? new ArrayList<>(phases) : Collections.emptyList());
-            combineAndPostUiState();
         };
         phaseIndexObserverFromService = index -> {
-            logger.debug(TAG, "Observed PhaseIndex from Service: " + index);
-            _currentPhaseIndexLiveData.postValue(index != null ? index : -1);
-            combineAndPostUiState();
+            _phaseIndexFromService.postValue(index != null ? index : -1);
         };
         settingsObserver = newSettings -> {
             PomodoroUiState currentUi = _uiStateLiveData.getValue();
-            if (currentUi != null && newSettings != null) {
+            if (currentUi != null && newSettings != null && !Objects.equals(currentUi.pomodoroSettings, newSettings)) {
                 boolean wasSetupMode = currentUi.isTimeSetupMode;
                 int newHours = currentUi.estimatedHours;
                 int newMinutes = currentUi.estimatedMinutes;
-                if (wasSetupMode && currentUi.estimatedHours * 60 + currentUi.estimatedMinutes == currentUi.pomodoroSettings.getWorkDurationMinutes()) {
+                if (wasSetupMode) {
                     newHours = newSettings.getWorkDurationMinutes() / 60;
                     newMinutes = newSettings.getWorkDurationMinutes() % 60;
                 }
                 final int finalNewHours = newHours;
                 final int finalNewMinutes = newMinutes;
-                // Вызываем updateUiState с флагами очистки null
                 updateUiState(s -> s.copy(null, null, null, null, null, null, null, finalNewHours, finalNewMinutes, newSettings, null, null, null, false, false));
                 if (wasSetupMode) {
                     updateGeneratedPhasesForCurrentEstimatedTime(finalNewHours, finalNewMinutes, _currentTaskLiveData.getValue());
@@ -220,38 +209,35 @@ public class PomodoroViewModel extends ViewModel {
             _upcomingTasksLiveData.postValue(tasks != null ? tasks : Collections.emptyList());
             PomodoroUiState currentUi = _uiStateLiveData.getValue();
             Task currentTaskVal = _currentTaskLiveData.getValue();
-            if (currentTaskVal == null && tasks != null && !tasks.isEmpty()) {
+            if (currentTaskVal == null && tasks != null && !tasks.isEmpty() && (currentUi == null || currentUi.isTimeSetupMode)) {
                 Task newCurrent = tasks.get(0);
                 _currentTaskLiveData.postValue(newCurrent);
-                if (currentUi != null && currentUi.isTimeSetupMode) {
-                    updateGeneratedPhasesForCurrentEstimatedTime(currentUi.estimatedHours, currentUi.estimatedMinutes, newCurrent);
-                }
             }
         };
 
         settingsRepository.getSettingsFlow().observeForever(settingsObserver);
         taskRepository.getUpcomingTasks().observeForever(upcomingTasksRepoObserver);
 
+        triggerForUiCombination.addSource(_timerStateFromService, value -> triggerForUiCombination.setValue(new Object()));
+        triggerForUiCombination.addSource(_phasesFromService, value -> triggerForUiCombination.setValue(new Object()));
+        triggerForUiCombination.addSource(_phaseIndexFromService, value -> triggerForUiCombination.setValue(new Object()));
+        triggerForUiCombination.addSource(_currentTaskLiveData, value -> triggerForUiCombination.setValue(new Object()));
+        triggerForUiCombination.addSource(_generatedPhasesLiveData, value -> triggerForUiCombination.setValue(new Object()));
+        triggerForUiCombination.addSource(settingsRepository.getSettingsFlow(), value -> triggerForUiCombination.setValue(new Object()));
+        triggerForUiCombination.observeForever(ignored -> combineAndPostUiState());
+
         loadInitialTaskFromSavedState(savedStateHandle);
         bindToService();
     }
 
-    // ... (loadInitialTaskFromSavedState, initializeDefaultUiState, bindToService, unbindFromService, subscribeToServiceState, unsubscribeFromServiceState)
-    // Эти методы остаются такими же, как в предыдущей версии, но с учетом правильной инициализации LiveData полей.
-
     private void loadInitialTaskFromSavedState(SavedStateHandle handle) {
-        // isLoading устанавливается в true перед вызовом этого метода или в начале
-        updateUiState(s -> s.copy(null, null, null, null, null, null, null, null, null, null, null, null, null, true, true)); // isLoading = true, clearError=true, clearSuccess=true
-
-
+        updateUiState(s -> s.copy(null, null, null, null, null, null, null, null, null, null, null, null, true, true, true));
         ListenableFuture<PomodoroSettings> settingsFuture = settingsRepository.getSettings();
-
         Futures.addCallback(settingsFuture, new FutureCallback<PomodoroSettings>() {
             @Override
             public void onSuccess(@Nullable PomodoroSettings initialSettingsLoaded) {
                 final PomodoroSettings settingsToUse = (initialSettingsLoaded != null) ? initialSettingsLoaded : new PomodoroSettings();
-
-                ioExecutor.execute(() -> { // Операции с taskId и taskRepository выполняем на ioExecutor
+                ioExecutor.execute(() -> {
                     try {
                         Long taskId = null;
                         Object taskIdObject = handle.get("taskId");
@@ -264,15 +250,9 @@ public class PomodoroViewModel extends ViewModel {
                         logger.debug(TAG, "loadInitialTaskFromSavedState - Parsed TaskId: " + taskId);
 
                         if (taskId != null && taskId != -1L) {
-                            Task initialTask = Futures.getDone(taskRepository.getTaskById(taskId)); // Блокирующий вызов на ioExecutor
+                            Task initialTask = Futures.getDone(taskRepository.getTaskById(taskId));
                             if (initialTask != null) {
                                 _currentTaskLiveData.postValue(initialTask);
-                                int defaultMinutes = settingsToUse.getWorkDurationMinutes();
-                                updateUiState(s -> s.copy(null, null, null, null, null, null, null,
-                                        defaultMinutes / 60, defaultMinutes % 60, settingsToUse,
-                                        false, false, true, // showLongTaskWarning, isCompletingTaskEarly, isTimeSetupMode
-                                        true, true)); // clearError, clearSuccessMessage
-                                updateGeneratedPhasesForCurrentEstimatedTime(defaultMinutes / 60, defaultMinutes % 60, initialTask);
                                 logger.info(TAG, "Initial task loaded: ID " + taskId);
                             } else {
                                 logger.warn(TAG, "Task with ID " + taskId + " not found. Using defaults.");
@@ -285,27 +265,24 @@ public class PomodoroViewModel extends ViewModel {
                     } catch (Exception e) {
                         logger.error(TAG, "Error in ioExecutor block of loadInitialTaskFromSavedState", e);
                         initializeDefaultUiState(new PomodoroSettings());
-                        updateUiState(s -> s.copy(null,null, null, "Ошибка загрузки задачи",null,null,null,null,null,null,null,null,null, false, true));
+                        updateUiState(s -> s.copy(null,null, null, "Ошибка загрузки задачи",null,null,null,null,null,null,null,null,false, false, true));
                     } finally {
-                        // Сбрасываем isLoading после всех операций
-                        updateUiState(s -> s.copy(null, null, null, null, null, null, null, null, null, null, null, null, false, false, false)); // isLoading = false
+                        updateUiState(s -> s.copy(null, null, null, null, null, null, null, null, null, null, null, null, false, false, false));
                     }
                 });
             }
-
             @Override
             public void onFailure(@NonNull Throwable t) {
                 logger.error(TAG, "Failed to load initial settings for PomodoroViewModel", t);
                 initializeDefaultUiState(new PomodoroSettings());
-                updateUiState(s -> s.copy(null,null,null, "Ошибка загрузки настроек",null,null,null,null,null,null,null,null, false, // isLoading = false
-                        false, true));
+                updateUiState(s -> s.copy(null,null,null, "Ошибка загрузки настроек",null,null,null,null,null,null,null,null, false, false, true));
             }
-        }, MoreExecutors.directExecutor()); // Коллбэк для settingsFuture можно выполнить на directExecutor, так как он просто запускает другую задачу
+        }, MoreExecutors.directExecutor());
     }
 
     private void initializeDefaultUiState(PomodoroSettings settings) {
         int defaultMinutes = settings.getWorkDurationMinutes();
-        _uiStateLiveData.postValue(new PomodoroUiState(
+        updateUiState(s -> new PomodoroUiState(
                 TimerState.Idle.getInstance(),
                 pomodoroManager.formatTime(defaultMinutes * 60),
                 0f, null, SessionType.FOCUS, 0,0,
@@ -319,6 +296,7 @@ public class PomodoroViewModel extends ViewModel {
     private void bindToService() {
         if (_serviceBoundLiveData.getValue() == Boolean.TRUE || !isBindingOperationInProgress.compareAndSet(false, true)) {
             logger.debug(TAG, "Binding operation already in progress or service already bound.");
+            if(isBindingOperationInProgress.get() && _serviceBoundLiveData.getValue() == Boolean.FALSE) isBindingOperationInProgress.set(false);
             return;
         }
         logger.debug(TAG, "Attempting to bind to PomodoroTimerService...");
@@ -340,14 +318,18 @@ public class PomodoroViewModel extends ViewModel {
     }
 
     private void unbindFromService() {
-        if (_serviceBoundLiveData.getValue() == Boolean.TRUE && pomodoroBinder != null && !isUnbindingOperationInProgress.compareAndSet(false,true)) {
+        if (_serviceBoundLiveData.getValue() == Boolean.TRUE && pomodoroBinder != null) {
+            if (!isUnbindingOperationInProgress.compareAndSet(false, true)) {
+                logger.debug(TAG, "Unbinding already in progress.");
+                return;
+            }
             logger.debug(TAG, "Unbinding from PomodoroTimerService...");
             try {
+                unsubscribeFromServiceState();
                 applicationContext.unbindService(serviceConnection);
             } catch (Exception e) {
                 logger.error(TAG, "Error unbinding from service", e);
             } finally {
-                unsubscribeFromServiceState();
                 pomodoroBinder = null;
                 _serviceBoundLiveData.postValue(false);
                 isUnbindingOperationInProgress.set(false);
@@ -356,8 +338,7 @@ public class PomodoroViewModel extends ViewModel {
                 resetToIdleSetupState(currentUi != null ? currentUi.pomodoroSettings : new PomodoroSettings());
             }
         } else {
-            logger.debug(TAG, "Service not bound or unbinding already in progress. isBound: " + _serviceBoundLiveData.getValue() + ", isUnbindingProgress: " + isUnbindingOperationInProgress.get());
-            if (isUnbindingOperationInProgress.get()) isUnbindingOperationInProgress.set(false); // Сброс, если операция не началась
+            logger.debug(TAG, "Service not bound or binder is null. isBound: " + _serviceBoundLiveData.getValue());
         }
     }
     private void subscribeToServiceState() {
@@ -365,13 +346,13 @@ public class PomodoroViewModel extends ViewModel {
             logger.warn(TAG, "Cannot subscribe to service state: binder is null.");
             return;
         }
-        unsubscribeFromServiceState(); // Гарантируем отписку от предыдущих
+        unsubscribeFromServiceState();
 
         pomodoroBinder.getTimerStateLiveData().observeForever(timerStateObserverFromService);
         pomodoroBinder.getPomodoroPhasesLiveData().observeForever(phasesObserverFromService);
         pomodoroBinder.getCurrentPhaseIndexLiveData().observeForever(phaseIndexObserverFromService);
         logger.debug(TAG, "Subscribed to service state LiveData instances.");
-        combineAndPostUiState();
+        combineAndPostUiState(); // Запросить обновление UI после подписки
     }
 
     private void unsubscribeFromServiceState() {
@@ -383,48 +364,49 @@ public class PomodoroViewModel extends ViewModel {
         }
     }
 
-
     public synchronized void combineAndPostUiState() {
         TimerState engineState = _timerStateFromService.getValue();
         List<PomodoroPhase> phasesFromEngine = _phasesFromService.getValue();
-        Integer indexFromEngine = _currentPhaseIndexLiveData.getValue();
+        Integer indexFromEngine = _phaseIndexFromService.getValue();
         PomodoroSettings settings = settingsRepository.getSettingsFlow().getValue();
         Task task = _currentTaskLiveData.getValue();
         PomodoroUiState currentSnapshot = _uiStateLiveData.getValue();
 
         if (engineState == null) engineState = TimerState.Idle.getInstance();
         if (settings == null) settings = new PomodoroSettings();
-        if (phasesFromEngine == null) phasesFromEngine = _generatedPhasesLiveData.getValue() != null ? _generatedPhasesLiveData.getValue() : Collections.emptyList();
-        if (indexFromEngine == null) indexFromEngine = _currentPhaseIndexLiveData.getValue() != null ? _currentPhaseIndexLiveData.getValue() : -1;
+        if (phasesFromEngine == null) phasesFromEngine = Collections.emptyList();
+        if (indexFromEngine == null) indexFromEngine = -1;
 
-        boolean newIsTimeSetupMode = currentSnapshot != null ? currentSnapshot.isTimeSetupMode : true;
+        boolean newIsTimeSetupMode = (currentSnapshot != null) ? currentSnapshot.isTimeSetupMode : true;
         List<PomodoroPhase> phasesForUi;
         int phaseIndexForUi;
-        int estHours = currentSnapshot != null ? currentSnapshot.estimatedHours : settings.getWorkDurationMinutes() / 60;
-        int estMinutes = currentSnapshot != null ? currentSnapshot.estimatedMinutes : settings.getWorkDurationMinutes() % 60;
+        int estHours = (currentSnapshot != null) ? currentSnapshot.estimatedHours : (settings.getWorkDurationMinutes() / 60);
+        int estMinutes = (currentSnapshot != null) ? currentSnapshot.estimatedMinutes : (settings.getWorkDurationMinutes() % 60);
 
         if (engineState instanceof TimerState.Idle) {
             newIsTimeSetupMode = true;
-            if (currentSnapshot != null && !(currentSnapshot.timerState instanceof TimerState.Idle)) {
-                int defaultMinutes = settings.getWorkDurationMinutes();
-                estHours = defaultMinutes / 60;
-                estMinutes = defaultMinutes % 60;
-            }
-            int totalMinutes = estHours * 60 + estMinutes;
-            phasesForUi = (task != null && totalMinutes >= PomodoroCycleGenerator.MIN_FOCUS_SESSION_FOR_TAIL_MINUTES)
-                    ? pomodoroCycleGenerator.generatePhases(totalMinutes)
-                    : Collections.emptyList();
+            phasesForUi = _generatedPhasesLiveData.getValue() != null ? _generatedPhasesLiveData.getValue() : Collections.emptyList();
             phaseIndexForUi = -1;
-            if (!Objects.equals(_generatedPhasesLiveData.getValue(), phasesForUi)) {
-                _generatedPhasesLiveData.postValue(new ArrayList<>(phasesForUi));
+            if (task != null) {
+                int totalMinutes = estHours * 60 + estMinutes;
+                List<PomodoroPhase> expectedPhases = (totalMinutes >= PomodoroCycleGenerator.MIN_FOCUS_SESSION_FOR_TAIL_MINUTES)
+                        ? pomodoroCycleGenerator.generatePhases(totalMinutes)
+                        : Collections.emptyList();
+                if (!Objects.equals(_generatedPhasesLiveData.getValue(), expectedPhases)) {
+                    _generatedPhasesLiveData.postValue(new ArrayList<>(expectedPhases));
+                    phasesForUi = expectedPhases;
+                }
             }
         } else {
             newIsTimeSetupMode = false;
-            phasesForUi = phasesFromEngine;
+            phasesForUi = new ArrayList<>(phasesFromEngine); // Используем копию
             phaseIndexForUi = indexFromEngine;
             if (!Objects.equals(_generatedPhasesLiveData.getValue(), phasesForUi)) {
                 _generatedPhasesLiveData.postValue(new ArrayList<>(phasesForUi));
             }
+        }
+        if (!Objects.equals(_currentPhaseIndexUiLiveData.getValue(), phaseIndexForUi)) {
+            _currentPhaseIndexUiLiveData.postValue(phaseIndexForUi);
         }
 
         PomodoroUiState newState = buildNewUiState(
@@ -437,15 +419,15 @@ public class PomodoroViewModel extends ViewModel {
         );
         _uiStateLiveData.postValue(newState);
         logger.debug(TAG, "UI State Combined: " + newState.timerState.getClass().getSimpleName() +
-                ", time: " + newState.formattedTime + ", phases UI: " + phasesForUi.size() +
-                ", index UI: " + phaseIndexForUi + ", setupMode: " + newState.isTimeSetupMode);
+                ", time: " + newState.formattedTime + ", phasesForUi: " + phasesForUi.size() +
+                ", phaseIndexForUi: " + phaseIndexForUi + ", setupMode: " + newState.isTimeSetupMode);
     }
 
 
     private PomodoroUiState buildNewUiState(
             TimerState timerState, PomodoroSettings settings, String error,
             int estimatedHours, int estimatedMinutes,
-            List<PomodoroPhase> currentGeneratedPhases, Integer currentPhaseIndex,
+            List<PomodoroPhase> currentDisplayPhases, Integer currentDisplayPhaseIndex,
             boolean showLongTaskWarningDialog, boolean isCompletingTaskEarly,
             boolean isTimeSetupMode
     ) {
@@ -463,6 +445,7 @@ public class PomodoroViewModel extends ViewModel {
             currentPhaseTypeFromState = ((TimerState.Paused) timerState).getType();
         } else if (timerState instanceof TimerState.WaitingForConfirmation) {
             totalSecondsInCurrentPhase = ((TimerState.WaitingForConfirmation) timerState).getTotalSeconds();
+            remainingSeconds = 0;
             currentPhaseTypeFromState = ((TimerState.WaitingForConfirmation) timerState).getType();
         } else if (timerState instanceof TimerState.Idle) {
             int idleDurationMinutes = isTimeSetupMode ? (estimatedHours * 60 + estimatedMinutes) : settings.getWorkDurationMinutes();
@@ -478,8 +461,8 @@ public class PomodoroViewModel extends ViewModel {
         }
         progress = Math.max(0f, Math.min(1f, progress));
 
-        List<PomodoroPhase> phasesToUse = (currentGeneratedPhases != null) ? currentGeneratedPhases : Collections.emptyList();
-        int actualPhaseIndex = (currentPhaseIndex != null) ? currentPhaseIndex : -1;
+        List<PomodoroPhase> phasesToUse = (currentDisplayPhases != null) ? currentDisplayPhases : Collections.emptyList();
+        int actualPhaseIndex = (currentDisplayPhaseIndex != null) ? currentDisplayPhaseIndex : -1;
 
         int totalFocusSessions = (int) phasesToUse.stream().filter(PomodoroPhase::isFocus).count();
         int currentFocusSessionDisplayIndex = calculateFocusDisplayIndex(phasesToUse, actualPhaseIndex, timerState, totalFocusSessions);
@@ -495,23 +478,41 @@ public class PomodoroViewModel extends ViewModel {
     public void onEstimatedHoursChanged(String hoursText) {
         PomodoroUiState current = _uiStateLiveData.getValue();
         if (current == null || !current.isTimeSetupMode) return;
-        int newHours = 0;
-        try { newHours = Integer.parseInt(hoursText.replaceAll("[^0-9]", "")); } catch (NumberFormatException ignored) {}
+        int newHours = current.estimatedHours;
+        try {
+            if (hoursText != null && !hoursText.isEmpty()) {
+                newHours = Integer.parseInt(hoursText.replaceAll("[^0-9]", ""));
+            } else if (hoursText != null && hoursText.isEmpty() && current.estimatedHours != 0) {
+                newHours = 0;
+            }
+        } catch (NumberFormatException ignored) {}
         newHours = Math.max(0, Math.min(23, newHours));
-        final int finalNewHours = newHours;
-        updateUiState(s -> s.copy(null,null,null,null,null,null,null, finalNewHours, null, null,null,null, null, false, false));
-        updateGeneratedPhasesForCurrentEstimatedTime(newHours, current.estimatedMinutes, _currentTaskLiveData.getValue());
+
+        if (newHours != current.estimatedHours) {
+            final int finalNewHours = newHours;
+            updateUiState(s -> s.copy(null,null,null,null,null,null,null, finalNewHours, s.estimatedMinutes, null,null,null, null, false, false));
+            updateGeneratedPhasesForCurrentEstimatedTime(finalNewHours, current.estimatedMinutes, _currentTaskLiveData.getValue());
+        }
     }
 
     public void onEstimatedMinutesChanged(String minutesText) {
         PomodoroUiState current = _uiStateLiveData.getValue();
         if (current == null || !current.isTimeSetupMode) return;
-        int newMinutes = 0;
-        try { newMinutes = Integer.parseInt(minutesText.replaceAll("[^0-9]", "")); } catch (NumberFormatException ignored) {}
+        int newMinutes = current.estimatedMinutes;
+        try {
+            if (minutesText != null && !minutesText.isEmpty()) {
+                newMinutes = Integer.parseInt(minutesText.replaceAll("[^0-9]", ""));
+            } else if (minutesText != null && minutesText.isEmpty() && current.estimatedMinutes != 0) {
+                newMinutes = 0;
+            }
+        } catch (NumberFormatException ignored) {}
         newMinutes = Math.max(0, Math.min(59, newMinutes));
-        final int finalNewMinutes = newMinutes;
-        updateUiState(s -> s.copy(null,null,null,null,null,null,null, null, finalNewMinutes, null,null,null, null, false, false));
-        updateGeneratedPhasesForCurrentEstimatedTime(current.estimatedHours, newMinutes, _currentTaskLiveData.getValue());
+
+        if (newMinutes != current.estimatedMinutes) {
+            final int finalNewMinutes = newMinutes;
+            updateUiState(s -> s.copy(null,null,null,null,null,null,null, s.estimatedHours, finalNewMinutes, null,null,null, null, false, false));
+            updateGeneratedPhasesForCurrentEstimatedTime(current.estimatedHours, finalNewMinutes, _currentTaskLiveData.getValue());
+        }
     }
 
 
@@ -528,77 +529,102 @@ public class PomodoroViewModel extends ViewModel {
         _generatedPhasesLiveData.postValue(newPhases);
 
         PomodoroUiState currentUi = _uiStateLiveData.getValue();
-        if (currentUi != null && currentUi.isTimeSetupMode) {
-            _currentPhaseIndexLiveData.postValue(-1);
+        if (currentUi != null && currentUi.isTimeSetupMode && !Objects.equals(_currentPhaseIndexUiLiveData.getValue(), -1)) {
+            _currentPhaseIndexUiLiveData.postValue(-1);
         }
         logger.debug(TAG, "Generated phases updated for " + hours + "h " + minutes + "m. Count: " + newPhases.size());
-        combineAndPostUiState();
     }
 
     public void startOrToggleTimer() {
-        PomodoroUiState currentVal = _uiStateLiveData.getValue();
+        if (!startStopInProgress.compareAndSet(false, true)) {
+            logger.warn(TAG, "Start/Toggle action already in progress, ignoring.");
+            new Handler(Looper.getMainLooper()).postDelayed(() -> startStopInProgress.set(false), 300);
+            return;
+        }
+        logger.debug(TAG, "startOrToggleTimer called by UI.");
+
+        PomodoroUiState currentUiState = _uiStateLiveData.getValue();
         Task task = _currentTaskLiveData.getValue();
-        if (currentVal == null) return;
-
-        if (task == null && currentVal.timerState instanceof TimerState.Idle) {
-            showErrorMessage("Сначала выберите задачу"); return;
-        }
-
-        TimerState currentEngineState = _timerStateFromService.getValue();
-        if (currentEngineState == null) currentEngineState = TimerState.Idle.getInstance();
-
-
-        if (currentEngineState instanceof TimerState.Running) pomodoroManager.pauseTimer();
-        else if (currentEngineState instanceof TimerState.Paused) pomodoroManager.resumeTimer();
-        else if (currentEngineState instanceof TimerState.Idle) {
-            int totalMinutes = currentVal.estimatedHours * 60 + currentVal.estimatedMinutes;
-            if (totalMinutes < PomodoroCycleGenerator.MIN_FOCUS_SESSION_FOR_TAIL_MINUTES) {
-                showErrorMessage("Минимальное время: " + PomodoroCycleGenerator.MIN_FOCUS_SESSION_FOR_TAIL_MINUTES + " мин."); return;
-            }
-            if (currentVal.showLongTaskWarningDialog) return;
-            if (totalMinutes > MAX_RECOMMENDED_TASK_DURATION_MINUTES) {
-                updateUiState(s -> s.copy(null,null,null,null,null,null,null, null,null,null, true, null, null, false, false));
-                return;
-            }
-            proceedWithPomodoroCycleStartInternal(task, totalMinutes);
-        } else if (currentEngineState instanceof TimerState.WaitingForConfirmation) {
-            pomodoroManager.confirmTimerCompletion();
-        }
-    }
-
-    public void proceedWithPomodoroCycleStart() {
-        proceedWithPomodoroCycleStartInternal(_currentTaskLiveData.getValue(), null);
-    }
-
-    private void proceedWithPomodoroCycleStartInternal(@Nullable Task taskForCycle, @Nullable Integer estimatedMinutesForCycle) {
-        Task taskToUse = (taskForCycle != null) ? taskForCycle : _currentTaskLiveData.getValue();
-        PomodoroUiState currentUi = _uiStateLiveData.getValue();
-        if (currentUi == null || taskToUse == null) {
-            showErrorMessage(taskToUse == null ? "Задача не выбрана." : "Ошибка состояния UI.");
-            updateUiState(s -> s.copy(null,null,null,null,null,null,null, null,null,null, false, null, null, false, false));
+        if (currentUiState == null) {
+            logger.error(TAG, "Cannot start/toggle: currentUiState is null.");
+            startStopInProgress.set(false);
             return;
         }
 
-        int totalMinutesToUse = (estimatedMinutesForCycle != null) ?
-                estimatedMinutesForCycle :
-                (currentUi.estimatedHours * 60 + currentUi.estimatedMinutes);
+        TimerState engineState = _timerStateFromService.getValue();
+        if (engineState == null) engineState = TimerState.Idle.getInstance();
 
+        logger.debug(TAG, "Current EngineState for toggle: " + engineState.getClass().getSimpleName() +
+                ", Current UI isTimeSetupMode: " + currentUiState.isTimeSetupMode);
+
+        if (engineState instanceof TimerState.Running) {
+            logger.debug(TAG, "Engine is Running -> Sending PAUSE command.");
+            pomodoroManager.pauseTimer();
+        } else if (engineState instanceof TimerState.Paused) {
+            logger.debug(TAG, "Engine is Paused -> Sending RESUME command.");
+            pomodoroManager.resumeTimer();
+        } else if (engineState instanceof TimerState.Idle) {
+            logger.debug(TAG, "Engine is Idle -> Attempting to START new cycle.");
+            if (task == null) {
+                showErrorMessage("Сначала выберите задачу");
+                startStopInProgress.set(false);
+                return;
+            }
+            int totalMinutes = currentUiState.estimatedHours * 60 + currentUiState.estimatedMinutes;
+            if (totalMinutes < PomodoroCycleGenerator.MIN_FOCUS_SESSION_FOR_TAIL_MINUTES) {
+                showErrorMessage("Минимальное время: " + PomodoroCycleGenerator.MIN_FOCUS_SESSION_FOR_TAIL_MINUTES + " мин.");
+                startStopInProgress.set(false);
+                return;
+            }
+            if (currentUiState.showLongTaskWarningDialog) {
+                logger.debug(TAG, "Long task warning dialog is pending, not starting timer.");
+                startStopInProgress.set(false);
+                return;
+            }
+            if (totalMinutes > MAX_RECOMMENDED_TASK_DURATION_MINUTES && !currentUiState.showLongTaskWarningDialog) {
+                updateUiState(s -> s.copy(null,null,null,null,null,null,null, null,null,null, true, null, null, false, false));
+                startStopInProgress.set(false);
+                return;
+            }
+            proceedWithPomodoroCycleStartInternal(task, totalMinutes);
+
+        } else if (engineState instanceof TimerState.WaitingForConfirmation) {
+            logger.debug(TAG, "Engine is WaitingForConfirmation -> Sending CONFIRM command.");
+            pomodoroManager.confirmTimerCompletion();
+        }
+        new Handler(Looper.getMainLooper()).postDelayed(() -> startStopInProgress.set(false), 300);
+    }
+
+    public void proceedWithPomodoroCycleStart() {
+        logger.debug(TAG, "Proceeding with Pomodoro cycle start after warning confirmed.");
+        PomodoroUiState currentUi = _uiStateLiveData.getValue();
+        Task task = _currentTaskLiveData.getValue();
+        if (currentUi != null && task != null) {
+            updateUiState(s -> s.copy(null,null,null,null,null,null,null, null,null,null, false, null, null, false, false)); // Сбрасываем флаг диалога
+            proceedWithPomodoroCycleStartInternal(task, currentUi.estimatedHours * 60 + currentUi.estimatedMinutes);
+        } else {
+            showErrorMessage("Не удалось запустить таймер: нет задачи или состояния.");
+        }
+    }
+
+    private void proceedWithPomodoroCycleStartInternal(@NonNull Task taskToUse, int totalMinutesToUse) {
+        logger.info(TAG, "proceedWithPomodoroCycleStartInternal for task: " + taskToUse.getId() + ", totalMinutes: " + totalMinutesToUse);
         if (totalMinutesToUse < PomodoroCycleGenerator.MIN_FOCUS_SESSION_FOR_TAIL_MINUTES) {
-            showErrorMessage("Время слишком мало.");
-            updateUiState(s -> s.copy(null,null,null,null,null,null,null, null,null,null, false, null, null, false, false));
+            showErrorMessage("Время слишком мало для запуска.");
             return;
         }
 
         List<PomodoroPhase> phases = pomodoroCycleGenerator.generatePhases(totalMinutesToUse);
         if (phases.isEmpty()) {
-            showErrorMessage("Не удалось разбить задачу.");
-            updateUiState(s -> s.copy(null,null,null,null,null,null,null, null,null,null, false, null, null, false, false));
+            showErrorMessage("Не удалось создать план сессии.");
             return;
         }
 
-        _generatedPhasesLiveData.postValue(new ArrayList<>(phases));
-        _currentPhaseIndexLiveData.postValue(0);
+        // Устанавливаем isTimeSetupMode в false ПЕРЕД отправкой команды в сервис
         updateUiState(s -> s.copy(null,null,null,null,null,null,null, null,null,null, false, null, false, false, false));
+        // Обновляем _generatedPhasesLiveData, чтобы UI сразу показал корректный план
+        _generatedPhasesLiveData.postValue(new ArrayList<>(phases));
+        // _currentPhaseIndexUiLiveData будет обновлен из _phaseIndexFromService, когда сервис начнет первую фазу
         pomodoroManager.startPomodoroCycle(taskToUse.getId(), taskToUse.getUserId(), new ArrayList<>(phases));
     }
 
@@ -607,18 +633,19 @@ public class PomodoroViewModel extends ViewModel {
         _currentTaskLiveData.postValue(task);
         _showTaskSelectorLiveData.postValue(false);
 
-        PomodoroUiState currentUi = _uiStateLiveData.getValue();
         TimerState currentEngineState = _timerStateFromService.getValue();
         if (currentEngineState == null) currentEngineState = TimerState.Idle.getInstance();
-
+        PomodoroUiState currentUi = _uiStateLiveData.getValue();
 
         if (currentUi != null) {
-            if (!(currentEngineState instanceof TimerState.Idle) && (previousTask == null || previousTask.getId() != task.getId())) {
-                pomodoroManager.stopTimer();
-            } else {
-                resetToIdleSetupState(currentUi.pomodoroSettings);
-                updateGeneratedPhasesForCurrentEstimatedTime(currentUi.estimatedHours, currentUi.estimatedMinutes, task);
+            if (!(currentEngineState instanceof TimerState.Idle) && (previousTask != null && !Objects.equals(previousTask.getId(), task.getId()))) {
+                logger.info(TAG, "Task changed while timer was active for task " + previousTask.getId() + ". Stopping timer.");
+                pomodoroManager.stopTimer(); // Это асинхронно, TimerEngine перейдет в Idle
             }
+            // Сброс в режим настройки всегда при смене задачи или если задача null
+            resetToIdleSetupState(currentUi.pomodoroSettings);
+            // Обновление сгенерированных фаз для новой задачи (или пустых, если task == null)
+            updateGeneratedPhasesForCurrentEstimatedTime(currentUi.estimatedHours, currentUi.estimatedMinutes, task);
         }
     }
 
@@ -628,13 +655,18 @@ public class PomodoroViewModel extends ViewModel {
         int defaultHours = defaultMinutes / 60;
         int finalDefaultMinutes = defaultMinutes % 60;
 
-        updateUiState(s -> s.copy(
-                TimerState.Idle.getInstance(), pomodoroManager.formatTime(defaultMinutes * 60), 0f, null,
-                SessionType.FOCUS, 0, 0, defaultHours, finalDefaultMinutes, currentSettings,
-                false, false, true, false, false)); // isTimeSetupMode = true
-
-        _generatedPhasesLiveData.postValue(Collections.emptyList());
-        _currentPhaseIndexLiveData.postValue(-1);
+        updateUiState(s -> new PomodoroUiState(
+                TimerState.Idle.getInstance(),
+                pomodoroManager.formatTime(defaultMinutes * 60),
+                0f, null, SessionType.FOCUS, 0, 0,
+                defaultHours, finalDefaultMinutes, currentSettings,
+                false, false, true
+        ));
+        // При сбросе в Idle, _currentPhaseIndexUiLiveData тоже должен быть -1
+        if (!Objects.equals(_currentPhaseIndexUiLiveData.getValue(), -1)) {
+            _currentPhaseIndexUiLiveData.postValue(-1);
+        }
+        // _generatedPhasesLiveData будет обновлен в updateGeneratedPhasesForCurrentEstimatedTime
         logger.debug(TAG, "ViewModel reset to Idle/Setup mode.");
     }
 
@@ -658,8 +690,7 @@ public class PomodoroViewModel extends ViewModel {
         PomodoroUiState currentUi = _uiStateLiveData.getValue();
         if (task == null || currentUi == null || currentUi.isCompletingTaskEarly) return;
 
-        updateUiState(s -> s.copy(null,null,null,null,null,null,null, null,null,null, null, true, null, false, true)); // clearError
-        // showErrorMessage(null); // Уже делает clearError в updateUiState
+        updateUiState(s -> s.copy(null,null,null,null,null,null,null, null,null,null, null, true, null, false, true));
 
         ioExecutor.execute(() -> {
             InterruptedPhaseInfo interruptedInfo = null;
@@ -683,7 +714,7 @@ public class PomodoroViewModel extends ViewModel {
                 public void onSuccess(Void result) {
                     _currentTaskLiveData.postValue(null);
                     showSnackbarMessage("Задача '" + finalTask.getTitle() + "' завершена.");
-                    updateUiState(s -> s.copy(null,null,null,null,null,null,null, null,null,null, null, false, null, false, false));
+                    // isCompletingTaskEarly будет сброшен через combineAndPostUiState -> resetToIdleSetupState
                 }
                 @Override
                 public void onFailure(@NonNull Throwable t) {
@@ -699,10 +730,10 @@ public class PomodoroViewModel extends ViewModel {
     public void clearErrorMessage() { updateUiState(s -> s.copy(null,null,null,null,null,null,null, null,null,null, null, null,null, true, false)); }
 
 
-    public void navigateToSettings() { // Новый метод
+    public void navigateToSettings() {
         _navigateToSettingsEvent.setValue(true);
     }
-    public void clearNavigateToSettings() { // Новый метод
+    public void clearNavigateToSettings() {
         _navigateToSettingsEvent.setValue(null);
     }
 
@@ -722,22 +753,27 @@ public class PomodoroViewModel extends ViewModel {
     }
 
     private int calculateFocusDisplayIndex(List<PomodoroPhase> phases, int currentIndex, TimerState timerState, int totalFocus) {
-        if (phases == null || phases.isEmpty()) return (totalFocus > 0 && timerState instanceof TimerState.Idle) ? 1 : 0;
+        if (phases == null || phases.isEmpty() || totalFocus == 0) return 0;
+
+        if (timerState instanceof TimerState.Idle) {
+            return 1; // В режиме Idle и если есть фокусные сессии, показываем "1 / N"
+        }
         if (currentIndex < 0 || currentIndex >= phases.size()) {
-            PomodoroPhase firstFocus = phases.stream().filter(PomodoroPhase::isFocus).findFirst().orElse(null);
-            return (totalFocus > 0 && timerState instanceof TimerState.Idle && firstFocus != null) ?
-                    firstFocus.getTotalFocusSessionIndex() : 0;
+            return 1; // Неопределенное состояние, возвращаем 1, если не Idle
         }
+
         PomodoroPhase currentPhase = phases.get(currentIndex);
-        if (currentPhase.isFocus()) return currentPhase.getTotalFocusSessionIndex();
-        if (currentIndex + 1 < phases.size() && phases.get(currentIndex + 1).isFocus()) {
-            return phases.get(currentIndex + 1).getTotalFocusSessionIndex();
+        if (currentPhase.isFocus()) {
+            return currentPhase.getTotalFocusSessionIndex();
         }
-        if (currentPhase.isBreak() && totalFocus > 0 &&
-                (currentIndex == phases.size() - 1 || (currentIndex + 1 < phases.size() && !phases.get(currentIndex + 1).isFocus()))) {
-            return totalFocus;
+        if (currentPhase.isBreak()) {
+            if (currentIndex == phases.size() - 1 || !phases.get(currentIndex + 1).isFocus()) {
+                return totalFocus; // Последний перерыв или за ним не фокус
+            } else {
+                return phases.get(currentIndex + 1).getTotalFocusSessionIndex();
+            }
         }
-        return Math.max(0, currentPhase.getTotalFocusSessionIndex());
+        return 0;
     }
 
     private void updateUiState(UiStateUpdaterPomodoro updater) {
@@ -751,17 +787,14 @@ public class PomodoroViewModel extends ViewModel {
     @Override
     protected void onCleared() {
         super.onCleared();
-        unsubscribeFromServiceState();
-        if (_serviceBoundLiveData.getValue() == Boolean.TRUE) {
-            try { applicationContext.unbindService(serviceConnection); }
-            catch (Exception e) { logger.error(TAG, "Error unbinding service in onCleared", e); }
-            _serviceBoundLiveData.setValue(false);
-            pomodoroBinder = null;
+        unbindFromService();
+        if (settingsObserver != null && settingsRepository != null && settingsRepository.getSettingsFlow() != null) {
+            settingsRepository.getSettingsFlow().removeObserver(settingsObserver);
         }
-        if (settingsObserver != null) settingsRepository.getSettingsFlow().removeObserver(settingsObserver);
-        if (upcomingTasksRepoObserver != null && upcomingTasksLiveData != null) { // Добавлена проверка на null для upcomingTasksLiveData
-            upcomingTasksLiveData.removeObserver(upcomingTasksRepoObserver);
+        if (upcomingTasksRepoObserver != null && taskRepository != null && taskRepository.getUpcomingTasks() != null) {
+            taskRepository.getUpcomingTasks().removeObserver(upcomingTasksRepoObserver);
         }
+        triggerForUiCombination.removeObserver(ignored -> {});
         logger.debug(TAG, "ViewModel cleared and resources released.");
     }
 }

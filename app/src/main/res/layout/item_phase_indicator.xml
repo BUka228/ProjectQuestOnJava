@@ -4,23 +4,24 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/card_phase_indicator"
-    android:layout_width="60dp"
-    android:layout_height="70dp"
-    app:cardCornerRadius="12dp"
-    app:cardBackgroundColor="?attr/colorSurfaceVariant"> <!-- Default color -->
+    android:layout_width="72dp"
+    android:layout_height="80dp"
+    app:cardCornerRadius="16dp"
+    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+    android:layout_marginEnd="8dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="center"
-        android:paddingVertical="8dp"
-        android:paddingHorizontal="4dp">
+        android:paddingVertical="12dp"
+        android:paddingHorizontal="8dp">
 
         <ImageView
             android:id="@+id/imageView_phase_icon"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
             tools:srcCompat="@drawable/timer"
             app:tint="?attr/colorOnSurfaceVariant"/>
 
@@ -28,8 +29,8 @@
             android:id="@+id/textView_phase_duration"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            style="@style/TextAppearance.App.LabelMedium"
+            android:layout_marginTop="6dp"
+            style="@style/TextAppearance.App.TitleSmall"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:maxLines="1"
             tools:text="25м"/>

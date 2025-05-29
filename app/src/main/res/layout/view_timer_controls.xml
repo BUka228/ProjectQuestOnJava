@@ -1,35 +1,22 @@
-<LinearLayout
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="center_vertical|center_horizontal">
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_stop_timer"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        style="@style/Widget.App.FloatingActionButton"
-        android:contentDescription="TODO"
-        app:fabSize="normal"
-        app:backgroundTint="?attr/colorErrorContainer"
-        app:tint="?attr/colorOnErrorContainer"
-        app:srcCompat="@drawable/stop"
-        android:layout_marginEnd="24dp"
-        android:visibility="gone"
-        tools:visibility="visible"/>
+    android:gravity="center">
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_main_timer_action"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        style="@style/Widget.App.FloatingActionButton"
-        android:contentDescription="TODO"
-        app:fabCustomSize="80dp"
-        app:maxImageSize="40dp"
+        android:layout_gravity="center"
+        style="@style/Widget.App.FloatingActionButton.Large"
+        android:contentDescription="Start Pomodoro"
+        app:elevation="6dp"
         tools:srcCompat="@drawable/play_arrow"
         app:backgroundTint="?attr/colorPrimary"
         app:tint="?attr/colorOnPrimary"/>
-</LinearLayout>
+
+    <!-- fabStopTimer удален отсюда, будет в меню -->
+</FrameLayout>

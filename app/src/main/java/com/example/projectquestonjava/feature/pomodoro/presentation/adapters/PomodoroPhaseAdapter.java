@@ -9,6 +9,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+import androidx.annotation.ColorInt;
+import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
@@ -27,7 +29,7 @@ public class PomodoroPhaseAdapter extends ListAdapter<PomodoroPhase, PomodoroPha
 
     private int currentPhaseIndex = -1;
     private TimerState currentTimerState = TimerState.Idle.getInstance();
-    private final Context context; // Нужен для доступа к ресурсам
+    private final Context context;
 
     public PomodoroPhaseAdapter(@NonNull Context context) {
         super(DIFF_CALLBACK);
@@ -36,15 +38,27 @@ public class PomodoroPhaseAdapter extends ListAdapter<PomodoroPhase, PomodoroPha
 
     public void setCurrentPhaseIndex(int index) {
         if (this.currentPhaseIndex != index) {
+            int oldIndex = this.currentPhaseIndex;
             this.currentPhaseIndex = index;
-            notifyDataSetChanged(); // Простое обновление для примера
+            if (oldIndex != -1) notifyItemChanged(oldIndex);
+            if (index != -1) notifyItemChanged(index);
         }
     }
 
     public void setCurrentTimerState(TimerState timerState) {
         if (!Objects.equals(this.currentTimerState, timerState)) {
             this.currentTimerState = timerState;
-            notifyDataSetChanged(); // Простое обновление
+            // Обновляем только текущую и, возможно, предыдущую фазу, если индекс изменился
+            if (currentPhaseIndex != -1) {
+                notifyItemChanged(currentPhaseIndex);
+                if (currentPhaseIndex > 0 && timerState instanceof TimerState.WaitingForConfirmation) {
+                    // Если текущая стала WaitingForConfirmation, предыдущая могла стать completed
+                    notifyItemChanged(currentPhaseIndex -1);
+                }
+            } else if (timerState instanceof TimerState.Idle && getItemCount() > 0) {
+                // Если перешли в Idle, возможно, нужно перерисовать первую фазу (если она есть)
+                notifyItemChanged(0);
+            }
         }
     }
 
@@ -59,7 +73,7 @@ public class PomodoroPhaseAdapter extends ListAdapter<PomodoroPhase, PomodoroPha
     @Override
     public void onBindViewHolder(@NonNull PhaseViewHolder holder, int position) {
         PomodoroPhase phase = getItem(position);
-        boolean isCurrent = position == currentPhaseIndex && (currentTimerState instanceof TimerState.Running || currentTimerState instanceof TimerState.Paused);
+        boolean isCurrent = position == currentPhaseIndex && !(currentTimerState instanceof TimerState.Idle); // Не выделяем, если Idle
         boolean isCompleted = position < currentPhaseIndex ||
                 (position == currentPhaseIndex && currentTimerState instanceof TimerState.WaitingForConfirmation &&
                         ((TimerState.WaitingForConfirmation) currentTimerState).getType() == phase.getType());
@@ -79,47 +93,57 @@ public class PomodoroPhaseAdapter extends ListAdapter<PomodoroPhase, PomodoroPha
         }
 
         void bind(PomodoroPhase phase, boolean isCurrent, boolean isCompleted, Context context) {
-            int baseColorRes;
-            int iconRes;
+            @ColorInt int baseColor;
+            @ColorInt int onBaseColor;
+            @DrawableRes int iconRes;
 
-            switch (phase.getType()) {
+            SessionType type = phase.getType();
+            if (type == null) type = SessionType.FOCUS; // Fallback
+
+            switch (type) {
                 case FOCUS:
-                    baseColorRes = R.color.primaryLight;
+                    baseColor = ContextCompat.getColor(context, R.color.primaryDark);
+                    onBaseColor = ContextCompat.getColor(context, R.color.onPrimaryDark);
                     iconRes = R.drawable.timer;
                     break;
                 case SHORT_BREAK:
-                    baseColorRes = R.color.tertiaryLight;
+                    baseColor = ContextCompat.getColor(context, R.color.tertiaryDark);
+                    onBaseColor = ContextCompat.getColor(context, R.color.onTertiaryDark);
                     iconRes = R.drawable.coffee;
                     break;
                 case LONG_BREAK:
-                    baseColorRes = R.color.secondaryContainerLight; // MaterialTheme.colorScheme.secondaryContainer
+                    baseColor = ContextCompat.getColor(context, R.color.secondaryContainerDark);
+                    onBaseColor = ContextCompat.getColor(context, R.color.onSecondaryContainerDark);
                     iconRes = R.drawable.self_improvement;
                     break;
-                default:
-                    baseColorRes = R.color.surfaceVariantLight;
+                default: // Fallback
+                    baseColor = ContextCompat.getColor(context, R.color.surfaceVariantDark);
+                    onBaseColor = ContextCompat.getColor(context, R.color.onSurfaceVariantDark);
                     iconRes = R.drawable.help;
             }
 
-            int animatedColor;
-            int iconAndTextColor;
+            @ColorInt int cardBackgroundColor;
+            @ColorInt int iconAndTextColor;
             float scale = 1.0f;
-            ColorStateList iconTint;
 
             if (isCompleted) {
-                animatedColor = ContextCompat.getColor(context, baseColorRes);
-                animatedColor = Color.argb(Math.round(Color.alpha(animatedColor) * 0.3f), Color.red(animatedColor), Color.green(animatedColor), Color.blue(animatedColor));
-                iconAndTextColor = ContextCompat.getColor(context, baseColorRes);
-                iconAndTextColor = Color.argb(Math.round(Color.alpha(iconAndTextColor) * 0.6f), Color.red(iconAndTextColor), Color.green(iconAndTextColor), Color.blue(iconAndTextColor));
+                // Полупрозрачный основной цвет для фона
+                cardBackgroundColor = Color.argb(Math.round(Color.alpha(baseColor) * 0.2f), // Меньше альфа
+                        Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor));
+                // Полупрозрачный цвет текста/иконки
+                iconAndTextColor = Color.argb(Math.round(Color.alpha(onBaseColor) * 0.5f), // Меньше альфа
+                        Color.red(onBaseColor), Color.green(onBaseColor), Color.blue(onBaseColor));
+
             } else if (isCurrent) {
-                animatedColor = ContextCompat.getColor(context, baseColorRes);
-                iconAndTextColor = ContextCompat.getColor(context, getColorForState(baseColorRes, true, context)); // onColor
+                cardBackgroundColor = baseColor;
+                iconAndTextColor = onBaseColor;
                 scale = 1.1f;
-            } else {
-                animatedColor = ContextCompat.getColor(context, R.color.surfaceVariantLight);
-                iconAndTextColor = ContextCompat.getColor(context, R.color.colorOnSurfaceVariantAlpha08);
+            } else { // Будущие фазы
+                cardBackgroundColor = ContextCompat.getColor(context, R.color.surfaceContainerLowestDark); // Более темный фон для неактивных
+                iconAndTextColor = ContextCompat.getColor(context, R.color.onSurfaceVariantDark);
             }
 
-            cardView.setCardBackgroundColor(animatedColor);
+            cardView.setCardBackgroundColor(cardBackgroundColor);
             iconView.setImageResource(iconRes);
             ImageViewCompat.setImageTintList(iconView, ColorStateList.valueOf(iconAndTextColor));
             durationView.setText(String.format(Locale.getDefault(), "%dм", phase.getDurationSeconds() / 60));
@@ -129,24 +153,12 @@ public class PomodoroPhaseAdapter extends ListAdapter<PomodoroPhase, PomodoroPha
             itemView.setScaleX(scale);
             itemView.setScaleY(scale);
         }
-
-        private int getColorForState(int baseColorRes, boolean isCurrent, Context context) {
-            // Простая логика для определения цвета контента на фоне
-            // В идеале использовать MaterialColors.getColor(view, R.attr.colorOn[Primary/Secondary/Etc]Container)
-            if (isCurrent) {
-                if (baseColorRes == R.color.primaryLight) return ContextCompat.getColor(context, R.color.onPrimaryLight);
-                if (baseColorRes == R.color.tertiaryLight) return ContextCompat.getColor(context, R.color.onTertiaryLight);
-                if (baseColorRes == R.color.secondaryContainerLight) return ContextCompat.getColor(context, R.color.onSecondaryContainerLight);
-            }
-            return ContextCompat.getColor(context, R.color.colorOnSurfaceVariantAlpha05);
-        }
     }
 
     private static final DiffUtil.ItemCallback<PomodoroPhase> DIFF_CALLBACK =
             new DiffUtil.ItemCallback<PomodoroPhase>() {
                 @Override
                 public boolean areItemsTheSame(@NonNull PomodoroPhase oldItem, @NonNull PomodoroPhase newItem) {
-                    // Фазы обычно не меняют своего "ID" в рамках одного цикла
                     return oldItem.getType() == newItem.getType() &&
                             oldItem.getPhaseNumberInCycle() == newItem.getPhaseNumberInCycle() &&
                             oldItem.getTotalFocusSessionIndex() == newItem.getTotalFocusSessionIndex();
@@ -154,7 +166,7 @@ public class PomodoroPhaseAdapter extends ListAdapter<PomodoroPhase, PomodoroPha
 
                 @Override
                 public boolean areContentsTheSame(@NonNull PomodoroPhase oldItem, @NonNull PomodoroPhase newItem) {
-                    return oldItem.equals(newItem); // Data class сам сгенерирует equals
+                    return oldItem.equals(newItem);
                 }
             };
 }
