@@ -11,7 +11,7 @@
     <dimen name="icon_size_small">18dp</dimen>
     <dimen name="icon_size_medium">24dp</dimen>
     <dimen name="icon_size_large">32dp</dimen>
-
+    <dimen name="padding_large_for_swipe">20dp</dimen>
     <dimen name="text_size_label_small">11sp</dimen>
     <dimen name="text_size_label_medium">12sp</dimen>
     <dimen name="text_size_label_large">14sp</dimen>

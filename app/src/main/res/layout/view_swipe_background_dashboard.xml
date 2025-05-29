@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<!-- res/layout/view_swipe_background_dashboard.xml -->
 <RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -6,66 +6,63 @@
     android:id="@+id/layout_swipe_background"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/rounded_corner_background_16dp_transparent"
+    android:background="@android:color/transparent"
     android:paddingHorizontal="20dp">
 
-    <!-- Для свайпа вправо (Выполнить/Вернуть) -->
-    <LinearLayout
-        android:id="@+id/layout_swipe_action_start_to_end"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentStart="true"
-        android:layout_centerVertical="true"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:visibility="gone"
-        tools:visibility="visible">
+    <!-- ... остальное содержимое без изменений ... -->
+<LinearLayout
+android:id="@+id/layout_swipe_action_start_to_end"
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:layout_alignParentStart="true"
+android:layout_centerVertical="true"
+android:gravity="center_vertical"
+android:orientation="horizontal"
+android:visibility="gone"
+tools:visibility="visible">
 
-        <ImageView
-            android:id="@+id/imageView_swipe_action_start"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            tools:srcCompat="@drawable/check"
-            app:tint="@android:color/white"/>
+<ImageView
+    android:id="@+id/imageView_swipe_action_start"
+    android:layout_width="28dp"
+    android:layout_height="28dp"
+    tools:srcCompat="@drawable/check"
+    app:tint="@android:color/white"/>
 
-        <TextView
-            android:id="@+id/textView_swipe_action_start"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            tools:text="Выполнить"
-            android:textColor="@android:color/white"
-            style="@style/TextAppearance.Material3.BodyMedium"
-            android:textStyle="bold"/>
-    </LinearLayout>
+<TextView
+    android:id="@+id/textView_swipe_action_start"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="8dp"
+    tools:text="Выполнить"
+    android:textColor="@android:color/white"
+    style="@style/TextAppearance.Material3.BodyMedium"
+    android:textStyle="bold"/>
+</LinearLayout>
 
-    <!-- Для свайпа влево (Удалить) -->
-    <LinearLayout
-        android:id="@+id/layout_swipe_action_end_to_start"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_centerVertical="true"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:visibility="gone"
-        tools:visibility="visible">
-
-        <!-- Порядок изменен для RTL совместимости, но можно оставить ImageView слева от текста -->
-        <TextView
-            android:id="@+id/textView_swipe_action_end"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            tools:text="Удалить"
-            android:textColor="@android:color/white"
-            style="@style/TextAppearance.Material3.BodyMedium"
-            android:textStyle="bold"/>
-        <ImageView
-            android:id="@+id/imageView_swipe_action_end"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            tools:srcCompat="@drawable/delete"
-            app:tint="@android:color/white"/>
-    </LinearLayout>
-</RelativeLayout>
+<LinearLayout
+android:id="@+id/layout_swipe_action_end_to_start"
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:layout_alignParentEnd="true"
+android:layout_centerVertical="true"
+android:gravity="center_vertical"
+android:orientation="horizontal"
+android:visibility="gone"
+tools:visibility="visible">
+<TextView
+    android:id="@+id/textView_swipe_action_end"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="8dp"
+    tools:text="Удалить"
+    android:textColor="@android:color/white"
+    style="@style/TextAppearance.Material3.BodyMedium"
+    android:textStyle="bold"/>
+<ImageView
+    android:id="@+id/imageView_swipe_action_end"
+    android:layout_width="28dp"
+    android:layout_height="28dp"
+    tools:srcCompat="@drawable/delete"
+    app:tint="@android:color/white"/>
+</LinearLayout>
+    </RelativeLayout>
