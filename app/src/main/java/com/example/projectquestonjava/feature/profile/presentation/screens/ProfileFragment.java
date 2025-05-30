@@ -381,4 +381,12 @@ public class ProfileFragment extends BaseFragment implements RecentBadgesAdapter
         gardenIcon = null; statisticsIcon = null; settingsIcon = null;
         buttonLogout = null;
     }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (viewModel != null) {
+            viewModel.refreshData(); // Нужен такой метод в ProfileViewModel
+        }
+    }
 }

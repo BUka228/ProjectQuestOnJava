@@ -8,7 +8,7 @@ import com.example.projectquestonjava.core.utils.AvatarStorageHelper;
 import com.example.projectquestonjava.core.utils.Logger;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
+import com.google.common.util.concurrent.MoreExecutors; // Для directExecutor, если нужен
 
 import java.util.concurrent.Executor;
 import javax.inject.Inject;
@@ -37,38 +37,43 @@ public class RemoveAvatarUseCase {
     }
 
     public ListenableFuture<Void> execute() {
-        return Futures.submitAsync(() -> {
-            int userId = userSessionManager.getUserIdSync(); // Блокирующий вызов на ioExecutor
-            if (userId == UserSessionManager.NO_USER_ID) {
-                logger.error(TAG, "Cannot remove avatar: User not logged in.");
-                return Futures.immediateFailedFuture(new IllegalStateException("Пользователь не авторизован."));
+        final int userId = userSessionManager.getUserIdSync();
+        if (userId == UserSessionManager.NO_USER_ID) {
+            logger.error(TAG, "Cannot remove avatar: User not logged in.");
+            return Futures.immediateFailedFuture(new IllegalStateException("Пользователь не авторизован."));
+        }
+        logger.debug(TAG, "Attempting to remove avatar for userId=" + userId);
+
+        // 1. Получаем текущего пользователя
+        ListenableFuture<UserAuth> userFuture = userAuthRepository.getUserById(userId);
+
+        return Futures.transformAsync(userFuture, currentUser -> {
+            if (currentUser == null) {
+                // Это не должно произойти, если userId валиден, но на всякий случай
+                logger.warn(TAG, "User with ID " + userId + " not found. Cannot determine old avatar path.");
+                return Futures.immediateFuture(null); // Или ошибка, если пользователь должен существовать
             }
-            logger.debug(TAG, "Attempting to remove avatar for userId=" + userId);
+            String oldAvatarPath = currentUser.getAvatarUrl();
 
-            try {
-                // 1. Получаем текущего пользователя асинхронно
-                ListenableFuture<UserAuth> userFuture = userAuthRepository.getUserById(userId);
-                UserAuth currentUser = Futures.getDone(userFuture); // Блокируем, ожидая результат
-                String currentAvatarPath = (currentUser != null) ? currentUser.getAvatarUrl() : null;
-
-                if (currentAvatarPath == null || currentAvatarPath.trim().isEmpty()) {
-                    logger.debug(TAG, "Avatar is already null for userId=" + userId + ". No action needed.");
-                    return Futures.immediateFuture(null);
-                }
-
-                // 2. Обновляем путь в репозитории на null
-                Futures.getDone(userAuthRepository.updateAvatarUrl(userId, null));
-
-                // 3. Удаляем старый файл (AvatarStorageHelper.deleteAvatar теперь тоже ListenableFuture)
-                Futures.getDone(avatarStorageHelper.deleteAvatar(currentAvatarPath));
-                // Ошибки удаления файла логируются в хелпере, здесь не считаем критической
-
-                logger.info(TAG, "Avatar successfully removed for userId=" + userId + ".");
+            if (oldAvatarPath == null || oldAvatarPath.trim().isEmpty()) {
+                logger.debug(TAG, "Avatar is already null for userId=" + userId + ". No action needed.");
                 return Futures.immediateFuture(null);
-            } catch (Exception e) {
-                logger.error(TAG, "Failed to remove avatar for userId=" + userId, e);
-                return Futures.immediateFailedFuture(e);
             }
+
+            // 2. Обновляем путь в репозитории на null
+            ListenableFuture<Void> updateRepoFuture = userAuthRepository.updateAvatarUrl(userId, null);
+
+            return Futures.transformAsync(updateRepoFuture, aVoid -> {
+                logger.info(TAG, "Avatar path set to null in repository for userId=" + userId);
+                // 3. Удаляем старый файл
+                // avatarStorageHelper.deleteAvatar возвращает ListenableFuture<Void>
+                // Мы можем его дождаться или просто запустить
+                ListenableFuture<Void> deleteFileFuture = avatarStorageHelper.deleteAvatar(oldAvatarPath);
+                return Futures.transform(deleteFileFuture, input -> {
+                    logger.info(TAG, "Avatar successfully removed (or attempt was made) for userId=" + userId + ".");
+                    return null; // Для ListenableFuture<Void>
+                }, ioExecutor); // Можно использовать directExecutor, если deleteAvatar быстрый
+            }, ioExecutor);
         }, ioExecutor);
     }
 }

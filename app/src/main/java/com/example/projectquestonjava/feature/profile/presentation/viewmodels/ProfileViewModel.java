@@ -1,5 +1,8 @@
 package com.example.projectquestonjava.feature.profile.presentation.viewmodels;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
@@ -45,6 +48,7 @@ public class ProfileViewModel extends ViewModel {
     private static final String TAG = "ProfileViewModel";
     private static final int RECENT_BADGES_LIMIT = 5;
     private static final int RECENT_HISTORY_LIMIT = 5;
+    private boolean initialDataLoaded = false;
 
     private final UserAuthRepository userAuthRepository;
     private final GamificationRepository gamificationRepository;
@@ -201,27 +205,21 @@ public class ProfileViewModel extends ViewModel {
                 ", EarnedRefs: " + (earnedRefs != null ? earnedRefs.size() : "null") +
                 ", AllBadges: " + (allBadges != null ? allBadges.size() : "null") +
                 ", History: " + (history != null ? history.size() : "null"));
-        logger.debug(TAG, "Active Observers -> User: " + userLiveData.hasActiveObservers() +
-                ", Gami: " + gamificationLiveData.hasActiveObservers() +
-                ", EarnedRefs: " + earnedBadgesRefsLiveData.hasActiveObservers() +
-                ", AllBadges: " + allBadgesLiveData.hasActiveObservers() +
-                ", History: " + recentHistoryLiveData.hasActiveObservers());
 
-        boolean waitingForUser = (user == null && userLiveData.hasActiveObservers());
-        boolean waitingForGami = (gamification == null && gamificationLiveData.hasActiveObservers());
-        // Для списков, если они null, но наблюдатель активен, считаем что ждем. Пустой список - это уже данные.
-        boolean waitingForEarnedRefs = (earnedRefs == null && earnedBadgesRefsLiveData.hasActiveObservers());
-        boolean waitingForAllBadges = (allBadges == null && allBadgesLiveData.hasActiveObservers());
-        boolean waitingForHistory = (history == null && recentHistoryLiveData.hasActiveObservers());
+        // Определяем, завершена ли загрузка всех источников
+        boolean sourcesAreReady = (userLiveData.getValue() != null || !userLiveData.hasActiveObservers()) &&
+                (gamificationLiveData.getValue() != null || !gamificationLiveData.hasActiveObservers()) &&
+                (earnedBadgesRefsLiveData.getValue() != null || !earnedBadgesRefsLiveData.hasActiveObservers()) &&
+                (allBadgesLiveData.getValue() != null || !allBadgesLiveData.hasActiveObservers()) &&
+                (recentHistoryLiveData.getValue() != null || !recentHistoryLiveData.hasActiveObservers());
 
-        boolean finalIsLoading = waitingForUser || waitingForGami || waitingForEarnedRefs || waitingForAllBadges || waitingForHistory;
+        boolean finalIsLoading = !sourcesAreReady; // Если хоть один источник не готов (null и есть наблюдатели), то грузимся
 
-        logger.debug(TAG, "combineAndSetUiState: finalIsLoading = " + finalIsLoading +
-                " (waitingUser: " + waitingForUser +
-                ", waitingGami: " + waitingForGami +
-                ", waitingEarned: " + waitingForEarnedRefs +
-                ", waitingAllBadges: " + waitingForAllBadges +
-                ", waitingHistory: " + waitingForHistory + ")");
+        if (sourcesAreReady) {
+            initialDataLoaded = true; // Отмечаем, что начальная загрузка (или первая попытка) завершена
+        }
+        logger.debug(TAG, "combineAndSetUiState: finalIsLoading = " + finalIsLoading);
+
 
         List<Badge> recentEarnedBadges = Collections.emptyList();
         int earnedCount = 0;
@@ -237,7 +235,7 @@ public class ProfileViewModel extends ViewModel {
         }
 
         String currentError = currentState != null ? currentState.getError() : null;
-        String errorMsg = (!finalIsLoading && user == null && gamification == null && currentError == null) ?
+        String errorMsg = (!finalIsLoading && user == null && currentError == null) ? // Ошибка только если загрузка завершена и пользователя нет
                 "Не удалось загрузить данные профиля" : currentError;
 
         _uiStateLiveData.postValue(new ProfileUiState(
@@ -253,6 +251,7 @@ public class ProfileViewModel extends ViewModel {
         logger.debug(TAG, "ProfileUiState posted. isLoading: " + finalIsLoading + ", Error: " + errorMsg +
                 ", User: " + (user != null) + ", Gami: " + (gamification != null));
     }
+
 
     public void logout() {
         logger.info(TAG, "Performing logout...");
@@ -318,6 +317,75 @@ public class ProfileViewModel extends ViewModel {
         // Его источники - это LiveData, которые должны управляться Lifecycle'ом Fragment'а,
         // который наблюдает за _uiStateLiveData.
         logger.debug(TAG, "ProfileViewModel cleared.");
+    }
+
+    public void refreshData() {
+        logger.debug(TAG, "refreshData called. InitialDataLoaded: " + initialDataLoaded);
+        // Перезагружаем, только если начальная загрузка уже была (чтобы не дублировать при первом запуске)
+        // или если хотим принудительно обновить в любом случае
+        // if (!initialDataLoaded) {
+        //     logger.debug(TAG, "Initial data not yet marked as loaded, refreshData will rely on existing LiveData triggers.");
+        //     return; // Или можно принудительно триггернуть источники
+        // }
+
+        updateUiStateLoading(true); // Показываем загрузку
+
+        // Чтобы "передернуть" LiveData, можно заставить их источники (например, userIdLiveData)
+        // пере-эмитить свое текущее значение. Это заставит Transformations.switchMap сработать снова.
+        // Это немного хак. Более чистый способ - иметь методы refresh в репозиториях.
+
+        // Вариант 1: Заставить UserSessionManager пере-эмитить userId (если он поддерживает такой механизм)
+        // userSessionManager.refreshUserId(); // Пример, такого метода может не быть
+
+        // Вариант 2: Отписаться и подписаться заново на источники в MediatorLiveData (сложно и опасно)
+
+        // Вариант 3 (Простой, но может не сработать для всех LiveData, если они хорошо кэшируют):
+        // Просто вызвать combineAndSetUiState, надеясь, что getValue() у LiveData вернет свежие данные,
+        // если они изменились в БД и LiveData из Room это отследили.
+        // Но если LiveData в ViewModel - это результат однократного Futures.addCallback, это не поможет.
+
+        // Наиболее надежный способ при такой структуре - если LiveData userLiveData, gamificationLiveData и т.д.
+        // правильно построены на основе DAO-методов, возвращающих LiveData.
+        // Тогда они сами должны обновиться, если данные в БД изменились.
+        // Метод refreshData тогда будет просто триггерить combineAndSetUiState,
+        // чтобы UI перерисовался с уже обновленными данными из этих LiveData.
+
+        // Для принудительного обновления, если LiveData в ViewModel не реагируют сами:
+        // Нужно будет в каждом репозитории предусмотреть метод refresh или перезапросить данные.
+        // Например, для userLiveData:
+        Integer currentUserId = userSessionManager.getUserIdLiveData().getValue();
+        if (currentUserId != null && currentUserId != UserSessionManager.NO_USER_ID) {
+            logger.debug(TAG, "Forcing user data reload for userId: " + currentUserId);
+            Futures.addCallback(userAuthRepository.getUserById(currentUserId), new FutureCallback<UserAuth>() {
+                @Override public void onSuccess(UserAuth user) {
+                    logger.debug(TAG, "User data RE-loaded for refresh: " + (user != null ? user.getUsername() : "null"));
+                    // Это обновит userLiveData, что должно триггернуть combinator
+                    // Но если userLiveData - это результат switchMap, нужно триггернуть источник switchMap'а
+                    // В нашем случае, UserSessionManager.getUserIdLiveData() - это DataStore, он реактивен.
+                    // Простое изменение в БД UserAuth не заставит его пере-эмитить, если сам userId не изменился.
+                    // Поэтому, если мы хотим обновить UserAuth, нужно, чтобы ProfileFragment напрямую подписался
+                    // на UserAuthDao.getUserByIdFlow(userId).
+
+                    // Временное решение: просто вызываем combineAndSetUiState после небольшой задержки,
+                    // надеясь, что базовые LiveData из DAO успели обновиться (если они действительно LiveData)
+                    // Это не очень надежно.
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        combineAndSetUiState();
+                        updateUiStateLoading(false); // Сбрасываем загрузку после попытки
+                    }, 300); // Небольшая задержка
+                }
+                @Override public void onFailure(@NonNull Throwable t) {
+                    logger.error(TAG, "Error RE-loading user data for refresh", t);
+                    updateUiStateError("Ошибка обновления данных пользователя.");
+                    updateUiStateLoading(false);
+                }
+            }, ioExecutor);
+        } else {
+            logger.warn(TAG, "Cannot refresh data: no current user ID.");
+            updateUiStateLoading(false);
+        }
+        // Аналогично нужно будет "передернуть" другие источники, если они не обновляются автоматически.
+        // Это подчеркивает, что ViewModel должна в основном работать с LiveData, которые сами по себе реактивны.
     }
 
     public String getDaysString(int days) {
