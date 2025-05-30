@@ -34,10 +34,8 @@ import javax.inject.Inject;
 
 public class ClaimDailyRewardUseCase {
     private static final String TAG = "ClaimDailyRewardUseCase";
-    private static final long FALLBACK_REWARD_ID_FOR_DUPLICATE_BADGE = 100L; // Пример ID для запасной награды за значок
-    private static final long FALLBACK_REWARD_ID_FOR_DUPLICATE_PLANT = 101L; // Пример ID для запасной награды за растение
-    // (Убедитесь, что эти ID существуют в вашей таблице Reward)
-
+    private static final long FALLBACK_REWARD_ID_FOR_DUPLICATE_BADGE = 100L;
+    private static final long FALLBACK_REWARD_ID_FOR_DUPLICATE_PLANT = 101L;
 
     private final GamificationRepository gamificationRepository;
     private final StreakRewardDefinitionRepository streakRewardDefinitionRepository;
@@ -81,142 +79,107 @@ public class ClaimDailyRewardUseCase {
     }
 
     public ListenableFuture<Void> execute() {
-        return Futures.submitAsync(() -> { // Вся логика в submitAsync
-            logger.debug(TAG, "Attempting to claim daily reward...");
-            try {
-                // 1. Получаем текущий профиль геймификации
-                // Предполагается, что getCurrentUserGamificationFuture() существует в GamificationRepository
-                Gamification gamification = Futures.getDone(gamificationRepository.getCurrentUserGamificationFuture());
-                if (gamification == null) {
-                    throw new IllegalStateException("Gamification profile not found for current user.");
-                }
-                final long gamificationId = gamification.getId(); // final для использования в лямбдах
-                int currentStreak = gamification.getCurrentStreak();
-                LocalDate lastClaimed = gamification.getLastClaimedDate();
-                LocalDate today = dateTimeUtils.currentLocalDate();
-
-                // 2. Проверяем, можно ли получить награду сегодня
-                if (!lastClaimed.isBefore(today)) {
-                    logger.warn(TAG, "Reward already claimed today (" + lastClaimed + "). Cannot claim again.");
-                    throw new IllegalStateException("Reward already claimed today.");
-                }
-
-                // 3. Рассчитываем новый стрик и день для запроса награды
-                long daysDifference = ChronoUnit.DAYS.between(lastClaimed, today);
-                int newStreak = (daysDifference == 1L) ? currentStreak + 1 : 1;
-                logger.debug(TAG, "Calculated new streak: " + newStreak + " (Streak day for reward: " + newStreak + ")");
-
-                // 4. Получаем определение награды
-                StreakRewardDefinition definition = Futures.getDone(streakRewardDefinitionRepository.getRewardDefinitionForStreak(newStreak));
-                if (definition == null) {
-                    throw new IllegalStateException("Reward definition not found for streak day " + newStreak + ".");
-                }
-
-                // 5. Получаем основную награду
-                long rewardIdToProcess = definition.getRewardId();
-                Reward baseReward = Futures.getDone(rewardRepository.getRewardById(rewardIdToProcess));
-                if (baseReward == null) {
-                    throw new IllegalStateException("Reward ID " + rewardIdToProcess + " not found for streak day " + newStreak + ".");
-                }
-
-                // 6. Проверка дубликатов и выбор запасной награды (асинхронно)
-                ListenableFuture<Reward> finalRewardFuture = checkAndGetFinalReward(gamificationId, baseReward);
-
-                // 7. Применяем награду, обновляем Gamification, статистику и челленджи ВНУТРИ ТРАНЗАКЦИИ
-                return Futures.transformAsync(finalRewardFuture, finalRewardToApply -> {
-                    if (finalRewardToApply == null) { // Это может произойти, если fallback награда не найдена
-                        throw new IllegalStateException("Final reward to apply is null, possibly due to missing fallback reward.");
+        logger.debug(TAG, "Attempting to claim daily reward...");
+        return Futures.transformAsync(
+                gamificationRepository.getCurrentUserGamificationFuture(),
+                gamification -> {
+                    if (gamification == null) {
+                        return Futures.immediateFailedFuture(new IllegalStateException("Gamification profile not found for current user."));
                     }
-                    try {
-                        unitOfWork.withTransaction((Callable<Void>) () -> {
-                            // 7.1 Применяем выбранную награду
-                            ApplyRewardUseCase.RewardApplicationResult rewardResult = Futures.getDone((java.util.concurrent.Future<ApplyRewardUseCase.RewardApplicationResult>) applyRewardUseCase.execute(gamificationId, finalRewardToApply));
-                            int deltaXp = rewardResult.getDeltaXp();
-                            int deltaCoins = rewardResult.getDeltaCoins();
-                            logger.debug(TAG, "Applied reward '" + finalRewardToApply.getName() + "'. Delta(XP/Coins): (" + deltaXp + "/" + deltaCoins + ")");
+                    final long gamificationId = gamification.getId();
+                    int currentStreak = gamification.getCurrentStreak();
+                    LocalDate lastClaimed = gamification.getLastClaimedDate();
+                    LocalDate today = dateTimeUtils.currentLocalDate();
 
-                            // 7.2 Обновляем объект Gamification (получаем его снова, чтобы иметь самую свежую версию перед обновлением)
-                            Gamification gamificationForUpdate = Futures.getDone(gamificationRepository.getGamificationById(gamificationId));
-                            if (gamificationForUpdate == null) throw new IllegalStateException("Gamification profile disappeared during transaction.");
-
-                            Gamification updatedGamification = new Gamification(
-                                    gamificationForUpdate.getId(), gamificationForUpdate.getUserId(),
-                                    gamificationForUpdate.getLevel(), // Уровень обновится в gamificationRepository.updateGamification
-                                    Math.max(0, gamificationForUpdate.getExperience() + deltaXp),
-                                    Math.max(0, gamificationForUpdate.getCoins() + deltaCoins),
-                                    gamificationForUpdate.getMaxExperienceForLevel(), // Обновится в gamificationRepository.updateGamification
-                                    dateTimeUtils.currentUtcDateTime(), // lastActive
-                                    newStreak, // newStreak
-                                    today, // lastClaimedDate
-                                    Math.max(gamificationForUpdate.getMaxStreak(), newStreak) // maxStreak
-                            );
-
-                            // 7.3 Сохраняем обновленный Gamification
-                            Futures.getDone(gamificationRepository.updateGamification(updatedGamification));
-                            logger.debug(TAG, "Gamification state updated in repository. New streak: " + newStreak);
-
-                            // 7.4 Обновляем время последней активности в глобальной статистике
-                            Futures.getDone(globalStatisticsRepository.updateLastActive());
-                            logger.debug(TAG, "Updated global last active time.");
-
-                            // 7.5 Обновляем прогресс челленджей, связанных со стриком
-                            GamificationEvent event = new GamificationEvent.StreakUpdated(newStreak);
-                            Futures.getDone(updateChallengeProgressUseCase.execute(gamificationId, event, ioExecutor));
-                            logger.debug(TAG, "Processed challenge progress for streak update (" + newStreak + ").");
-
-                            logger.info(TAG, "Daily reward " + finalRewardToApply.getId() + " ('" + finalRewardToApply.getName() + "') for streak day " + newStreak + " claimed successfully.");
-                            return null; // для Callable<Void>
-                        });
-                        return Futures.immediateFuture(null); // Успешное завершение транзакции
-                    } catch (Exception e) {
-                        logger.error(TAG, "Transaction failed while claiming daily reward", e);
-                        return Futures.immediateFailedFuture(e);
+                    if (!lastClaimed.isBefore(today)) {
+                        logger.warn(TAG, "Reward already claimed today (" + lastClaimed + "). Cannot claim again.");
+                        return Futures.immediateFailedFuture(new IllegalStateException("Reward already claimed today."));
                     }
-                }, ioExecutor); // transformAsync для finalRewardFuture
-            } catch (Exception e) {
-                if (e instanceof IllegalStateException && "Reward already claimed today.".equals(e.getMessage())) {
-                    logger.warn(TAG, e.getMessage());
-                } else {
-                    logger.error(TAG, "Failed to claim daily reward", e);
-                }
-                return Futures.immediateFailedFuture(e);
-            }
-        }, ioExecutor); // submitAsync для всей логики
+
+                    long daysDifference = ChronoUnit.DAYS.between(lastClaimed, today);
+                    final int newStreak = (daysDifference == 1L) ? currentStreak + 1 : 1;
+                    logger.debug(TAG, "Calculated new streak: " + newStreak);
+
+                    return Futures.transformAsync(
+                            streakRewardDefinitionRepository.getRewardDefinitionForStreak(newStreak),
+                            definition -> {
+                                if (definition == null) {
+                                    return Futures.immediateFailedFuture(new IllegalStateException("Reward definition not found for streak day " + newStreak + "."));
+                                }
+                                return Futures.transformAsync(
+                                        rewardRepository.getRewardById(definition.getRewardId()),
+                                        baseReward -> {
+                                            if (baseReward == null) {
+                                                return Futures.immediateFailedFuture(new IllegalStateException("Reward ID " + definition.getRewardId() + " not found."));
+                                            }
+                                            return Futures.transformAsync(
+                                                    checkAndGetFinalReward(gamificationId, baseReward), // Этот метод уже возвращает ListenableFuture<Reward>
+                                                    finalRewardToApply -> {
+                                                        if (finalRewardToApply == null) {
+                                                            return Futures.immediateFailedFuture(new IllegalStateException("Final reward to apply is null."));
+                                                        }
+                                                        // Выполнение транзакции
+                                                        return Futures.submit(() -> { // Оборачиваем транзакцию в submit, чтобы она выполнилась на ioExecutor
+                                                            unitOfWork.withTransaction((Callable<Void>) () -> {
+                                                                ApplyRewardUseCase.RewardApplicationResult rewardResult = applyRewardUseCase.execute(gamificationId, finalRewardToApply); // СИНХРОННЫЙ
+                                                                int deltaXp = rewardResult.getDeltaXp();
+                                                                int deltaCoins = rewardResult.getDeltaCoins();
+
+                                                                Gamification gamificationForUpdate = gamificationRepository.getGamificationByIdSync(gamificationId); // СИНХРОННЫЙ
+                                                                if (gamificationForUpdate == null) throw new IllegalStateException("Gamification profile disappeared.");
+
+                                                                Gamification updatedGamification = new Gamification(
+                                                                        gamificationForUpdate.getId(), gamificationForUpdate.getUserId(),
+                                                                        gamificationForUpdate.getLevel(), Math.max(0, gamificationForUpdate.getExperience() + deltaXp),
+                                                                        Math.max(0, gamificationForUpdate.getCoins() + deltaCoins),
+                                                                        gamificationForUpdate.getMaxExperienceForLevel(), dateTimeUtils.currentUtcDateTime(),
+                                                                        newStreak, today, Math.max(gamificationForUpdate.getMaxStreak(), newStreak)
+                                                                );
+                                                                gamificationRepository.updateGamificationSync(updatedGamification); // СИНХРОННЫЙ
+                                                                globalStatisticsRepository.updateLastActiveSync(); // СИНХРОННЫЙ
+
+                                                                GamificationEvent event = new GamificationEvent.StreakUpdated(newStreak);
+                                                                updateChallengeProgressUseCase.executeSync(gamificationId, event); // СИНХРОННЫЙ
+                                                                logger.info(TAG, "Daily reward " + finalRewardToApply.getId() + " ('" + finalRewardToApply.getName() + "') claimed successfully.");
+                                                                return null;
+                                                            });
+                                                            return null; // для ListenableFuture<Void>
+                                                        }, ioExecutor);
+                                                    },
+                                                    ioExecutor
+                                            );
+                                        },
+                                        ioExecutor
+                                );
+                            },
+                            ioExecutor
+                    );
+                },
+                ioExecutor
+        );
     }
 
     private ListenableFuture<Reward> checkAndGetFinalReward(long gamificationId, Reward baseReward) {
         if (baseReward.getRewardType() == RewardType.BADGE) {
             long badgeId;
-            try {
-                badgeId = Long.parseLong(baseReward.getRewardValue());
-            } catch (NumberFormatException e) {
-                logger.error(TAG, "Invalid badge ID in reward value: " + baseReward.getRewardValue(), e);
-                return Futures.immediateFuture(baseReward); // Возвращаем исходную, но это ошибка конфигурации
-            }
-            ListenableFuture<List<GamificationBadgeCrossRef>> earnedBadgesFuture = badgeRepository.getEarnedBadges(); // Для текущего пользователя
-            return Futures.transformAsync(earnedBadgesFuture, earnedBadges -> {
-                boolean alreadyHasBadge = earnedBadges != null && earnedBadges.stream().anyMatch(ref -> ref.getBadgeId() == badgeId);
+            try { badgeId = Long.parseLong(baseReward.getRewardValue()); }
+            catch (NumberFormatException e) { return Futures.immediateFuture(baseReward); }
+
+            return Futures.transformAsync(badgeRepository.getEarnedBadges(), earnedBadges -> { // getEarnedBadges для текущего пользователя
+                boolean alreadyHasBadge = earnedBadges != null && earnedBadges.stream().anyMatch(ref -> ref.getBadgeId() == badgeId && ref.getGamificationId() == gamificationId);
                 if (alreadyHasBadge) {
-                    logger.info(TAG, "User already has badge " + badgeId + ". Applying fallback reward ID " + FALLBACK_REWARD_ID_FOR_DUPLICATE_BADGE);
                     return rewardRepository.getRewardById(FALLBACK_REWARD_ID_FOR_DUPLICATE_BADGE);
                 }
                 return Futures.immediateFuture(baseReward);
             }, ioExecutor);
         } else if (baseReward.getRewardType() == RewardType.PLANT) {
             PlantType plantTypeToAward;
-            try {
-                plantTypeToAward = PlantType.valueOf(baseReward.getRewardValue().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                logger.error(TAG, "Invalid plant type in reward value: " + baseReward.getRewardValue(), e);
-                return Futures.immediateFuture(baseReward);
-            }
-            // VirtualGardenRepository.getAllPlantsFlow() возвращает LiveData, нам нужен ListenableFuture
-            // Предположим, есть метод virtualGardenRepository.getAllPlantsFuture() для текущего пользователя
-            ListenableFuture<List<VirtualGarden>> userPlantsFuture = virtualGardenRepository.getAllPlantsFuture(); // TODO: Добавить этот метод
-            return Futures.transformAsync(userPlantsFuture, userPlants -> {
-                boolean alreadyHasPlant = userPlants != null && userPlants.stream().anyMatch(p -> p.getPlantType() == plantTypeToAward);
+            try { plantTypeToAward = PlantType.valueOf(baseReward.getRewardValue().toUpperCase());}
+            catch (IllegalArgumentException e) { return Futures.immediateFuture(baseReward); }
+
+            return Futures.transformAsync(virtualGardenRepository.getAllPlantsFuture(), userPlants -> { // getAllPlantsFuture для текущего пользователя
+                boolean alreadyHasPlant = userPlants != null && userPlants.stream().anyMatch(p -> p.getPlantType() == plantTypeToAward && p.getGamificationId() == gamificationId);
                 if (alreadyHasPlant) {
-                    logger.info(TAG, "User already has plant " + plantTypeToAward + ". Applying fallback reward ID " + FALLBACK_REWARD_ID_FOR_DUPLICATE_PLANT);
                     return rewardRepository.getRewardById(FALLBACK_REWARD_ID_FOR_DUPLICATE_PLANT);
                 }
                 return Futures.immediateFuture(baseReward);

@@ -57,5 +57,8 @@ public interface VirtualGardenDao {
     int updateSync(VirtualGarden plant);
 
 
+    @Query("UPDATE virtual_garden SET last_watered = :timestamp WHERE gamification_id = :gamificationId")
+    int updateLastWateredForAllUserPlantsSync(long gamificationId, LocalDateTime timestamp);
+
 
 }

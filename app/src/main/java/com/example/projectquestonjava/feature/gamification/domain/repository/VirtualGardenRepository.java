@@ -22,4 +22,6 @@ public interface VirtualGardenRepository {
     List<VirtualGarden> getAllPlantsSync(long gamificationId);
     VirtualGarden getPlantSync(long plantId); // НОВЫЙ
     void updatePlantSync(VirtualGarden plant); // НОВЫЙ
+    VirtualGarden getLatestPlantSync(long gamificationId);
+    void updateLastWateredForAllUserPlantsSync(long gamificationId, LocalDateTime timestamp);
 }

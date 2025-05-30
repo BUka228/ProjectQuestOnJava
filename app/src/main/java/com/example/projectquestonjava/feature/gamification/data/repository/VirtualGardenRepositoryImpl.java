@@ -164,4 +164,28 @@ public class VirtualGardenRepositoryImpl implements VirtualGardenRepository {
         }
     }
 
+    @Override
+    public VirtualGarden getLatestPlantSync(long gamificationId) {
+        logger.debug(TAG, "SYNC Getting latest plant for gamiId=" + gamificationId);
+        try {
+            // DAO должен иметь getLatestPlantSync(long gamificationId)
+            return virtualGardenDao.getLatestPlantSync(gamificationId);
+        } catch (Exception e) {
+            logger.error(TAG, "Error SYNC getting latest plant for gamiId=" + gamificationId, e);
+            return null;
+        }
+    }
+
+    @Override
+    public void updateLastWateredForAllUserPlantsSync(long gamificationId, LocalDateTime timestamp) {
+        logger.debug(TAG, "SYNC Updating lastWatered for all plants of user " + gamificationId + " to " + timestamp);
+        try {
+            int updatedRows = virtualGardenDao.updateLastWateredForAllUserPlantsSync(gamificationId, timestamp);
+            logger.debug(TAG, "SYNC updated lastWatered affected " + updatedRows + " rows.");
+        } catch (Exception e) {
+            logger.error(TAG, "Error SYNC updating last watered for all plants", e);
+            throw new RuntimeException("Sync updateLastWateredForAllUserPlants failed", e);
+        }
+    }
+
 }
