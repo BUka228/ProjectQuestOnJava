@@ -83,42 +83,66 @@ public class ChallengesFragment extends BaseFragment implements ChallengesAdapte
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        logger.debug("ChallengesFragment", "onCreateView");
+        if (logger != null) logger.debug("ChallengesFragment", "onCreateView - Adding MenuProvider");
+        else android.util.Log.d("ChallengesFragment", "onCreateView - Adding MenuProvider (logger was null)");
+
         requireActivity().addMenuProvider(new MenuProvider() {
             @Override
             public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater) {
+                if (logger != null) logger.debug("ChallengesFragment_MenuProvider", "onCreateMenu called");
+                else android.util.Log.d("ChallengesFragment_MenuProvider", "onCreateMenu called (logger was null)");
+
                 menuInflater.inflate(R.menu.challenges_toolbar_menu, menu);
                 filterSortMenuItem = menu.findItem(R.id.action_filter_sort_challenges);
-                if (filterSortMenuItem != null) {
-                    filterSortMenuItem.setActionView(R.layout.menu_item_filter_indicator);
-                    View actionView = filterSortMenuItem.getActionView();
-                    if (actionView != null) {
-                        filterIndicatorDot = actionView.findViewById(R.id.filter_indicator_dot_view);
-                        actionView.setOnClickListener(v -> {
-                            logger.debug("ChallengesFragment", "Filter/Sort ActionView clicked!");
-                            onOptionsItemSelected(filterSortMenuItem);
-                        });
-                    } else {
-                        logger.warn("ChallengesFragment", "ActionView for filter/sort menu item is null.");
+
+                if (filterSortMenuItem == null) {
+                    if (logger != null) logger.error("ChallengesFragment_MenuProvider", "action_filter_sort_challenges MenuItem NOT FOUND!");
+                    else android.util.Log.e("ChallengesFragment_MenuProvider", "action_filter_sort_challenges MenuItem NOT FOUND!");
+                    return;
+                }
+
+                // Логика для ActionView, если он используется
+                View actionView = filterSortMenuItem.getActionView();
+                if (actionView != null) {
+                    if (logger != null) logger.debug("ChallengesFragment_MenuProvider", "ActionView found for filter/sort menu item.");
+                    filterIndicatorDot = actionView.findViewById(R.id.filter_indicator_dot_view);
+                    actionView.setOnClickListener(v -> {
+                        if (logger != null) logger.info("ChallengesFragment_MenuProvider", "Filter/Sort ActionView CLICKED! Showing BottomSheet...");
+                        else android.util.Log.i("ChallengesFragment_MenuProvider", "Filter/Sort ActionView CLICKED! Showing BottomSheet...");
+                        // Прямой вызов обработчика
+                        showSortFilterBottomSheet();
+                    });
+                    if (filterIndicatorDot == null && logger != null) {
+                        logger.warn("ChallengesFragment_MenuProvider", "filter_indicator_dot_view not found within ActionView.");
                     }
                 } else {
-                    logger.error("ChallengesFragment", "Filter/sort menu item (action_filter_sort_challenges) not found.");
+                    if (logger != null) logger.debug("ChallengesFragment_MenuProvider", "No ActionView for filter/sort menu item. Standard click will be used.");
                 }
-                updateFilterIndicatorDotVisibility();
+                updateFilterIndicatorDotVisibility(); // Обновляем индикатор
             }
 
             @Override
             public boolean onMenuItemSelected(@NonNull MenuItem menuItem) {
+                if (logger != null) logger.debug("ChallengesFragment_MenuProvider", "onMenuItemSelected: " + menuItem.getTitle() + " (ID: " + menuItem.getItemId() + ")");
+                else android.util.Log.d("ChallengesFragment_MenuProvider", "onMenuItemSelected: " + menuItem.getTitle() + " (ID: " + menuItem.getItemId() + ")");
+
                 if (menuItem.getItemId() == R.id.action_filter_sort_challenges) {
-                    logger.info("ChallengesFragment", "Filter/Sort menu item selected. Showing BottomSheet...");
-                    ChallengesSortFilterBottomSheetFragment.newInstance()
-                            .show(getChildFragmentManager(), "ChallengesSortFilterSheet");
+                    // Этот блок может не вызываться, если клик обработан слушателем ActionView
+                    if (logger != null) logger.info("ChallengesFragment_MenuProvider", "Standard onMenuItemSelected for Filter/Sort. Showing BottomSheet...");
+                    else android.util.Log.i("ChallengesFragment_MenuProvider", "Standard onMenuItemSelected for Filter/Sort. Showing BottomSheet...");
+                    showSortFilterBottomSheet();
                     return true;
                 }
                 return false;
             }
         }, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
         return inflater.inflate(R.layout.fragment_challenges, container, false);
+    }
+
+    // Отдельный метод для показа BottomSheet, чтобы избежать дублирования
+    private void showSortFilterBottomSheet() {
+        ChallengesSortFilterBottomSheetFragment.newInstance()
+                .show(getChildFragmentManager(), "ChallengesSortFilterSheet");
     }
 
     @Override
