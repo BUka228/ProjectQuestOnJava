@@ -255,6 +255,37 @@ public class GamificationViewModel extends ViewModel {
         selectedPlantMediator.setValue(allPlants.stream().max(Comparator.comparingLong(VirtualGarden::getId)).orElse(null));
     }
 
+    public void showChallengeDetailsFromFullDetails(ChallengeProgressFullDetails details) {
+        if (details == null || details.getChallengeAndReward() == null || details.getChallengeAndReward().getChallenge() == null || details.getRule() == null || details.getProgress() == null) {
+            logger.warn(TAG, "showChallengeDetailsFromFullDetails: Received incomplete details, cannot show.");
+            _challengeToShowDetails.setValue(null);
+            return;
+        }
+        Challenge challenge = details.getChallengeAndReward().getChallenge();
+        Reward reward = details.getChallengeAndReward().getReward();
+
+        float overallProgress = calculateOverallChallengeProgress(Collections.singletonList(details));
+        boolean isUrgentForCard = (challenge.getStatus() == ChallengeStatus.ACTIVE) &&
+                (challenge.getEndDate().toLocalDate().isEqual(dateTimeUtils.currentLocalDate()) ||
+                        challenge.getEndDate().toLocalDate().isEqual(dateTimeUtils.currentLocalDate().plusDays(1)));
+
+        ChallengeCardInfo cardInfo = new ChallengeCardInfo(
+                challenge.getId(),
+                GamificationUiUtils.getIconResForChallengeType(details.getRule().getType()),
+                challenge.getName(),
+                challenge.getDescription(),
+                overallProgress,
+                formatProgressTextJava(Collections.singletonList(details)), // Используем существующий метод
+                challenge.getStatus() == ChallengeStatus.COMPLETED ? null : formatDeadlineTextJava(challenge.getEndDate(), isUrgentForCard), // Используем существующий метод
+                reward != null ? GamificationUiUtils.getIconResForRewardType(reward.getRewardType()) : null,
+                reward != null ? reward.getName() : null,
+                isUrgentForCard,
+                challenge.getPeriod()
+        );
+        logger.debug(TAG, "showChallengeDetailsFromFullDetails: Setting ChallengeCardInfo for ID: " + cardInfo.id());
+        _challengeToShowDetails.setValue(cardInfo);
+    }
+
     private void updateSurpriseDetailsMediator() {
         SurpriseTask task = currentActiveSurpriseTask;
         Set<Long> hiddenIds = currentHiddenIds;
@@ -384,9 +415,16 @@ public class GamificationViewModel extends ViewModel {
     }
 
     public void showChallengeDetails(ChallengeCardInfo challengeInfo) {
+        if (challengeInfo != null) {
+            logger.debug(TAG, "showChallengeDetails called with Challenge ID: " + challengeInfo.id() + ", Name: " + challengeInfo.name());
+        } else {
+            logger.warn(TAG, "showChallengeDetails called with NULL challengeInfo.");
+        }
         _challengeToShowDetails.setValue(challengeInfo);
     }
+
     public void clearChallengeDetails() {
+        logger.debug(TAG, "clearChallengeDetails called.");
         _challengeToShowDetails.setValue(null);
     }
 

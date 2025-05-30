@@ -20,6 +20,8 @@ import com.example.projectquestonjava.feature.gamification.domain.model.RewardTy
 import com.example.projectquestonjava.feature.gamification.domain.repository.ChallengeRepository;
 import com.example.projectquestonjava.feature.gamification.presentation.utils.GamificationUiUtils;
 import dagger.hilt.android.lifecycle.HiltViewModel;
+import lombok.Getter;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -54,6 +56,7 @@ public class ChallengesViewModel extends ViewModel {
 
     private final ChallengeRepository challengeRepository;
     private final Executor ioExecutor;
+    @Getter
     private final Logger logger;
     private final DateTimeUtils dateTimeUtils; // Добавляем DateTimeUtils
 
@@ -171,6 +174,7 @@ public class ChallengesViewModel extends ViewModel {
             });
         }, 150, TimeUnit.MILLISECONDS); // Небольшой debounce
     }
+
 
 
     private List<ChallengeProgressFullDetails> filterChallenges(
