@@ -23,7 +23,7 @@
             android:orientation="vertical"
             android:paddingBottom="16dp">
 
-            <!-- ProfileHeader -->
+            <!-- ProfileHeader (без изменений) -->
             <LinearLayout
                 android:id="@+id/layout_profile_header_content"
                 android:layout_width="match_parent"
@@ -33,7 +33,7 @@
                 android:paddingTop="24dp"
                 android:paddingBottom="24dp"
                 android:background="?attr/colorSurface">
-
+                <!-- ... Содержимое хедера ... -->
                 <FrameLayout
                     android:layout_width="140dp"
                     android:layout_height="140dp"
@@ -81,14 +81,13 @@
 
                 <Space android:layout_width="match_parent" android:layout_height="20dp"/>
 
-                <!-- LevelExperienceIndicator -->
                 <LinearLayout
                     android:id="@+id/layout_level_xp_indicator_profile"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:gravity="center_horizontal"
-                    android:layout_marginHorizontal="40dp"> <!-- Немного шире -->
+                    android:layout_marginHorizontal="40dp">
                     <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -149,7 +148,7 @@
 
             <Space android:layout_width="match_parent" android:layout_height="24dp"/>
 
-            <!-- GamificationInfoCard -->
+            <!-- GamificationInfoCard (без изменений) -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_gamification_info_profile_main"
                 style="@style/Widget.App.CardView"
@@ -157,6 +156,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="16dp"
                 app:cardBackgroundColor="?attr/colorSurfaceContainer">
+                <!-- ... Содержимое GamificationInfoCard ... -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -169,7 +169,7 @@
                         android:orientation="horizontal"
                         android:baselineAligned="false">
                         <include layout="@layout/view_info_column_profile" android:id="@+id/info_column_coins_profile" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"/>
-                        <View android:layout_width="1dp" android:layout_height="match_parent" android:background="?attr/colorOutlineVariant" android:layout_marginHorizontal="8dp"/>
+                        <View android:layout_width="1dp" android:layout_height="match_parent" android:background="?attr/colorOutlineVariant" android:layout_marginHorizontal="4dp"/>
                         <include layout="@layout/view_info_column_profile" android:id="@+id/info_column_streak_profile" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"/>
                     </LinearLayout>
                     <com.google.android.material.divider.MaterialDivider
@@ -177,7 +177,6 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
                         android:layout_marginBottom="12dp"/>
-                    <!-- RecentBadgesRow -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -243,20 +242,27 @@
                     android:layout_height="wrap_content"
                     android:text="Быстрый доступ"
                     style="@style/TextAppearance.Material3.TitleLarge"
-                    android:layout_marginBottom="8dp"/>
-                <include layout="@layout/item_quick_access" android:id="@+id/quick_access_garden_profile"/>
-                <include layout="@layout/item_quick_access" android:id="@+id/quick_access_statistics_profile"/>
-                <include layout="@layout/item_quick_access" android:id="@+id/quick_access_settings_profile" />
+                    android:layout_marginBottom="12dp"/> <!-- Увеличил отступ снизу -->
+
+                <include layout="@layout/item_quick_access" android:id="@+id/quick_access_garden_profile"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"/> <!-- Отступ между элементами -->
+                <include layout="@layout/item_quick_access" android:id="@+id/quick_access_statistics_profile"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"/> <!-- Отступ между элементами -->
+                <include layout="@layout/item_quick_access" android:id="@+id/quick_access_settings_profile"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"/>
             </LinearLayout>
 
             <Space android:layout_width="match_parent" android:layout_height="24dp"/>
 
-            <!-- ActivityFeedSection -->
+            <!-- ActivityFeedSection (без изменений) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:paddingHorizontal="16dp">
+                <!-- ... Содержимое ActivityFeed ... -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -274,7 +280,6 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
                         android:paddingVertical="8dp">
-                        <!-- HistoryItem-ы будут добавлены через RecyclerView -->
                         <androidx.recyclerview.widget.RecyclerView
                             android:id="@+id/recyclerView_activity_feed"
                             android:layout_width="match_parent"
@@ -299,7 +304,7 @@
 
             <Space android:layout_width="match_parent" android:layout_height="24dp"/>
 
-            <!-- Кнопка Выхода -->
+            <!-- Кнопка Выхода (без изменений) -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_logout_profile"
                 style="@style/Widget.App.Button.Outlined"

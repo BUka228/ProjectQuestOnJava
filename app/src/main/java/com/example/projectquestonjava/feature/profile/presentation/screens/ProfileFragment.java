@@ -43,8 +43,9 @@ import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.snackbar.Snackbar;
 import java.util.Collections;
 import java.util.Locale;
-import javax.inject.Inject; // Для Coil ImageLoader
-import coil.Coil; // Для Coil
+import java.util.Objects;
+import javax.inject.Inject;
+import coil.Coil;
 
 import dagger.hilt.android.AndroidEntryPoint;
 
@@ -53,7 +54,6 @@ public class ProfileFragment extends BaseFragment implements RecentBadgesAdapter
 
     private ProfileViewModel viewModel;
 
-    // View элементы
     private ImageView imageViewAvatar;
     private TextView textViewUsername, textViewEmail, textViewLevelValue, textViewXpCurrentMax, textViewXpToNext;
     private ProgressBar progressBarXp, progressBarLoading;
@@ -61,7 +61,6 @@ public class ProfileFragment extends BaseFragment implements RecentBadgesAdapter
     private TextView textViewCoinsValue, textViewCoinsLabel;
     private TextView textViewStreakValue, textViewStreakDays, textViewStreakSubValue;
     private ImageView imageViewCoinsIcon, imageViewStreakIcon;
-    // Для info_column_profile
     private LinearLayout infoColumnCoins, infoColumnStreak;
 
 
@@ -74,13 +73,14 @@ public class ProfileFragment extends BaseFragment implements RecentBadgesAdapter
     private ActivityFeedAdapter activityFeedAdapter;
     private TextView textViewNoActivity;
 
-    private MaterialCardView quickAccessGarden, quickAccessStatistics, quickAccessSettings;
+    private MaterialCardView quickAccessGardenCard, quickAccessStatisticsCard, quickAccessSettingsCard;
+    private TextView gardenTitle, statisticsTitle, settingsTitle;
+    private ImageView gardenIcon, statisticsIcon, settingsIcon;
+
     private Button buttonLogout;
 
-    private boolean showLogoutConfirmDialog = false; // Локальное состояние для диалога
-
     @Inject
-    ImageLoader imageLoader; // Внедряем Coil ImageLoader
+    ImageLoader imageLoader;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -102,11 +102,9 @@ public class ProfileFragment extends BaseFragment implements RecentBadgesAdapter
                     NavHostFragment.findNavController(ProfileFragment.this).navigate(R.id.action_navigation_profile_to_settingsFragment);
                     return true;
                 } else if (itemId == R.id.action_logout_profile) {
-                    showLogoutConfirmDialog = true;
-                    // Показываем наш LogoutConfirmationDialog
                     new LogoutConfirmationDialog(() -> {
-                        viewModel.logout();
-                    }).show(getChildFragmentManager(), "LogoutConfirmDialog");
+                        if (viewModel != null) viewModel.logout();
+                    }).show(getChildFragmentManager(), "LogoutConfirmDialogTag_Profile"); // Добавил уникальный тег
                     return true;
                 }
                 return false;
@@ -136,20 +134,16 @@ public class ProfileFragment extends BaseFragment implements RecentBadgesAdapter
         textViewXpToNext = view.findViewById(R.id.textView_profile_xp_to_next_main);
         progressBarLoading = view.findViewById(R.id.progressBar_profile_main_loading);
 
-        // Для GamificationInfoCard -> InfoColumns
         infoColumnCoins = view.findViewById(R.id.info_column_coins_profile);
-        imageViewCoinsIcon = infoColumnCoins.findViewById(R.id.imageView_info_icon); // imageView_info_icon_gamification
-        textViewCoinsValue = infoColumnCoins.findViewById(R.id.textView_info_value); // textView_info_value_gamification
-        // subValue для монет не используется, метка устанавливается ниже
-        textViewCoinsLabel = infoColumnCoins.findViewById(R.id.textView_info_label); // textView_info_label_gamification
-
+        imageViewCoinsIcon = infoColumnCoins.findViewById(R.id.imageView_info_icon);
+        textViewCoinsValue = infoColumnCoins.findViewById(R.id.textView_info_value);
+        textViewCoinsLabel = infoColumnCoins.findViewById(R.id.textView_info_label);
 
         infoColumnStreak = view.findViewById(R.id.info_column_streak_profile);
         imageViewStreakIcon = infoColumnStreak.findViewById(R.id.imageView_info_icon);
         textViewStreakValue = infoColumnStreak.findViewById(R.id.textView_info_value);
-        textViewStreakSubValue = infoColumnStreak.findViewById(R.id.textView_info_subvalue); // textView_info_subvalue_gamification
-        textViewStreakDays = infoColumnStreak.findViewById(R.id.textView_info_label); // Имя изменено для ясности
-
+        textViewStreakSubValue = infoColumnStreak.findViewById(R.id.textView_info_subvalue);
+        textViewStreakDays = infoColumnStreak.findViewById(R.id.textView_info_label);
 
         recyclerViewRecentBadges = view.findViewById(R.id.recyclerView_recent_badges_profile);
         textViewNoRecentBadges = view.findViewById(R.id.textView_no_recent_badges_profile);
@@ -158,10 +152,30 @@ public class ProfileFragment extends BaseFragment implements RecentBadgesAdapter
         recyclerViewActivityFeed = view.findViewById(R.id.recyclerView_activity_feed);
         textViewNoActivity = view.findViewById(R.id.textView_no_activity_profile);
 
-        quickAccessGarden = view.findViewById(R.id.quick_access_garden_profile);
-        quickAccessStatistics = view.findViewById(R.id.quick_access_statistics_profile);
-        quickAccessSettings = view.findViewById(R.id.quick_access_settings_profile);
+        quickAccessGardenCard = view.findViewById(R.id.quick_access_garden_profile);
+        quickAccessStatisticsCard = view.findViewById(R.id.quick_access_statistics_profile);
+        quickAccessSettingsCard = view.findViewById(R.id.quick_access_settings_profile);
         buttonLogout = view.findViewById(R.id.button_logout_profile);
+
+        // Настраиваем контент для каждого элемента быстрого доступа
+        if (quickAccessGardenCard != null) {
+            gardenIcon = quickAccessGardenCard.findViewById(R.id.imageView_quick_access_icon);
+            gardenTitle = quickAccessGardenCard.findViewById(R.id.textView_quick_access_title);
+            if(gardenIcon != null) gardenIcon.setImageResource(R.drawable.grass);
+            if(gardenTitle != null) gardenTitle.setText("Мой Сад");
+        }
+        if (quickAccessStatisticsCard != null) {
+            statisticsIcon = quickAccessStatisticsCard.findViewById(R.id.imageView_quick_access_icon);
+            statisticsTitle = quickAccessStatisticsCard.findViewById(R.id.textView_quick_access_title);
+            if(statisticsIcon != null) statisticsIcon.setImageResource(R.drawable.trending_up);
+            if(statisticsTitle != null) statisticsTitle.setText("Статистика");
+        }
+        if (quickAccessSettingsCard != null) {
+            settingsIcon = quickAccessSettingsCard.findViewById(R.id.imageView_quick_access_icon);
+            settingsTitle = quickAccessSettingsCard.findViewById(R.id.textView_quick_access_title);
+            if(settingsIcon != null) settingsIcon.setImageResource(R.drawable.settings);
+            if(settingsTitle != null) settingsTitle.setText("Настройки");
+        }
     }
 
     private void setupRecyclerViews() {
@@ -172,28 +186,34 @@ public class ProfileFragment extends BaseFragment implements RecentBadgesAdapter
         activityFeedAdapter = new ActivityFeedAdapter();
         recyclerViewActivityFeed.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerViewActivityFeed.setAdapter(activityFeedAdapter);
-        recyclerViewActivityFeed.setNestedScrollingEnabled(false); // Отключаем вложенную прокрутку, т.к. есть NestedScrollView
+        recyclerViewActivityFeed.setNestedScrollingEnabled(false);
     }
 
     private void setupClickListeners() {
-        FrameLayout avatarClickableArea = getView().findViewById(R.id.frame_avatar_clickable_profile);
-        avatarClickableArea.setOnClickListener(v ->
-                NavHostFragment.findNavController(this).navigate(R.id.action_navigation_profile_to_profileEditFragment)
-        );
+        View avatarClickableArea = getView().findViewById(R.id.frame_avatar_clickable_profile);
+        if (avatarClickableArea != null) {
+            avatarClickableArea.setOnClickListener(v ->
+                    NavHostFragment.findNavController(this).navigate(R.id.action_navigation_profile_to_profileEditFragment)
+            );
+        }
 
-        quickAccessGarden.setOnClickListener(v -> NavHostFragment.findNavController(this).navigate(R.id.action_navigation_profile_to_gardenFragment));
-        quickAccessStatistics.setOnClickListener(v -> NavHostFragment.findNavController(this).navigate(R.id.action_navigation_profile_to_statisticsFragment));
-        quickAccessSettings.setOnClickListener(v -> NavHostFragment.findNavController(this).navigate(R.id.action_navigation_profile_to_settingsFragment));
+        if (quickAccessGardenCard != null) {
+            quickAccessGardenCard.setOnClickListener(v -> NavHostFragment.findNavController(this).navigate(R.id.action_navigation_profile_to_gardenFragment));
+        }
+        if (quickAccessStatisticsCard != null) {
+            quickAccessStatisticsCard.setOnClickListener(v -> NavHostFragment.findNavController(this).navigate(R.id.action_navigation_profile_to_statisticsFragment));
+        }
+        if (quickAccessSettingsCard != null) {
+            quickAccessSettingsCard.setOnClickListener(v -> NavHostFragment.findNavController(this).navigate(R.id.action_navigation_profile_to_settingsFragment));
+        }
 
         buttonLogout.setOnClickListener(v -> {
             new LogoutConfirmationDialog(() -> {
-                viewModel.logout();
-            }).show(getChildFragmentManager(), "LogoutConfirmationDialogTag");
+                if (viewModel != null) viewModel.logout();
+            }).show(getChildFragmentManager(), "LogoutConfirmationDialogTag_Profile");
         });
 
         buttonAllBadges.setOnClickListener(v -> {
-            // TODO: Навигация на экран всех значков (пока не реализован)
-            // NavHostFragment.findNavController(this).navigate(R.id.action_profile_to_all_badges);
             Snackbar.make(requireView(), "Экран всех значков в разработке", Snackbar.LENGTH_SHORT).show();
         });
     }
@@ -202,33 +222,32 @@ public class ProfileFragment extends BaseFragment implements RecentBadgesAdapter
         viewModel.uiStateLiveData.observe(getViewLifecycleOwner(), uiState -> {
             if (uiState == null) return;
 
-            progressBarLoading.setVisibility(uiState.isLoading ? View.VISIBLE : View.GONE);
+            progressBarLoading.setVisibility(uiState.isLoading() ? View.VISIBLE : View.GONE);
 
             if (uiState.getError() != null) {
                 Snackbar.make(requireView(), uiState.getError(), Snackbar.LENGTH_LONG).show();
                 viewModel.clearError();
             }
 
-            // User Info
             UserAuth user = uiState.getUser();
             if (user != null) {
                 textViewUsername.setText(user.getUsername());
                 textViewEmail.setText(user.getEmail());
-                ImageRequest request = new ImageRequest.Builder(requireContext())
-                        .data(user.getAvatarUrl())
+                ImageRequest.Builder requestBuilder = new ImageRequest.Builder(requireContext())
                         .placeholder(R.drawable.person)
-                        .error(R.drawable.person)
-                        .transformations(new CircleCropTransformation()) // Уже не нужно, если ShapeableImageView
-                        .target(imageViewAvatar)
-                        .build();
-                Coil.imageLoader(requireContext()).enqueue(request);
+                        .error(R.drawable.person);
+                if (user.getAvatarUrl() != null && !user.getAvatarUrl().isEmpty()) {
+                    requestBuilder.data(user.getAvatarUrl());
+                } else {
+                    requestBuilder.data(R.drawable.person); // Явный drawable, если URL пуст
+                }
+                imageLoader.enqueue(requestBuilder.target(imageViewAvatar).build());
             } else {
                 textViewUsername.setText("Пользователь");
                 textViewEmail.setText("");
                 imageViewAvatar.setImageResource(R.drawable.person);
             }
 
-            // Gamification Info
             Gamification gamification = uiState.getGamification();
             if (gamification != null) {
                 textViewLevelValue.setText(String.valueOf(gamification.getLevel()));
@@ -242,20 +261,18 @@ public class ProfileFragment extends BaseFragment implements RecentBadgesAdapter
                     progressBarXp.setProgress(0);
                     textViewXpCurrentMax.setText(String.format(Locale.getDefault(), "%d / %d XP", gamification.getExperience(), 0));
                     textViewXpToNext.setText("");
+                    textViewXpToNext.setVisibility(View.VISIBLE); // Показываем пустую строку, чтобы не было скачка
                 }
-                // InfoColumn Coins
                 imageViewCoinsIcon.setImageResource(R.drawable.paid);
-                ImageViewCompat.setImageTintList(imageViewCoinsIcon, ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.coins_color))); // Определить R.color.coins_color
+                ImageViewCompat.setImageTintList(imageViewCoinsIcon, ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.coins_color)));
                 textViewCoinsValue.setText(String.valueOf(gamification.getCoins()));
                 textViewCoinsLabel.setText("Монеты");
                 infoColumnCoins.findViewById(R.id.textView_info_subvalue).setVisibility(View.GONE);
 
-
-                // InfoColumn Streak
                 imageViewStreakIcon.setImageResource(R.drawable.local_fire_department);
-                ImageViewCompat.setImageTintList(imageViewStreakIcon, ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.streak_color))); // Определить R.color.streak_color
+                ImageViewCompat.setImageTintList(imageViewStreakIcon, ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.streak_color)));
                 textViewStreakValue.setText(String.valueOf(gamification.getCurrentStreak()));
-                textViewStreakDays.setText(gamification.getCurrentStreak() == 1 ? "день" : (gamification.getCurrentStreak() >=2 && gamification.getCurrentStreak() <=4 ? "дня" : "дней")); // Правильные окончания
+                textViewStreakDays.setText(viewModel.getDaysString(gamification.getCurrentStreak())); // Используем метод из ViewModel
                 TextView subValueStreak = infoColumnStreak.findViewById(R.id.textView_info_subvalue);
                 if (gamification.getMaxStreak() > 0) {
                     subValueStreak.setText(String.format(Locale.getDefault(), "(макс. %d)", gamification.getMaxStreak()));
@@ -269,7 +286,6 @@ public class ProfileFragment extends BaseFragment implements RecentBadgesAdapter
                 progressBarXp.setProgress(0);
                 textViewXpCurrentMax.setText("- / - XP");
                 textViewXpToNext.setText("");
-                // Сброс InfoColumns
                 textViewCoinsValue.setText("-");
                 textViewStreakValue.setText("-");
                 textViewStreakDays.setText("дней");
@@ -277,7 +293,6 @@ public class ProfileFragment extends BaseFragment implements RecentBadgesAdapter
                 infoColumnStreak.findViewById(R.id.textView_info_subvalue).setVisibility(View.GONE);
             }
 
-            // Recent Badges
             if (uiState.getRecentBadges().isEmpty() && uiState.getEarnedBadgesCount() == 0) {
                 textViewNoRecentBadges.setVisibility(View.VISIBLE);
                 recyclerViewRecentBadges.setVisibility(View.GONE);
@@ -294,7 +309,6 @@ public class ProfileFragment extends BaseFragment implements RecentBadgesAdapter
                 }
             }
 
-            // Activity Feed
             if (uiState.getRecentHistory().isEmpty()) {
                 textViewNoActivity.setVisibility(View.VISIBLE);
                 recyclerViewActivityFeed.setVisibility(View.GONE);
@@ -323,6 +337,48 @@ public class ProfileFragment extends BaseFragment implements RecentBadgesAdapter
 
     @Override
     public void onProfileBadgeClicked(Badge badge) {
-        BadgeDetailsDialog.newInstance(badge).show(getChildFragmentManager(), "ProfileBadgeDetails");
+        BadgeDetailsDialog.newInstance(badge).show(getChildFragmentManager(), "ProfileBadgeDetailsDialogTag");
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // Очистка ссылок на View, чтобы избежать утечек памяти
+        imageViewAvatar = null;
+        textViewUsername = null;
+        textViewEmail = null;
+        textViewLevelValue = null;
+        progressBarXp = null;
+        textViewXpCurrentMax = null;
+        textViewXpToNext = null;
+        progressBarLoading = null;
+        textViewCoinsValue = null;
+        textViewCoinsLabel = null;
+        textViewStreakValue = null;
+        textViewStreakDays = null;
+        textViewStreakSubValue = null;
+        imageViewCoinsIcon = null;
+        imageViewStreakIcon = null;
+        infoColumnCoins = null;
+        infoColumnStreak = null;
+        if (recyclerViewRecentBadges != null) {
+            recyclerViewRecentBadges.setAdapter(null);
+        }
+        recyclerViewRecentBadges = null;
+        recentBadgesAdapter = null;
+        textViewNoRecentBadges = null;
+        buttonAllBadges = null;
+        if (recyclerViewActivityFeed != null) {
+            recyclerViewActivityFeed.setAdapter(null);
+        }
+        recyclerViewActivityFeed = null;
+        activityFeedAdapter = null;
+        textViewNoActivity = null;
+        quickAccessGardenCard = null;
+        quickAccessStatisticsCard = null;
+        quickAccessSettingsCard = null;
+        gardenTitle = null; statisticsTitle = null; settingsTitle = null;
+        gardenIcon = null; statisticsIcon = null; settingsIcon = null;
+        buttonLogout = null;
     }
 }
