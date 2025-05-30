@@ -84,11 +84,12 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="bottom|end"
                 android:layout_margin="8dp"
-                app:fabSize="mini"
-                app:srcCompat="@drawable/water_drop"
-                app:backgroundTint="?attr/colorPrimaryContainer"
-                app:tint="?attr/colorOnPrimaryContainer"
-                app:elevation="4dp" />
+                app:fabCustomSize="40dp"
+            app:maxImageSize="20dp"
+            app:srcCompat="@drawable/water_drop"
+            app:backgroundTint="?attr/colorPrimaryContainer"
+            app:tint="?attr/colorOnPrimaryContainer"
+            app:elevation="4dp" />
         </FrameLayout>
     </com.google.android.material.card.MaterialCardView>
 </LinearLayout>

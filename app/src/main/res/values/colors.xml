@@ -21,6 +21,10 @@
     <color name="errorContainerLight">#FFFFCDD2</color>
     <color name="onErrorContainerLight">#FFD32F2F</color>
 
+    <color name="successContainerLight">#D1E7DD</color> <!-- Светло-зеленый контейнер (аналог M3 Success Container) -->
+    <color name="onSuccessContainerLight">#0F5132</color>
+    <color name="successContainerDark">#0F5132</color> <!-- Темно-зеленый контейнер -->
+    <color name="onSuccessContainerDark">#D1E7DD</color>
     <color name="backgroundLight">#FFF4F4F4</color>         <!-- Светлый фон -->
     <color name="onBackgroundLight">#FF212121</color>
     <color name="surfaceLight">#FFFFFFFF</color>            <!-- Белые поверхности -->

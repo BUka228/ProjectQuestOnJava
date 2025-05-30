@@ -51,9 +51,17 @@ public class DatabaseInitializer {
     private static final int BADGE_DRAWABLE_CHALLENGE_LEVEL_100 = R.drawable.badge;
 
 
+    private static final long REWARD_ID_DAY_1 = 1L;
+    private static final long REWARD_ID_DAY_2 = 2L;
+    private static final long REWARD_ID_DAY_3 = 3L;
+    private static final long REWARD_ID_DAY_4 = 4L;
+    private static final long REWARD_ID_DAY_5 = 5L;
+    private static final long REWARD_ID_DAY_6 = 6L;
+    private static final long REWARD_ID_DAY_7_BADGE = 7L; // Основная награда за 7-й день - значок
+    private static final long REWARD_ID_DAY_7_FALLBACK_COINS = 8L;
     // --- ID Наград ---
     // Ежедневные
-    private static final long REWARD_ID_DAY_1 = 1L;
+
     private static final long REWARD_ID_DAY_14_BADGE = 14L;
     private static final long REWARD_ID_DAY_30_BADGE = 30L;
     private static final long REWARD_ID_DAY_14_FALLBACK = 100L;
@@ -128,6 +136,13 @@ public class DatabaseInitializer {
         // Ежедневные
         db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_DAY_1 + ", 'Стартовый капитал', 'Добро пожаловать! Небольшой бонус для начала.', '" + RewardType.COINS.name() + "', 'BASE*10*1.08');");
         // ...
+        db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_DAY_2 + ", 'Немного опыта', 'За второй день.', '" + RewardType.EXPERIENCE.name() + "', '15');");
+        db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_DAY_3 + ", 'Монетный дождь', 'Приятный бонус.', '" + RewardType.COINS.name() + "', '20');");
+        db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_DAY_4 + ", 'Опытный искатель', 'Еще немного опыта.', '" + RewardType.EXPERIENCE.name() + "', '25');");
+        db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_DAY_5 + ", 'Полпути к неделе', 'Почти у цели!', '" + RewardType.COINS.name() + "', '30');");
+        db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_DAY_6 + ", 'Предвкушение', 'Завтра большой день!', '" + RewardType.EXPERIENCE.name() + "', '35');");
+        db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_DAY_7_BADGE + ", 'Значок ''Неделя упорства''', 'Целая неделя ежедневных наград!', '" + RewardType.BADGE.name() + "', '" + BADGE_ID_STREAK_7 + "');");
+        db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_DAY_7_FALLBACK_COINS + ", 'Награда за неделю', 'Значок недели уже есть! Вот монеты.', '" + RewardType.COINS.name() + "', '100');");
         db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_DAY_14_BADGE + ", 'Значок ''Двухнедельная стойкость''', 'Две недели подряд! Твоя дисциплина впечатляет.', '" + RewardType.BADGE.name() + "', '" + BADGE_ID_STREAK_14 + "');");
         db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_DAY_30_BADGE + ", 'Значок ''Месяц дисциплины''', 'Целый месяц ежедневных успехов!', '" + RewardType.BADGE.name() + "', '" + BADGE_ID_STREAK_30 + "');");
         db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_DAY_14_FALLBACK + ", 'Бонус стойкости', 'У тебя уже есть значок за 2 недели! Вот дополнительный бонус монетами.', '" + RewardType.COINS.name() + "', 'BASE*150*1.1');");
@@ -165,9 +180,13 @@ public class DatabaseInitializer {
 
     private void insertDefaultStreakRewardDefinitions(SupportSQLiteDatabase db) {
         db.execSQL("INSERT OR IGNORE INTO streak_reward_definition (streak_day, reward_id) VALUES (1, " + REWARD_ID_DAY_1 + ");");
-        db.execSQL("INSERT OR IGNORE INTO streak_reward_definition (streak_day, reward_id) VALUES (14, " + REWARD_ID_DAY_14_BADGE + ");");
-        db.execSQL("INSERT OR IGNORE INTO streak_reward_definition (streak_day, reward_id) VALUES (30, " + REWARD_ID_DAY_30_BADGE + ");");
-        // Добавьте другие определения стриков, если они есть (например, за каждый день до 30)
+        db.execSQL("INSERT OR IGNORE INTO streak_reward_definition (streak_day, reward_id) VALUES (2, " + REWARD_ID_DAY_2 + ");");
+        db.execSQL("INSERT OR IGNORE INTO streak_reward_definition (streak_day, reward_id) VALUES (3, " + REWARD_ID_DAY_3 + ");");
+        db.execSQL("INSERT OR IGNORE INTO streak_reward_definition (streak_day, reward_id) VALUES (4, " + REWARD_ID_DAY_4 + ");");
+        db.execSQL("INSERT OR IGNORE INTO streak_reward_definition (streak_day, reward_id) VALUES (5, " + REWARD_ID_DAY_5 + ");");
+        db.execSQL("INSERT OR IGNORE INTO streak_reward_definition (streak_day, reward_id) VALUES (6, " + REWARD_ID_DAY_6 + ");");
+        db.execSQL("INSERT OR IGNORE INTO streak_reward_definition (streak_day, reward_id) VALUES (7, " + REWARD_ID_DAY_7_BADGE + ");");
+        // Для 14 и 30 дней, если они остались, нужны соответствующие ID наград
     }
 
     private void insertDefaultChallengesAndRules(SupportSQLiteDatabase db) {

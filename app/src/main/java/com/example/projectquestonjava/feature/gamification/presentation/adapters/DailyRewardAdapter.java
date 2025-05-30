@@ -7,6 +7,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log; // Используем android.util.Log для простоты в адаптере
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,21 +28,24 @@ import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.projectquestonjava.R;
 import com.example.projectquestonjava.feature.gamification.data.model.Reward;
+import com.example.projectquestonjava.feature.gamification.presentation.utils.GamificationUiUtils;
 
 import java.util.Locale;
 import java.util.Objects;
 
 public class DailyRewardAdapter extends ListAdapter<Reward, DailyRewardAdapter.RewardViewHolder> {
 
+    private static final String ADAPTER_TAG = "DailyRewardAdapter"; // Тег для логов
+
     private final OnDailyRewardClickListener listener;
     private int currentStreak;
     private boolean canClaimToday;
-    private int todayStreakDay; // Фактический день стрика для "сегодня"
-    private int currentWeekStartStreak; // Начальный день стрика для текущей отображаемой недели/набора
+    private int todayStreakDay;
+    private int currentWeekStartStreak;
 
     public interface OnDailyRewardClickListener {
-        void onDailyRewardClick(Reward reward, int rewardStreakDay, boolean isToday);
-        void onClaimTodayRewardClick(); // Для кнопки "Получить"
+        void onDailyRewardClick(Reward reward, int rewardStreakDay, boolean isTodayAndCanClaim); // Изменил параметр
+        void onClaimTodayRewardClick();
     }
 
     public DailyRewardAdapter(@NonNull OnDailyRewardClickListener listener) {
@@ -50,6 +54,7 @@ public class DailyRewardAdapter extends ListAdapter<Reward, DailyRewardAdapter.R
     }
 
     public void updateDailyState(int currentStreak, boolean canClaimToday, int todayStreakDay, int displayWeekStartStreak) {
+        Log.d(ADAPTER_TAG, "updateDailyState: currentStreak=" + currentStreak + ", canClaimToday=" + canClaimToday + ", todayStreakDay=" + todayStreakDay + ", displayWeekStartStreak=" + displayWeekStartStreak);
         boolean changed = this.currentStreak != currentStreak ||
                 this.canClaimToday != canClaimToday ||
                 this.todayStreakDay != todayStreakDay ||
@@ -59,10 +64,9 @@ public class DailyRewardAdapter extends ListAdapter<Reward, DailyRewardAdapter.R
         this.todayStreakDay = todayStreakDay;
         this.currentWeekStartStreak = displayWeekStartStreak;
         if (changed) {
-            notifyDataSetChanged(); // Простое обновление, т.к. меняется состояние всех элементов
+            notifyDataSetChanged();
         }
     }
-
 
     @NonNull
     @Override
@@ -75,13 +79,12 @@ public class DailyRewardAdapter extends ListAdapter<Reward, DailyRewardAdapter.R
     @Override
     public void onBindViewHolder(@NonNull RewardViewHolder holder, int position) {
         Reward reward = getItem(position);
-        // Рассчитываем фактический день стрика для этого элемента награды
         int rewardActualStreakDay = currentWeekStartStreak + position;
+        Log.d(ADAPTER_TAG, "onBindViewHolder: position=" + position + ", rewardActualStreakDay=" + rewardActualStreakDay + ", rewardName=" + (reward != null ? reward.getName() : "null"));
         holder.bind(reward, rewardActualStreakDay, currentStreak, canClaimToday, todayStreakDay, listener);
     }
 
     static class RewardViewHolder extends RecyclerView.ViewHolder {
-        LinearLayout itemLayout;
         FrameLayout iconBackground;
         ImageView iconView;
         ImageView checkView;
@@ -89,7 +92,6 @@ public class DailyRewardAdapter extends ListAdapter<Reward, DailyRewardAdapter.R
 
         RewardViewHolder(@NonNull View itemView) {
             super(itemView);
-            itemLayout = (LinearLayout) itemView; // Корневой элемент
             iconBackground = itemView.findViewById(R.id.frameLayout_reward_icon_background);
             iconView = itemView.findViewById(R.id.imageView_reward_icon);
             checkView = itemView.findViewById(R.id.imageView_reward_check);
@@ -100,70 +102,93 @@ public class DailyRewardAdapter extends ListAdapter<Reward, DailyRewardAdapter.R
                   boolean canClaimToday, int todayStreakDay, final OnDailyRewardClickListener listener) {
             Context context = itemView.getContext();
 
-            boolean isThisToday = rewardActualStreakDay == todayStreakDay;
-            boolean isClaimed = rewardActualStreakDay <= currentStreak && (!isThisToday || (isThisToday && !canClaimToday));
-            // Элемент "сегодняшний", если его день стрика совпадает с todayStreakDay И можно забрать награду
-            boolean isTodayAndClaimable = isThisToday && canClaimToday;
+            final boolean isThisTodayAndCanClaim = rewardActualStreakDay == todayStreakDay && canClaimToday;
+            boolean isClaimed = rewardActualStreakDay <= currentStreak && !(isThisTodayAndCanClaim);
+            boolean isFutureOrSkipped = rewardActualStreakDay > todayStreakDay || (rewardActualStreakDay < todayStreakDay && !isClaimed);
+
+            Log.d(ADAPTER_TAG, "bind: rewardDay=" + rewardActualStreakDay +
+                    ", todayStreakDay=" + todayStreakDay +
+                    ", canClaimToday=" + canClaimToday +
+                    ", currentStreak=" + currentStreak +
+                    " -> isThisTodayAndCanClaim=" + isThisTodayAndCanClaim +
+                    ", isClaimed=" + isClaimed +
+                    ", isFutureOrSkipped=" + isFutureOrSkipped +
+                    ", rewardName=" + (reward != null ? reward.getName() : "null"));
 
 
             dayTextView.setText(String.format(Locale.getDefault(), "День %d", rewardActualStreakDay));
 
-            // Иконка награды
-            Drawable rewardIconDrawable = com.example.projectquestonjava.feature.gamification.presentation.utils.GamificationUiUtils.getIconForRewardTypeDrawable(reward.getRewardType(), context);
+            if (reward == null) { // Защита от null reward
+                Log.e(ADAPTER_TAG, "bind: Reward object is null for rewardActualStreakDay=" + rewardActualStreakDay);
+                // Можно установить какие-то дефолтные значения или скрыть элемент
+                itemView.setVisibility(View.GONE); // Например, скрыть
+                return;
+            }
+            itemView.setVisibility(View.VISIBLE);
+
+
+            Drawable rewardIconDrawable = GamificationUiUtils.getIconForRewardTypeDrawable(reward.getRewardType(), context);
             if (rewardIconDrawable != null) {
                 iconView.setImageDrawable(rewardIconDrawable);
             } else {
-                iconView.setImageResource(R.drawable.help); // Default
+                iconView.setImageResource(R.drawable.help);
             }
 
-            // Стилизация
-            int backgroundColor;
-            int iconColor;
-            int textColor;
+            int backgroundColorId;
+            int iconColorId;
+            int textColorId;
+            float alphaValue = 1.0f;
             float scale = 1.0f;
             boolean showCheck = false;
 
             if (isClaimed) {
-                backgroundColor = ContextCompat.getColor(context, R.color.secondaryLight); // Зеленый
-                Drawable bg = ContextCompat.getDrawable(context, R.drawable.rounded_corner_background_12dp_with_alpha);
-                if (bg instanceof GradientDrawable) ((GradientDrawable)bg.mutate()).setColor(backgroundColor); else iconBackground.setBackgroundColor(backgroundColor);
-                iconBackground.setAlpha(0.15f);
-
-                iconColor = ContextCompat.getColor(context, R.color.secondaryLight);
-                textColor = ContextCompat.getColor(context, R.color.secondaryLight);
+                backgroundColorId = R.color.successContainerDark;
+                iconColorId = R.color.onSuccessContainerDark;
+                textColorId = R.color.onSuccessContainerDark;
+                alphaValue = 0.7f;
                 showCheck = true;
-            } else if (isTodayAndClaimable) {
-                backgroundColor = ContextCompat.getColor(context, R.color.primaryLight);
-                iconBackground.setBackgroundColor(backgroundColor);
-                iconBackground.setAlpha(1f);
-
-                iconColor = ContextCompat.getColor(context, R.color.onPrimaryLight);
-                textColor = ContextCompat.getColor(context, R.color.onPrimaryContainerLight); // Для текста "День N"
-                scale = 1.05f; // Небольшое увеличение для "сегодня"
-                // Анимация пульсации для isTodayAndClaimable
+                itemView.clearAnimation();
+            } else if (isThisTodayAndCanClaim) {
+                backgroundColorId = R.color.primaryDark;
+                iconColorId = R.color.onPrimaryDark;
+                textColorId = R.color.onPrimaryDark;
+                scale = 1.05f;
                 applyPulseAnimation(itemView);
-            } else { // Будущие или пропущенные (если стрик сброшен)
-                backgroundColor = ContextCompat.getColor(context, R.color.surfaceVariantLight);
-                iconBackground.setBackgroundColor(backgroundColor);
-                iconBackground.setAlpha(0.7f);
-
-                iconColor = ContextCompat.getColor(context, R.color.onSurfaceVariantDark);
-                textColor = ContextCompat.getColor(context, R.color.onSurfaceVariantDark);
-                itemView.clearAnimation(); // Убираем анимацию, если была
+            } else {
+                backgroundColorId = R.color.surfaceVariantDark;
+                iconColorId = R.color.onSurfaceVariantDark;
+                textColorId = R.color.onSurfaceVariantDark;
+                alphaValue = isFutureOrSkipped ? 0.6f : 1.0f;
+                itemView.clearAnimation();
             }
 
-            ImageViewCompat.setImageTintList(iconView, ColorStateList.valueOf(iconColor));
-            dayTextView.setTextColor(textColor);
+            Drawable background = ContextCompat.getDrawable(context, R.drawable.daily_reward_background);
+            if (background != null) {
+                Drawable mutatedBackground = background.mutate();
+                if (mutatedBackground instanceof GradientDrawable) {
+                    ((GradientDrawable) mutatedBackground).setColor(ContextCompat.getColor(context, backgroundColorId));
+                } else {
+                    mutatedBackground.setColorFilter(ContextCompat.getColor(context, backgroundColorId), PorterDuff.Mode.SRC_IN);
+                }
+                iconBackground.setBackground(mutatedBackground);
+            }
+            iconBackground.setAlpha(alphaValue);
+
+            ImageViewCompat.setImageTintList(iconView, ColorStateList.valueOf(ContextCompat.getColor(context, iconColorId)));
+            dayTextView.setTextColor(ContextCompat.getColor(context, textColorId));
             checkView.setVisibility(showCheck ? View.VISIBLE : View.GONE);
 
             itemView.setScaleX(scale);
             itemView.setScaleY(scale);
 
             itemView.setOnClickListener(v -> {
-                if (isTodayAndClaimable) {
+                Log.d(ADAPTER_TAG, "itemView onClick: rewardDay=" + rewardActualStreakDay + ", isThisTodayAndCanClaim=" + isThisTodayAndCanClaim);
+                if (isThisTodayAndCanClaim) {
+                    Log.d(ADAPTER_TAG, "Calling listener.onClaimTodayRewardClick()");
                     listener.onClaimTodayRewardClick();
                 } else {
-                    listener.onDailyRewardClick(reward, rewardActualStreakDay, isTodayAndClaimable);
+                    Log.d(ADAPTER_TAG, "Calling listener.onDailyRewardClick() for reward: " + reward.getName());
+                    listener.onDailyRewardClick(reward, rewardActualStreakDay, isThisTodayAndCanClaim);
                 }
             });
         }

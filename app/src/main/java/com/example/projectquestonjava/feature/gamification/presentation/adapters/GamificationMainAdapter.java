@@ -201,9 +201,15 @@ public class GamificationMainAdapter extends RecyclerView.Adapter<RecyclerView.V
                 fabWaterPlant.setEnabled(canWater);
                 fabWaterPlant.setOnClickListener(v -> listener.onWaterPlantClick());
                 plantWidgetCard.setOnClickListener(v -> listener.onPlantWidgetClick());
-                fabWaterPlant.setBackgroundTintList(ColorStateList.valueOf(
-                        ContextCompat.getColor(context, canWater ? R.color.primaryContainerLight : R.color.surfaceVariantDark)
-                ));
+
+                // Обновление цвета кнопки и иконки
+                if (canWater) {
+                    fabWaterPlant.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.primaryLight))); // Яркий цвет, когда можно полить
+                    ImageViewCompat.setImageTintList(fabWaterPlant, ColorStateList.valueOf(ContextCompat.getColor(context, R.color.onPrimaryLight)));
+                } else {
+                    fabWaterPlant.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.surfaceVariantDark))); // Приглушенный цвет
+                    ImageViewCompat.setImageTintList(fabWaterPlant, ColorStateList.valueOf(ContextCompat.getColor(context, R.color.onSurfaceVariantDark)));
+                }
             } else {
                 plantWidgetCard.setVisibility(View.GONE);
             }
