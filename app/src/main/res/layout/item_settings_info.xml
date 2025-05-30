@@ -1,4 +1,7 @@
-<merge xmlns:android="http://schemas.android.com/apk/res/android">
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+    <!-- Включаем базовый макет -->
     <include layout="@layout/item_settings_base"/>
-    <!-- FrameLayout можно убрать или оставить пустым -->
-</merge>
+    <!-- Для InfoItem trailing content тоже обычно пустой. -->
+</LinearLayout>

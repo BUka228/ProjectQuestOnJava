@@ -2,16 +2,25 @@
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     style="@style/Widget.App.SettingsSectionCard"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
+
     <LinearLayout
         android:id="@+id/settings_section_content_container"
         style="@style/SettingsSectionContent"
-        android:orientation="vertical">
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="16dp">
+
         <TextView
             android:id="@+id/textView_settings_section_title"
-            style="@style/SettingsSectionTitle"/>
-        <!-- Сюда будут добавляться item_settings_* -->
+            style="@style/SettingsSectionTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            tools:text="Заголовок Секции"/>
+        <!-- Сюда SettingsFragment будет программно добавлять другие View -->
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

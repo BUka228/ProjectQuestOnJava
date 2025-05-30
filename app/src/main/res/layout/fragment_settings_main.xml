@@ -12,109 +12,26 @@
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:fillViewport="true">
 
         <LinearLayout
+            android:id="@+id/settings_content_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingBottom="16dp">
+            android:paddingHorizontal="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp">
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>
 
-            <!-- Секция Аккаунт -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/card_section_account"
-                style="@style/Widget.App.SettingsSectionCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-                <LinearLayout style="@style/SettingsSectionContent">
-                    <TextView style="@style/SettingsSectionTitle" android:text="Аккаунт"/>
-                    <include layout="@layout/item_settings_action" android:id="@+id/action_item_logout"/>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+<ProgressBar
+android:id="@+id/progressBar_settings_loading"
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:layout_gravity="center"
+android:visibility="gone"
+tools:visibility="visible"/>
 
-            <!-- Секция Внешний вид -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/card_section_appearance"
-                style="@style/Widget.App.SettingsSectionCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-                <LinearLayout style="@style/SettingsSectionContent">
-                    <TextView style="@style/SettingsSectionTitle" android:text="Внешний вид"/>
-                    <include layout="@layout/item_settings_navigation" android:id="@+id/nav_item_theme"/>
-                    <include layout="@layout/item_settings_switch" android:id="@+id/switch_item_dynamic_color" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Секция Уведомления -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.App.SettingsSectionCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-                <LinearLayout style="@style/SettingsSectionContent">
-                    <TextView style="@style/SettingsSectionTitle" android:text="Уведомления"/>
-                    <include layout="@layout/item_settings_switch" android:id="@+id/switch_item_notifications"/>
-                    <include layout="@layout/item_settings_navigation" android:id="@+id/nav_item_system_notifications"/>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Секция Pomodoro -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.App.SettingsSectionCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-                <LinearLayout style="@style/SettingsSectionContent">
-                    <TextView style="@style/SettingsSectionTitle" android:text="Pomodoro"/>
-                    <include layout="@layout/item_settings_navigation" android:id="@+id/nav_item_pomodoro_settings"/>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Секция Управление данными -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.App.SettingsSectionCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-                <LinearLayout style="@style/SettingsSectionContent">
-                    <TextView style="@style/SettingsSectionTitle" android:text="Управление данными"/>
-                    <include layout="@layout/item_settings_action" android:id="@+id/action_item_clear_cache"/>
-                    <include layout="@layout/item_settings_action" android:id="@+id/action_item_export_data"/>
-                    <include layout="@layout/item_settings_action" android:id="@+id/action_item_import_data"/>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Секция О приложении -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.App.SettingsSectionCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-                <LinearLayout style="@style/SettingsSectionContent">
-                    <TextView style="@style/SettingsSectionTitle" android:text="О приложении"/>
-                    <include layout="@layout/item_settings_info" android:id="@+id/info_item_app_version"/>
-                    <include layout="@layout/item_settings_navigation" android:id="@+id/nav_item_terms"/>
-                    <include layout="@layout/item_settings_navigation" android:id="@+id/nav_item_privacy"/>
-                    <include layout="@layout/item_settings_navigation" android:id="@+id/nav_item_licenses"/>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Секция Опасно -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.App.SettingsSectionCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-                <LinearLayout style="@style/SettingsSectionContent">
-                    <TextView style="@style/SettingsSectionTitle" android:text="Опасно" android:textColor="?attr/colorError"/>
-                    <include layout="@layout/item_settings_action" android:id="@+id/action_item_delete_account"/>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <ProgressBar
-                android:id="@+id/progressBar_settings_loading"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="16dp"
-                android:visibility="gone"
-                tools:visibility="visible"/>
-
-        </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
