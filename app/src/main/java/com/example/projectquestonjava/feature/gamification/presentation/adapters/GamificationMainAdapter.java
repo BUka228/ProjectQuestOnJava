@@ -34,15 +34,12 @@ import com.example.projectquestonjava.feature.gamification.data.model.SurpriseTa
 import com.example.projectquestonjava.feature.gamification.data.model.VirtualGarden;
 import com.example.projectquestonjava.feature.gamification.domain.model.DailyRewardsInfo;
 import com.example.projectquestonjava.feature.gamification.domain.model.PlantHealthState;
-import com.example.projectquestonjava.feature.gamification.domain.model.RewardType;
 import com.example.projectquestonjava.feature.gamification.presentation.utils.GamificationUiUtils;
 import com.example.projectquestonjava.feature.gamification.presentation.viewmodels.ActiveChallengesSectionState;
 import com.example.projectquestonjava.feature.gamification.presentation.viewmodels.ChallengeCardInfo;
 import com.example.projectquestonjava.feature.gamification.presentation.viewmodels.GamificationViewModel;
 import com.google.android.material.card.MaterialCardView;
-import com.google.android.material.tabs.TabLayout;
-import com.google.android.material.tabs.TabLayoutMediator;
-
+// Убрал ненужные импорты TabLayout, если они были
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
@@ -50,18 +47,25 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
+import lombok.Setter;
+
 public class GamificationMainAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
+    // Изменяем порядок VIEW_TYPE констант
     private static final int VIEW_TYPE_PLANT_STATS = 0;
-    private static final int VIEW_TYPE_SURPRISE_TASK = 1;
-    private static final int VIEW_TYPE_DAILY_REWARDS = 2;
-    private static final int VIEW_TYPE_CHALLENGES = 3;
-
+    private static final int VIEW_TYPE_DAILY_REWARDS = 1;
+    private static final int VIEW_TYPE_CHALLENGES = 2;
+    private static final int VIEW_TYPE_SURPRISE_TASK = 3;
+    @Setter
     private Gamification gamificationData;
+    @Setter
     private VirtualGarden plantData;
+    @Setter
     private PlantHealthState plantHealthState = PlantHealthState.HEALTHY;
     private boolean canWaterPlant = false;
+    @Setter
     private GamificationViewModel.Pair<SurpriseTask, Reward> surpriseTaskData;
+    @Setter
     private DailyRewardsInfo dailyRewardsData;
     private ActiveChallengesSectionState activeChallengesData;
 
@@ -84,30 +88,22 @@ public class GamificationMainAdapter extends RecyclerView.Adapter<RecyclerView.V
         this.listener = listener;
         this.context = context;
         this.logger = logger;
-        // Инициализируем данные пустыми значениями или null, чтобы избежать NPE
         this.activeChallengesData = new ActiveChallengesSectionState();
     }
 
-    // Сеттеры для данных
-    public void setGamificationData(Gamification data) { this.gamificationData = data; }
-    public void setPlantData(VirtualGarden data) { this.plantData = data; }
-    public void setPlantHealthState(PlantHealthState state) { this.plantHealthState = state; }
     public void setCanWater(boolean canWater) { this.canWaterPlant = canWater; }
-    public void setSurpriseTaskData(GamificationViewModel.Pair<SurpriseTask, Reward> data) { this.surpriseTaskData = data; }
-    public void setDailyRewardsData(DailyRewardsInfo data) { this.dailyRewardsData = data; }
+
     public void setActiveChallengesData(ActiveChallengesSectionState data) {
         this.activeChallengesData = data != null ? data : new ActiveChallengesSectionState();
     }
 
-    // Хак для обновления, так как DiffUtil для такого сложного адаптера - это отдельная задача
     public void notifyDataSetChangedHack() {
         new Handler(Looper.getMainLooper()).post(this::notifyDataSetChanged);
     }
 
-
     @Override
     public int getItemViewType(int position) {
-        return position; // Просто используем позицию как тип
+        return position; // Используем позицию как тип
     }
 
     @NonNull
@@ -117,12 +113,12 @@ public class GamificationMainAdapter extends RecyclerView.Adapter<RecyclerView.V
         switch (viewType) {
             case VIEW_TYPE_PLANT_STATS:
                 return new PlantStatsViewHolder(inflater.inflate(R.layout.item_gamification_header_stats_plant, parent, false));
-            case VIEW_TYPE_SURPRISE_TASK:
-                return new SurpriseTaskViewHolder(inflater.inflate(R.layout.item_gamification_surprise_task, parent, false));
-            case VIEW_TYPE_DAILY_REWARDS:
+            case VIEW_TYPE_DAILY_REWARDS: // Порядок изменен
                 return new DailyRewardsViewHolder(inflater.inflate(R.layout.item_gamification_daily_rewards, parent, false), listener, context);
-            case VIEW_TYPE_CHALLENGES:
+            case VIEW_TYPE_CHALLENGES:    // Порядок изменен
                 return new ActiveChallengesViewHolder(inflater.inflate(R.layout.item_gamification_active_challenges, parent, false), listener, context);
+            case VIEW_TYPE_SURPRISE_TASK: // Порядок изменен
+                return new SurpriseTaskViewHolder(inflater.inflate(R.layout.item_gamification_surprise_task, parent, false));
             default:
                 throw new IllegalArgumentException("Invalid view type: " + viewType);
         }
@@ -134,25 +130,24 @@ public class GamificationMainAdapter extends RecyclerView.Adapter<RecyclerView.V
             case VIEW_TYPE_PLANT_STATS:
                 ((PlantStatsViewHolder) holder).bind(plantData, gamificationData, plantHealthState, canWaterPlant, listener);
                 break;
-            case VIEW_TYPE_SURPRISE_TASK:
-                ((SurpriseTaskViewHolder) holder).bind(surpriseTaskData, listener);
-                break;
-            case VIEW_TYPE_DAILY_REWARDS:
+            case VIEW_TYPE_DAILY_REWARDS: // Порядок изменен
                 ((DailyRewardsViewHolder) holder).bind(dailyRewardsData);
                 break;
-            case VIEW_TYPE_CHALLENGES:
+            case VIEW_TYPE_CHALLENGES:    // Порядок изменен
                 ((ActiveChallengesViewHolder) holder).bind(activeChallengesData);
+                break;
+            case VIEW_TYPE_SURPRISE_TASK: // Порядок изменен
+                ((SurpriseTaskViewHolder) holder).bind(surpriseTaskData, listener);
                 break;
         }
     }
 
     @Override
     public int getItemCount() {
-        return 4; // Фиксированное количество секций
+        return 4;
     }
 
-    // --- ViewHolder-ы ---
-
+    // --- ViewHolder-ы (остаются без изменений, кроме порядка их вызова) ---
     static class PlantStatsViewHolder extends RecyclerView.ViewHolder {
         MaterialCardView miniStatsCard, plantWidgetCard;
         TextView levelValue, xpValue, xpMax, coinsValue;
@@ -168,9 +163,9 @@ public class GamificationMainAdapter extends RecyclerView.Adapter<RecyclerView.V
             xpMax = miniStatsCard.findViewById(R.id.textView_xp_max_gamif);
             coinsValue = miniStatsCard.findViewById(R.id.textView_coins_value_gamif);
             xpProgressBar = miniStatsCard.findViewById(R.id.progressBar_xp_gamif);
-            coinsIcon = miniStatsCard.findViewById(R.id.imageView_info_icon_coins); // Предполагаем ID для иконки монет
-            levelIcon = miniStatsCard.findViewById(R.id.imageView_info_icon_level); // ID для иконки уровня
-            xpIconContainerIcon = miniStatsCard.findViewById(R.id.imageView_xp_icon_container); // ID для иконки внутри XP прогрессбара
+            coinsIcon = miniStatsCard.findViewById(R.id.imageView_info_icon_coins);
+            levelIcon = miniStatsCard.findViewById(R.id.imageView_info_icon_level);
+            xpIconContainerIcon = miniStatsCard.findViewById(R.id.imageView_xp_icon_container);
 
             plantWidgetCard = itemView.findViewById(R.id.card_plant_widget_gamif);
             plantImageView = plantWidgetCard.findViewById(R.id.imageView_plant_gamif);
@@ -192,7 +187,7 @@ public class GamificationMainAdapter extends RecyclerView.Adapter<RecyclerView.V
                 } else {
                     xpProgressBar.setProgress(0);
                 }
-                if(levelIcon != null) levelIcon.setImageResource(R.drawable.star); // Установка иконки
+                if(levelIcon != null) levelIcon.setImageResource(R.drawable.star);
                 if(xpIconContainerIcon != null) xpIconContainerIcon.setImageResource(R.drawable.trending_up);
                 if(coinsIcon != null) coinsIcon.setImageResource(R.drawable.paid);
 
@@ -225,6 +220,7 @@ public class GamificationMainAdapter extends RecyclerView.Adapter<RecyclerView.V
             super(itemView);
             cardView = itemView.findViewById(R.id.card_surprise_task_gamif);
             iconView = itemView.findViewById(R.id.imageView_surprise_icon_gamif);
+            // titleView отсутствует в макете, убрал
             descriptionView = itemView.findViewById(R.id.textView_surprise_description_gamif);
             rewardIconView = itemView.findViewById(R.id.imageView_surprise_reward_icon_gamif);
             rewardNameView = itemView.findViewById(R.id.textView_surprise_reward_name_gamif);
@@ -277,7 +273,7 @@ public class GamificationMainAdapter extends RecyclerView.Adapter<RecyclerView.V
                 long remainingMinutes = ChronoUnit.MINUTES.between(now, task.getExpirationTime());
                 timerView.setText(String.format(Locale.getDefault(), "Осталось: %s", formatRemainingTimeStatic(remainingMinutes)));
                 timerView.setTextColor(ContextCompat.getColor(itemView.getContext(),
-                        remainingMinutes < 15 ? R.color.errorLight : R.color.onPrimaryContainerDark));
+                        remainingMinutes < 15 ? R.color.errorLight : R.color.onPrimaryContainerDark)); // Предполагая, что цвет для onPrimaryContainerDark существует
                 timerView.setVisibility(View.VISIBLE);
             }
         }
@@ -328,7 +324,7 @@ public class GamificationMainAdapter extends RecyclerView.Adapter<RecyclerView.V
         ImageButton viewAllButton;
         LinearLayout summaryIndicatorsLayout;
         ViewPager2 challengesViewPager;
-        WormPagerIndicatorView pagerIndicatorView; // Замена TabLayout на WormPagerIndicatorView
+        WormPagerIndicatorView pagerIndicatorView;
         ActiveChallengesPagerAdapter pagerAdapter;
         Context context;
 
@@ -338,14 +334,12 @@ public class GamificationMainAdapter extends RecyclerView.Adapter<RecyclerView.V
             viewAllButton = itemView.findViewById(R.id.button_view_all_challenges_gamif);
             summaryIndicatorsLayout = itemView.findViewById(R.id.layout_challenges_summary_indicators_gamif);
             challengesViewPager = itemView.findViewById(R.id.viewPager_active_challenges_gamif);
-            pagerIndicatorView = itemView.findViewById(R.id.worm_pager_indicator_challenges_gamif); // ID для WormPagerIndicatorView
+            pagerIndicatorView = itemView.findViewById(R.id.worm_pager_indicator_challenges_gamif);
 
             pagerAdapter = new ActiveChallengesPagerAdapter(listener::onChallengeCardClick);
             challengesViewPager.setAdapter(pagerAdapter);
 
-            // Подключение WormPagerIndicatorView к ViewPager2
             pagerIndicatorView.attachToViewPager(challengesViewPager);
-
             viewAllButton.setOnClickListener(v -> listener.onViewAllChallengesClick());
         }
 
@@ -357,10 +351,8 @@ public class GamificationMainAdapter extends RecyclerView.Adapter<RecyclerView.V
             itemView.setVisibility(View.VISIBLE);
 
             pagerAdapter.submitList(state.getAllActiveChallengesInfo());
-            // Обновляем количество страниц в WormPagerIndicatorView
             pagerIndicatorView.setPageCount(state.getAllActiveChallengesInfo().size());
             pagerIndicatorView.setVisibility(state.getAllActiveChallengesInfo().size() > 1 ? View.VISIBLE : View.GONE);
-
 
             summaryIndicatorsLayout.removeAllViews();
             if (state.getDailyProgressText() != null) {

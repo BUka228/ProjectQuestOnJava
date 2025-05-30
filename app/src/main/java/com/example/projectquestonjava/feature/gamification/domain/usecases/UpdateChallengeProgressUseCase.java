@@ -1,6 +1,6 @@
 package com.example.projectquestonjava.feature.gamification.domain.usecases;
 
-import com.example.projectquestonjava.core.di.IODispatcher; // Не будет использоваться для executeSync
+import com.example.projectquestonjava.core.di.IODispatcher;
 import com.example.projectquestonjava.core.utils.Logger;
 import com.example.projectquestonjava.feature.gamification.data.model.Challenge;
 import com.example.projectquestonjava.feature.gamification.data.model.ChallengeRule;
@@ -10,11 +10,10 @@ import com.example.projectquestonjava.feature.gamification.domain.model.Challeng
 import com.example.projectquestonjava.feature.gamification.domain.model.ChallengeStatus;
 import com.example.projectquestonjava.feature.gamification.domain.model.ChallengeType;
 import com.example.projectquestonjava.feature.gamification.domain.model.GamificationEvent;
-import com.example.projectquestonjava.feature.gamification.domain.repository.ChallengeRepository; // Ожидает ...Sync методы
-import com.example.projectquestonjava.feature.gamification.domain.repository.RewardRepository;   // Ожидает ...Sync методы
+import com.example.projectquestonjava.feature.gamification.domain.repository.ChallengeRepository;
+import com.example.projectquestonjava.feature.gamification.domain.repository.RewardRepository;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-// MoreExecutors не нужен для синхронной версии
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -26,7 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Executor; // Не используется для executeSync
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
@@ -34,18 +33,17 @@ import javax.inject.Inject;
 public class UpdateChallengeProgressUseCase {
     private static final String TAG = "UpdateChallengeProgress";
 
-    private final ChallengeRepository challengeRepository; // Ожидает getChallengeByIdSync, getChallengeRulesSync, getProgressForRuleSync, insertOrUpdateProgressSync, updateChallengeStatusSync
-    private final RewardRepository rewardRepository;       // Ожидает getRewardByIdSync
-    private final ApplyRewardUseCase applyRewardUseCase;     // Уже синхронный
+    private final ChallengeRepository challengeRepository;
+    private final RewardRepository rewardRepository;
+    private final ApplyRewardUseCase applyRewardUseCase;
     private final Logger logger;
-    // ioExecutor не нужен для executeSync, если он вызывается из другого потока
 
     @Inject
     public UpdateChallengeProgressUseCase(
             ChallengeRepository challengeRepository,
             RewardRepository rewardRepository,
             ApplyRewardUseCase applyRewardUseCase,
-            @IODispatcher Executor ioExecutor, // Оставляем для конструктора, если другие методы его используют
+            @IODispatcher Executor ioExecutor,
             Logger logger) {
         this.challengeRepository = challengeRepository;
         this.rewardRepository = rewardRepository;
@@ -53,14 +51,12 @@ public class UpdateChallengeProgressUseCase {
         this.logger = logger;
     }
 
-    // Новый синхронный метод для использования внутри транзакций
     public ApplyRewardUseCase.RewardApplicationResult executeSync(long gamificationId, GamificationEvent event) throws Exception {
         logger.debug(TAG, "SYNC Processing event: " + event.getClass().getSimpleName() + " for gamificationId " + gamificationId);
         AtomicInteger totalDeltaXp = new AtomicInteger(0);
         AtomicInteger totalDeltaCoins = new AtomicInteger(0);
 
-        // Получаем активные челленджи синхронно
-        List<Challenge> activeChallenges = challengeRepository.getActiveChallengesSync(); // НУЖЕН getActiveChallengesSync()
+        List<Challenge> activeChallenges = challengeRepository.getActiveChallengesSync();
         if (activeChallenges == null) {
             logger.warn(TAG, "SYNC No active challenges found or error fetching them.");
             return new ApplyRewardUseCase.RewardApplicationResult(0, 0);
@@ -68,15 +64,17 @@ public class UpdateChallengeProgressUseCase {
         logger.debug(TAG, "SYNC Found " + activeChallenges.size() + " active challenges.");
 
         for (Challenge challenge : activeChallenges) {
-            List<ChallengeRule> rules = challengeRepository.getChallengeRulesSync(challenge.getId()); // НУЖЕН getChallengeRulesSync()
+            logger.debug(TAG, "SYNC Checking challenge: " + challenge.getName() + " (ID: " + challenge.getId() + ")");
+            List<ChallengeRule> rules = challengeRepository.getChallengeRulesSync(challenge.getId());
             if (rules == null || rules.isEmpty()) {
+                logger.debug(TAG, "SYNC No rules for challenge " + challenge.getId());
                 continue;
             }
             for (ChallengeRule rule : rules) {
+                logger.debug(TAG, "SYNC Checking rule: " + rule.getId() + " (Type: " + rule.getType() + ")");
                 if (isRuleApplicable(rule, event)) {
-                    logger.debug(TAG, "SYNC Rule " + rule.getId() + " (Challenge " + challenge.getId() + ") matches event.");
+                    logger.info(TAG, "SYNC Rule " + rule.getId() + " (Challenge " + challenge.getId() + ") MATCHES event.");
                     try {
-                        // updateProgressAndCheckCompletion теперь тоже должен быть синхронным
                         ApplyRewardUseCase.RewardApplicationResult rewardDelta =
                                 updateProgressAndCheckCompletionSync(gamificationId, challenge.getId(), rule);
                         if (rewardDelta != null) {
@@ -85,43 +83,43 @@ public class UpdateChallengeProgressUseCase {
                         }
                     } catch (Exception e) {
                         logger.error(TAG, "SYNC Error updating progress for rule " + rule.getId() + " in challenge " + challenge.getId(), e);
-                        // Не прерываем весь процесс из-за одного правила, но логируем
                     }
+                } else {
+                    logger.debug(TAG, "SYNC Rule " + rule.getId() + " DOES NOT match event.");
                 }
             }
         }
-        logger.debug(TAG, "SYNC Finished processing event. Total Delta(XP/Coins): (" + totalDeltaXp.get() + "/" + totalDeltaCoins.get() + ")");
+        logger.info(TAG, "SYNC Finished processing event. Total Delta(XP/Coins): (" + totalDeltaXp.get() + "/" + totalDeltaCoins.get() + ")");
         return new ApplyRewardUseCase.RewardApplicationResult(totalDeltaXp.get(), totalDeltaCoins.get());
     }
 
-
-    // Старый асинхронный метод, если он все еще где-то нужен (например, для вызова не из транзакции)
-    // Он должен теперь использовать executeSync внутри Futures.submit
     public ListenableFuture<ApplyRewardUseCase.RewardApplicationResult> execute(long gamificationId, GamificationEvent event, Executor executor) {
         return Futures.submit(() -> executeSync(gamificationId, event), executor);
     }
 
 
     private ApplyRewardUseCase.RewardApplicationResult updateProgressAndCheckCompletionSync(long gamificationId, long challengeId, ChallengeRule rule) throws Exception {
-        GamificationChallengeProgress progress = challengeRepository.getProgressForRuleSync(challengeId, rule.getId()); // НУЖЕН getProgressForRuleSync()
+        GamificationChallengeProgress progress = challengeRepository.getProgressForRuleSync(challengeId, rule.getId());
+        logger.debug(TAG, "SYNC updateProgressAndCheckCompletionSync for rule " + rule.getId() + ". Current progress: " + (progress != null ? progress.getProgress() : "null") + ", Completed: " + (progress != null && progress.isCompleted()));
 
         if (progress != null && progress.isCompleted() && isProgressValidForPeriod(progress, rule)) {
-            logger.debug(TAG, "SYNC Rule " + rule.getId() + " (Challenge " + challengeId + ") already completed for this period.");
+            logger.debug(TAG, "SYNC Rule " + rule.getId() + " (Challenge " + challengeId + ") already completed for this period. No update.");
             return new ApplyRewardUseCase.RewardApplicationResult(0, 0);
         }
 
         int currentProgressValue = (progress != null && isProgressValidForPeriod(progress, rule)) ? progress.getProgress() : 0;
-        int newProgressValue = currentProgressValue + 1;
+        int newProgressValue = currentProgressValue + 1; // Предполагаем, что каждое применимое событие увеличивает прогресс на 1
         boolean isRuleCompletedNow = newProgressValue >= rule.getTarget();
 
         GamificationChallengeProgress progressToUpdate = new GamificationChallengeProgress(
                 gamificationId, challengeId, rule.getId(), newProgressValue, isRuleCompletedNow, LocalDateTime.now()
         );
 
-        challengeRepository.insertOrUpdateProgressSync(progressToUpdate); // НУЖЕН insertOrUpdateProgressSync()
-        logger.debug(TAG, "SYNC Progress updated for rule " + rule.getId() + ". New value: " + newProgressValue + ", Completed: " + isRuleCompletedNow);
+        challengeRepository.insertOrUpdateProgressSync(progressToUpdate);
+        logger.info(TAG, "SYNC Progress updated for rule " + rule.getId() + ". New value: " + newProgressValue + ", Completed: " + isRuleCompletedNow);
 
         if (isRuleCompletedNow) {
+            logger.info(TAG, "SYNC Rule " + rule.getId() + " completed. Checking overall challenge " + challengeId + " completion.");
             return checkOverallChallengeCompletionSync(gamificationId, challengeId);
         } else {
             return new ApplyRewardUseCase.RewardApplicationResult(0, 0);
@@ -129,8 +127,8 @@ public class UpdateChallengeProgressUseCase {
     }
 
     private ApplyRewardUseCase.RewardApplicationResult checkOverallChallengeCompletionSync(long gamificationId, long challengeId) throws Exception {
-        List<ChallengeRule> allRules = challengeRepository.getChallengeRulesSync(challengeId); // SYNC
-        List<GamificationChallengeProgress> allProgressList = challengeRepository.getAllProgressForChallengeSync(gamificationId, challengeId); // НУЖЕН getAllProgressForChallengeSync
+        List<ChallengeRule> allRules = challengeRepository.getChallengeRulesSync(challengeId);
+        List<GamificationChallengeProgress> allProgressList = challengeRepository.getAllProgressForChallengeSync(gamificationId, challengeId);
 
         if (allRules == null || allRules.isEmpty()) {
             logger.warn(TAG, "SYNC No rules found for challenge " + challengeId + ". Cannot complete.");
@@ -142,29 +140,28 @@ public class UpdateChallengeProgressUseCase {
 
         boolean allRulesAreCompletedThisPeriod = allRules.stream().allMatch(rule -> {
             GamificationChallengeProgress progressForRule = progressMap.get(rule.getId());
-            return progressForRule != null && progressForRule.isCompleted() && isProgressValidForPeriod(progressForRule, rule);
+            boolean ruleCompleted = progressForRule != null && progressForRule.isCompleted() && isProgressValidForPeriod(progressForRule, rule);
+            logger.debug(TAG, "SYNC Challenge " + challengeId + ", Rule " + rule.getId() + ": isCompletedThisPeriod = " + ruleCompleted);
+            return ruleCompleted;
         });
 
         if (allRulesAreCompletedThisPeriod) {
-            logger.info(TAG, "SYNC Challenge " + challengeId + " completed by user " + gamificationId + "!");
-            challengeRepository.updateChallengeStatusSync(challengeId, ChallengeStatus.COMPLETED); // НУЖЕН updateChallengeStatusSync
-            Challenge challenge = challengeRepository.getChallengeByIdSync(challengeId); // НУЖЕН getChallengeByIdSync
+            logger.info(TAG, "SYNC Challenge " + challengeId + " ALL RULES COMPLETED by user " + gamificationId + "!");
+            challengeRepository.updateChallengeStatusSync(challengeId, ChallengeStatus.COMPLETED);
+            Challenge challenge = challengeRepository.getChallengeByIdSync(challengeId);
             if (challenge == null) throw new IllegalStateException("Challenge " + challengeId + " not found after completion.");
-            Reward reward = rewardRepository.getRewardByIdSync(challenge.getRewardId()); // НУЖЕН getRewardByIdSync
+            Reward reward = rewardRepository.getRewardByIdSync(challenge.getRewardId());
             if (reward == null) throw new IllegalStateException("Reward " + challenge.getRewardId() + " not found.");
 
-            ApplyRewardUseCase.RewardApplicationResult rewardDelta = applyRewardUseCase.execute(gamificationId, reward); // applyRewardUseCase уже синхронный
-            logger.info(TAG, "SYNC Awarded reward '" + reward.getName() + "'. Delta: " + rewardDelta);
+            ApplyRewardUseCase.RewardApplicationResult rewardDelta = applyRewardUseCase.execute(gamificationId, reward);
+            logger.info(TAG, "SYNC Awarded reward '" + reward.getName() + "' for challenge " + challengeId + ". Delta: XP=" + rewardDelta.getDeltaXp() + ", Coins=" + rewardDelta.getDeltaCoins());
             return rewardDelta;
         }
         logger.debug(TAG, "SYNC Challenge " + challengeId + " not yet fully completed for this period.");
         return new ApplyRewardUseCase.RewardApplicationResult(0, 0);
     }
 
-    // Методы isRuleApplicable, checkRuleConditions, isProgressValidForPeriod остаются без изменений,
-    // так как они не взаимодействуют с БД напрямую.
     private boolean isRuleApplicable(ChallengeRule rule, GamificationEvent event) {
-        // ... (без изменений) ...
         boolean typeMatches = false;
         if (event instanceof GamificationEvent.TaskCompleted && rule.getType() == ChallengeType.TASK_COMPLETION) {
             typeMatches = true;
@@ -173,12 +170,17 @@ public class UpdateChallengeProgressUseCase {
         } else if (event instanceof GamificationEvent.StreakUpdated && rule.getType() == ChallengeType.DAILY_STREAK) {
             typeMatches = true;
         }
-        if (!typeMatches) return false;
-        return checkRuleConditions(rule, event);
+        // Добавьте другие типы событий и правил по мере необходимости
+        if (!typeMatches) {
+            logger.debug(TAG, "SYNC Rule " + rule.getId() + " type " + rule.getType() + " does not match event type " + event.getClass().getSimpleName());
+            return false;
+        }
+        boolean conditionsMet = checkRuleConditions(rule, event);
+        logger.debug(TAG, "SYNC Rule " + rule.getId() + " conditionsMet: " + conditionsMet);
+        return conditionsMet;
     }
 
     private boolean checkRuleConditions(ChallengeRule rule, GamificationEvent event) {
-        // ... (без изменений) ...
         if (rule.getConditionJson() == null || rule.getConditionJson().trim().isEmpty()) return true;
         try {
             JSONObject conditions = new JSONObject(rule.getConditionJson());
@@ -195,6 +197,7 @@ public class UpdateChallengeProgressUseCase {
                         }
                     }
                 }
+                // Добавьте другие условия для TaskCompleted, если нужно
             } else if (event instanceof GamificationEvent.PomodoroCompleted) {
                 GamificationEvent.PomodoroCompleted pomodoroEvent = (GamificationEvent.PomodoroCompleted) event;
                 if (conditions.has("minDurationMinutes")) {
@@ -211,6 +214,7 @@ public class UpdateChallengeProgressUseCase {
                     if (streakEvent.getNewStreakValue() != conditions.getInt("exactStreak")) return false;
                 }
             }
+            // Добавьте другие типы событий
             return true;
         } catch (JSONException e) {
             logger.error(TAG, "Error parsing conditions JSON for rule " + rule.getId() + ": " + rule.getConditionJson(), e);
@@ -219,25 +223,31 @@ public class UpdateChallengeProgressUseCase {
     }
     private boolean isProgressValidForPeriod(GamificationChallengeProgress progress, ChallengeRule rule) {
         if (rule.getPeriod() == ChallengePeriod.ONCE || rule.getPeriod() == ChallengePeriod.EVENT) {
-            return true;
+            return true; // Для этих периодов прогресс не сбрасывается автоматически датой
         }
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime lastUpdated = progress.getLastUpdated();
-        LocalDate nowDateUtc = now.atZone(ZoneOffset.systemDefault()).withZoneSameInstant(ZoneOffset.UTC).toLocalDate();
-        LocalDate lastUpdateDateUtc = lastUpdated.toLocalDate();
+        LocalDateTime now = LocalDateTime.now(); // Локальное время устройства
+        LocalDateTime lastUpdated = progress.getLastUpdated(); // Время из БД, предполагаем UTC
+
+        // Конвертируем lastUpdated в локальную зону для сравнения дат
+        LocalDateTime lastUpdatedLocal = lastUpdated.atZone(ZoneOffset.UTC)
+                .withZoneSameInstant(ZoneOffset.systemDefault())
+                .toLocalDateTime();
+        LocalDate nowDateLocal = now.toLocalDate();
+        LocalDate lastUpdateDateLocal = lastUpdatedLocal.toLocalDate();
+
 
         switch (rule.getPeriod()) {
             case DAILY:
-                return lastUpdateDateUtc.isEqual(nowDateUtc);
+                return lastUpdateDateLocal.isEqual(nowDateLocal);
             case WEEKLY:
-                WeekFields weekFields = WeekFields.of(Locale.getDefault());
-                return lastUpdated.getYear() == now.getYear() &&
-                        lastUpdated.get(weekFields.weekOfWeekBasedYear()) == now.atZone(ZoneOffset.systemDefault()).withZoneSameInstant(ZoneOffset.UTC).get(weekFields.weekOfWeekBasedYear());
+                WeekFields weekFields = WeekFields.of(Locale.getDefault()); // Или конкретная локаль
+                return lastUpdatedLocal.getYear() == now.getYear() &&
+                        lastUpdatedLocal.get(weekFields.weekOfWeekBasedYear()) == now.get(weekFields.weekOfWeekBasedYear());
             case MONTHLY:
-                return lastUpdated.getYear() == now.getYear() &&
-                        lastUpdated.getMonth() == now.atZone(ZoneOffset.systemDefault()).withZoneSameInstant(ZoneOffset.UTC).getMonth();
+                return lastUpdatedLocal.getYear() == now.getYear() &&
+                        lastUpdatedLocal.getMonth() == now.getMonth();
             default:
-                return true;
+                return true; // Неизвестный или необрабатываемый период
         }
     }
 }
