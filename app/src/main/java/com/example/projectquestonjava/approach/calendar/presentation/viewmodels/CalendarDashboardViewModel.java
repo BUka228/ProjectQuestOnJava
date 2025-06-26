@@ -79,7 +79,7 @@ public class CalendarDashboardViewModel extends ViewModel {
     private final SnackbarManager snackbarManager;
     private final Logger logger;
     private final Executor ioExecutor;
-    private final Executor mainExecutor; // Добавляем поле
+    private final Executor mainExecutor;
 
     private final MutableLiveData<LocalDateTime> _selectedDateLiveData;
     public final LiveData<LocalDateTime> selectedDateLiveData;
@@ -130,7 +130,7 @@ public class CalendarDashboardViewModel extends ViewModel {
             SnackbarManager snackbarManager,
             Logger logger,
             @IODispatcher Executor ioExecutor,
-            @MainExecutor Executor mainExecutor) { // Внедряем MainExecutor
+            @MainExecutor Executor mainExecutor) {
 
         this.getDashboardDataUseCase = getDashboardDataUseCase;
         this.processTaskCompletionUseCase = processTaskCompletionUseCase;
@@ -448,7 +448,7 @@ public class CalendarDashboardViewModel extends ViewModel {
 
     public void clearSwipeActionState() {
         if (!(_swipeActionStateLiveData.getValue() instanceof SwipeActionState.Idle)) {
-            _swipeActionStateLiveData.postValue(SwipeActionState.Idle.getInstance()); // Используем postValue
+            _swipeActionStateLiveData.postValue(SwipeActionState.Idle.getInstance());
         }
     }
     public void handleSwipeAction(long taskId, SwipeDirection direction) {

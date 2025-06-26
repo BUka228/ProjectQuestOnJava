@@ -148,7 +148,6 @@ public class SortFilterBottomSheetDialogFragment extends BottomSheetDialogFragme
             case TIME_DESC: toggleSortTime.check(R.id.button_sort_time_desc_dashboard); break;
             case CREATED_NEWEST: toggleSortCreated.check(R.id.button_sort_created_newest_dashboard); break;
             case CREATED_OLDEST: toggleSortCreated.check(R.id.button_sort_created_oldest_dashboard); break;
-            // Добавьте другие варианты, если они есть
         }
     }
 

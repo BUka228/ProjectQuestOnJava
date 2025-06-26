@@ -1,11 +1,9 @@
-package com.example.projectquestonjava.approach.calendar.presentation.screens; // Убедитесь, что пакет правильный
+package com.example.projectquestonjava.approach.calendar.presentation.screens;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentActivity; // Используется, если ViewPager2 в Activity
-// import androidx.fragment.app.FragmentManager; // Используется, если ViewPager2 во Fragment и передаем childFragmentManager
-// import androidx.lifecycle.Lifecycle; // Используется, если ViewPager2 во Fragment и передаем viewLifecycleOwner.lifecycle
+import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 
 import java.time.LocalDate;
@@ -15,7 +13,7 @@ import java.util.Objects;
 
 public class DashboardPagerAdapter extends FragmentStateAdapter {
 
-    private final List<LocalDateTime> dates; // Список дат для каждой страницы
+    private final List<LocalDateTime> dates;
 
     /**
      * Конструктор для использования ViewPager2 внутри другого Fragment.
@@ -85,40 +83,8 @@ public class DashboardPagerAdapter extends FragmentStateAdapter {
      */
     public void updateDates(@NonNull List<LocalDateTime> newDates) {
         Objects.requireNonNull(newDates, "New dates list cannot be null");
-        // Просто заменить ссылку на список опасно, т.к. адаптер может уже использовать старый.
-        // Если мы хотим обновить данные, то более правильным было бы, чтобы ViewModel,
-        // которая предоставляет эти даты, обновила свой LiveData/Flow, а Fragment,
-        // содержащий ViewPager2, пересоздал адаптер.
-        //
-        // Однако, если очень нужно обновить именно этот экземпляр:
-        // 1. Очистить старые даты
-        // 2. Добавить новые
-        // 3. Вызвать notifyDataSetChanged()
-        // Но это может привести к потере состояния фрагментов или другим ошибкам.
-        // Для простоты, этот метод пока просто заменяет список, но это НЕ РЕКОМЕНДУЕТСЯ
-        // для FragmentStateAdapter в общем случае.
-        //
-        // this.dates.clear();
-        // this.dates.addAll(newDates);
-        // notifyDataSetChanged();
-        //
-        // Логичнее, чтобы CalendarDashboardFragment получал обновленный список дат из ViewModel
-        // и пересоздавал адаптер, если это необходимо.
-        // ViewModel (CalendarDashboardViewModel) должна быть источником правды для pageDates.
 
-        // Пока оставим этот метод пустым или с предупреждением.
-        // В нашем случае `pageDates` в `CalendarDashboardViewModel` инициализируется один раз
-        // и соответствует фиксированному диапазону DATE_RANGE.
-        // Если бы диапазон был динамическим, логика была бы сложнее.
-        if (this.dates != newDates) { // Сравниваем ссылки, а не содержимое
-            // Логика обновления списка дат и уведомления адаптера.
-            // Для FragmentStateAdapter безопаснее пересоздать адаптер.
-            // В нашем текущем сценарии даты в ViewModel не меняются после инициализации.
-            // Поэтому этот метод, вероятно, не будет вызываться.
-            // Если бы вызывался, то:
-            // this.dates.clear();
-            // this.dates.addAll(newDates);
-            // notifyDataSetChanged(); // Это может быть проблематично
+        if (this.dates != newDates) {
             System.err.println("DashboardPagerAdapter.updateDates() called. This is generally not recommended for FragmentStateAdapter. Consider re-creating the adapter.");
         }
     }

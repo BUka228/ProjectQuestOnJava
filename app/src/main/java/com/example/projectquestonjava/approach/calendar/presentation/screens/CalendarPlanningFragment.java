@@ -32,9 +32,9 @@ import com.example.projectquestonjava.R;
 import com.example.projectquestonjava.approach.calendar.domain.model.CalendarTaskSummary;
 import com.example.projectquestonjava.approach.calendar.presentation.ui_parts.CalendarMoveSheetFragment;
 import com.example.projectquestonjava.approach.calendar.presentation.ui_parts.CalendarViewPagerAdapter;
-import com.example.projectquestonjava.approach.calendar.presentation.ui_parts.PlanningSortFilterBottomSheetFragment; // Импорт
+import com.example.projectquestonjava.approach.calendar.presentation.ui_parts.PlanningSortFilterBottomSheetFragment;
 import com.example.projectquestonjava.approach.calendar.presentation.ui_parts.SwipeToDeleteMoveCallback;
-import com.example.projectquestonjava.approach.calendar.presentation.ui_parts.TaskDetailsBottomSheetFragment; // Импорт
+import com.example.projectquestonjava.approach.calendar.presentation.ui_parts.TaskDetailsBottomSheetFragment;
 import com.example.projectquestonjava.approach.calendar.presentation.viewmodels.CalendarPlanningViewModel;
 import com.example.projectquestonjava.core.ui.BaseFragment;
 import com.example.projectquestonjava.utils.dialogs.DeleteConfirmationDialogFragment;
@@ -60,7 +60,7 @@ public class CalendarPlanningFragment extends BaseFragment
     private FrameLayout calendarViewContainer;
     private LinearLayout emptyTasksLayout;
     private TextView emptyTasksMessage;
-    private MaterialToolbar mainToolbar; // Ссылка на Toolbar из MainActivity
+    private MaterialToolbar mainToolbar;
 
     private boolean isTaskDetailsSheetShown = false;
 

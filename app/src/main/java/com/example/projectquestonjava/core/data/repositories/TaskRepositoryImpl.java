@@ -122,10 +122,7 @@ public class TaskRepositoryImpl implements TaskRepository {
         return executeWithUserCheck(userId -> {
             // Если в DAO нет suspend getAllTasks(userId), а есть LiveData<List<Task>> getAllTasksForUser(int userId)
             // то этот метод нужно будет либо удалить, либо реализовать через LiveData.get(), что не очень хорошо.
-            // Предположим, что в DAO будет добавлен:
-            // @Query("SELECT * FROM task WHERE user_id = :userId")
-            // ListenableFuture<List<Task>> getAllTasksSuspend(int userId);
-            // return taskDao.getAllTasksSuspend(userId);
+
             // Пока заглушка:
             logger.warn(TAG, "getAllTasks (suspend List) is not optimally implemented without a direct DAO method.");
             return Futures.immediateFuture(Collections.emptyList()); // Заглушка
@@ -173,7 +170,6 @@ public class TaskRepositoryImpl implements TaskRepository {
     @Override
     public long insertTaskSync(Task task) {
         logger.debug(TAG, "Inserting task SYNC: " + task.getTitle());
-        // Предполагается, что этот метод будет вызван уже на фоновом потоке
         return taskDao.insertTaskSync(task);
     }
 
@@ -194,8 +190,6 @@ public class TaskRepositoryImpl implements TaskRepository {
         // Дополнительная проверка, что обновляется задача текущего пользователя
         if (userId == UserSessionManager.NO_USER_ID || task.getUserId() != userId) {
             logger.error(TAG, "Cannot update task SYNC: User ID mismatch or not logged in. Task User: " + task.getUserId() + ", Current User: " + userId);
-            // Можно бросить исключение, если это критично
-            // throw new SecurityException("Attempt to update task of another user or user not logged in.");
             return;
         }
         logger.debug(TAG, "Updating task SYNC: " + task.getId());
@@ -207,10 +201,8 @@ public class TaskRepositoryImpl implements TaskRepository {
 
     @Override
     public void updateTaskStatusSync(long taskId, int userId, TaskStatus status, LocalDateTime updatedAt) {
-        // userId уже передан, UserSessionManager здесь не нужен напрямую для этой операции
         if (userId == UserSessionManager.NO_USER_ID) {
             logger.error(TAG, "Cannot update task status SYNC: Invalid userId (-1). TaskId: " + taskId);
-            // Можно бросить исключение или просто ничего не делать, в зависимости от логики
             return;
         }
         logger.debug(TAG, "Updating task status SYNC for taskId=" + taskId + ", userId=" + userId + " to " + status);

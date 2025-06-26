@@ -1,7 +1,7 @@
 package com.example.projectquestonjava.core.context_scope.scope;
 
 import com.example.projectquestonjava.core.context_scope.context.WorkspaceContext;
-import com.example.projectquestonjava.core.di.IODispatcher; // Для Executor
+import com.example.projectquestonjava.core.di.IODispatcher;
 import com.example.projectquestonjava.core.utils.Logger;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -15,14 +15,14 @@ public class WorkspaceUnitOfWorkImpl implements WorkspaceUnitOfWork {
 
     private static final String TAG = "WorkspaceUnitOfWork";
     private final WorkspaceContext workspaceContext;
-    private final UnitOfWork databaseUnitOfWork; // Базовый UnitOfWork для транзакций БД
+    private final UnitOfWork databaseUnitOfWork;
     private final Executor ioExecutor;
     private final Logger logger;
 
     @Inject
     public WorkspaceUnitOfWorkImpl(
             WorkspaceContext workspaceContext,
-            UnitOfWork databaseUnitOfWork, // Внедряем DatabaseUnitOfWork под интерфейсом UnitOfWork
+            UnitOfWork databaseUnitOfWork,
             @IODispatcher Executor ioExecutor,
             Logger logger) {
         this.workspaceContext = workspaceContext;

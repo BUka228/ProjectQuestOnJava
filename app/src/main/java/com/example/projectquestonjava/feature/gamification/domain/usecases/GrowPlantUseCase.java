@@ -6,15 +6,14 @@ import com.example.projectquestonjava.feature.gamification.data.model.VirtualGar
 import com.example.projectquestonjava.feature.gamification.domain.repository.VirtualGardenRepository;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors; // Для directExecutor
+import com.google.common.util.concurrent.MoreExecutors;
 
-import java.util.NoSuchElementException; // Для исключения
 import java.util.concurrent.Executor;
 import javax.inject.Inject;
 
 public class GrowPlantUseCase {
     private static final String TAG = "GrowPlantUseCase";
-    private static final int MAX_GROWTH_STAGE = 5; // Пример, как в Kotlin
+    private static final int MAX_GROWTH_STAGE = 5;
 
     private final VirtualGardenRepository virtualGardenRepository;
     private final Executor ioExecutor;
@@ -33,14 +32,6 @@ public class GrowPlantUseCase {
     // Метод теперь возвращает ListenableFuture<Void>
     public ListenableFuture<Void> execute(long gamificationId) { // gamificationId теперь передается
         logger.debug(TAG, "Attempting to grow plant for gamificationId " + gamificationId);
-
-        // Вместо прямого вызова getLatestPlant, который для текущего пользователя,
-        // нам нужен способ получить latestPlant по gamificationId.
-        // Если в VirtualGardenRepository нет такого метода, его нужно добавить.
-        // Предположим, такой метод есть: virtualGardenRepository.getLatestPlantByGamificationId(gamificationId)
-        // Либо, если UseCase всегда работает с "текущим" пользователем, то gamificationId не нужен,
-        // а внутри используется virtualGardenRepository.getLatestPlant() (который берет gamiId из DataStore).
-        // Давайте исходить из того, что getLatestPlant() уже работает для текущего пользователя.
 
         ListenableFuture<VirtualGarden> latestPlantFuture = virtualGardenRepository.getLatestPlant();
 

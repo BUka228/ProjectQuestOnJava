@@ -1,4 +1,4 @@
-package com.example.projectquestonjava.feature.gamification.presentation.dialogs; // Пример
+package com.example.projectquestonjava.feature.gamification.presentation.dialogs;
 
 import android.app.Dialog;
 import android.os.Bundle;

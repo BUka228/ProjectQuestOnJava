@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.UUID; // Для генерации EventId, если CalendarParams создается заново
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
@@ -60,7 +60,7 @@ public class UpdateCalendarTaskUseCase {
     public ListenableFuture<Void> execute(TaskInput taskInput) {
         logger.debug(TAG, "execute started for task update: " + (taskInput.getId() != null ? taskInput.getId() : "NEW_ID_ERROR") + " - " + taskInput.getTitle());
 
-        return Futures.submit(() -> { // Внешний вызов асинхронен
+        return Futures.submit(() -> {
             try {
                 Long taskId = taskInput.getId();
                 if (taskId == null) {
@@ -111,8 +111,7 @@ public class UpdateCalendarTaskUseCase {
                         logger.info(TAG, "Created and inserted new CalendarParams for task " + taskId);
                     } else if (!Objects.equals(currentParams.getRecurrenceRule(), taskInput.getRecurrenceRule()) ||
                             currentParams.isAllDay() /* Пример, если isAllDay тоже можно менять */) {
-                        // Предположим, что isAllDay пока не меняется через TaskInput, но если бы менялось:
-                        // boolean newIsAllDay = taskInput.isAllDay(); // Нужно добавить isAllDay в TaskInput
+
                         CalendarParams updatedParams = new CalendarParams(
                                 currentParams.getTaskId(), currentParams.getEventId(),
                                 currentParams.isAllDay(), // Пока оставляем старое значение

@@ -42,9 +42,7 @@ public class PomodoroNotificationManager {
                 NotificationManager.IMPORTANCE_HIGH
         );
         channel.enableLights(true);
-        channel.setLightColor(Color.BLUE); // android.graphics.Color.BLUE
-        // channel.setLockscreenVisibility(NotificationCompat.VISIBILITY_PUBLIC); // Можно добавить
-        // channel.setShowBadge(true); // Можно добавить
+        channel.setLightColor(Color.BLUE);
 
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager != null) {

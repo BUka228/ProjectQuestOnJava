@@ -1,4 +1,4 @@
-package com.example.projectquestonjava.feature.gamification.presentation.utils; // Уточни пакет
+package com.example.projectquestonjava.feature.gamification.presentation.utils;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;

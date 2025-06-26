@@ -32,14 +32,11 @@ public class DeleteTaskUseCase {
         return Futures.submitAsync(() -> {
             logger.debug(TAG, "Deleting task " + taskId + ".");
             try {
-                // TaskRepository.deleteTaskById уже возвращает ListenableFuture<Void>
-                // и обрабатывает проверку userId внутри.
-                // Мы просто ждем его завершения.
                 ListenableFuture<Void> deleteFuture = taskRepository.deleteTaskById(taskId);
-                Futures.getUnchecked(deleteFuture); // Блокирующий вызов, но мы на ioExecutor
+                Futures.getUnchecked(deleteFuture);
 
                 logger.info(TAG, "Task " + taskId + " deleted successfully (via repository).");
-                return Futures.immediateFuture(null); // Успешное завершение
+                return Futures.immediateFuture(null);
             } catch (Exception e) {
                 logger.error(TAG, "Failed to delete task " + taskId, e);
                 // Пробрасываем исключение, чтобы ListenableFuture завершился с ошибкой

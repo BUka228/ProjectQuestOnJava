@@ -25,8 +25,8 @@ public interface TaskRepository {
 
     // --- SYNC ---
     long insertTaskSync(Task task); // Уже был
-    Task getTaskByIdSync(long id); // НОВЫЙ
-    void updateTaskSync(Task task); // НОВЫЙ (репозиторий может возвращать void для простоты)
+    Task getTaskByIdSync(long id);
+    void updateTaskSync(Task task);
     void updateTaskStatusSync(long taskId, int userId, TaskStatus status, LocalDateTime updatedAt);
     TaskWithTags getTaskWithTagsByIdSync(long taskId, int userId);
 }

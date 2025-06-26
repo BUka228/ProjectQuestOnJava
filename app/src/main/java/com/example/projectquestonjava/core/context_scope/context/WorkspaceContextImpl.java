@@ -17,13 +17,13 @@ public class WorkspaceContextImpl implements WorkspaceContext {
 
     private static final String TAG = "WorkspaceContextImpl";
     private final WorkspaceSessionManager workspaceSessionManager;
-    private final Executor ioExecutor; // Для выполнения Callable
+    private final Executor ioExecutor;
     private final Logger logger;
 
     @Inject
     public WorkspaceContextImpl(
             WorkspaceSessionManager workspaceSessionManager,
-            @IODispatcher Executor ioExecutor, // Внедряем Executor
+            @IODispatcher Executor ioExecutor,
             Logger logger) {
         this.workspaceSessionManager = workspaceSessionManager;
         this.ioExecutor = ioExecutor;
@@ -34,7 +34,7 @@ public class WorkspaceContextImpl implements WorkspaceContext {
     public <T> LiveData<T> executeWithWorkspaceLiveData(WorkspaceIdFunctionLiveData<T> operation) {
         // Используем Transformations.switchMap для реакции на изменение workspaceId
         return Transformations.switchMap(workspaceSessionManager.getWorkspaceIdLiveData(), workspaceId -> {
-            if (workspaceId == null || workspaceId == 0L) { // 0L - значение по умолчанию, если не установлен
+            if (workspaceId == null || workspaceId == 0L) {
                 logger.warn(TAG, "executeWithWorkspaceLiveData: No valid workspaceId (" + workspaceId + "). Returning empty/default LiveData.");
                 // Возвращаем LiveData с null или дефолтным значением, если операция должна что-то вернуть
                 return new LiveData<T>(null) {}; // Пример пустого LiveData

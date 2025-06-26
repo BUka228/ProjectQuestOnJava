@@ -8,8 +8,8 @@ import javax.inject.Singleton;
 @Singleton
 public class BCryptPasswordHasher implements PasswordHasher {
 
-    private final BCrypt.Hasher bcryptHasher; // Храним экземпляр Hasher
-    private final BCrypt.Verifyer bcryptVerifier; // Храним экземпляр Verifyer
+    private final BCrypt.Hasher bcryptHasher;
+    private final BCrypt.Verifyer bcryptVerifier;
 
     @Inject
     public BCryptPasswordHasher() {

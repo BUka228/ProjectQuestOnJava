@@ -1,4 +1,4 @@
-package com.example.projectquestonjava.feature.profile.presentation.viewmodels; // Уточни пакет
+package com.example.projectquestonjava.feature.profile.presentation.viewmodels;
 
 import android.net.Uri;
 import androidx.annotation.Nullable;

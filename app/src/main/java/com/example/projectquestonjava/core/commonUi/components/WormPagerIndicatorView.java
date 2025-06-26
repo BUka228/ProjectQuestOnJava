@@ -15,7 +15,7 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.viewpager2.widget.ViewPager2;
 
-import com.example.projectquestonjava.R; // Для доступа к R.styleable
+import com.example.projectquestonjava.R;
 
 public class WormPagerIndicatorView extends View {
 
@@ -51,7 +51,7 @@ public class WormPagerIndicatorView extends View {
     private void init(Context context, @Nullable AttributeSet attrs) {
         TypedArray a = context.getTheme().obtainStyledAttributes(
                 attrs,
-                R.styleable.WormPagerIndicatorView, // Нужно создать attrs.xml
+                R.styleable.WormPagerIndicatorView,
                 0, 0);
 
         try {
@@ -163,21 +163,10 @@ public class WormPagerIndicatorView extends View {
         float wormCurrentWidth = indicatorSize + additionalWidth;
 
 
-        // Если смещение идет влево (pageOffset отрицательный), то червячок должен начинаться раньше
-        // и его ширина должна учитывать это смещение, чтобы "поглотить" предыдущую точку.
-        // Аналогично для смещения вправо.
-
-        // Упрощенная логика для начального смещения и ширины:
-        // Более точная потребует вычисления `left` и `right` для RectF на основе `pageOffset`.
 
         // Начальная позиция левого края червячка
         float wormLeft = startX + currentOverallOffset;
 
-        // Если pageOffset > 0, то червячок растягивается вправо
-        // Если pageOffset < 0, то червячок "начинается" раньше и растягивается влево
-
-        // Этот расчет сложен и требует точного повторения логики animateDpAsState из Compose
-        // Для простоты, нарисуем капсулу, которая двигается:
         wormRect.set(wormLeft, centerY - indicatorSize / 2, wormLeft + wormCurrentWidth, centerY + indicatorSize / 2);
 
         // Рисуем скругленный прямоугольник (капсулу)

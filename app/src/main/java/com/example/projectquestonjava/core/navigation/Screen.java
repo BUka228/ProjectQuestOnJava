@@ -1,8 +1,6 @@
 package com.example.projectquestonjava.core.navigation;
 
-// Пока простой enum. Аргументы и createRoute можно добавить позже,
-// если будет использоваться такой же подход к навигации, как в Compose.
-// Для Navigation Component обычно используются ID из nav_graph.
+
 public enum Screen {
     DASHBOARD("dashboard"), // route здесь больше для совместимости с BottomNav, если он его использует
     CALENDAR_TASK_CREATION("calendarTaskCreation"),

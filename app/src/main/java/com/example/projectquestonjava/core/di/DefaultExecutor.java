@@ -1,4 +1,4 @@
-package com.example.projectquestonjava.core.di; // Убедись, что пакет правильный
+package com.example.projectquestonjava.core.di;
 
 import javax.inject.Qualifier;
 import java.lang.annotation.Retention;

@@ -119,7 +119,6 @@ public class MonthPageFragment extends Fragment {
         private LocalDate selectedDate;
         private Map<LocalDate, Integer> dailyTaskCounts;
         private final OnDateSelectedListener listener;
-        // ViewModel больше не нужна здесь напрямую, цвета будут из ресурсов
 
         interface OnDateSelectedListener {
             void onDateSelected(LocalDate date);
@@ -130,7 +129,6 @@ public class MonthPageFragment extends Fragment {
             this.days = days;
             this.listener = listener;
             this.dailyTaskCounts = Collections.emptyMap();
-            // this.viewModel = viewModel; // Убрали
         }
 
         public void setSelectedDate(LocalDate selectedDate) {
@@ -162,7 +160,7 @@ public class MonthPageFragment extends Fragment {
         }
 
         static class DayViewHolder extends RecyclerView.ViewHolder {
-            FrameLayout layoutDayCellRoot; // Теперь это корневой FrameLayout ячейки
+            FrameLayout layoutDayCellRoot;
             FrameLayout frameDayBackgroundContainer;
             TextView textViewDayNumber;
             LinearLayout layoutTaskIndicatorDots;
@@ -192,7 +190,6 @@ public class MonthPageFragment extends Fragment {
 
                 if (isSelected) {
                     // Цвет фона выбранного дня (светло-зеленый как на скриншоте)
-                    // Используем R.color вместо атрибута, т.к. цвет кастомный
                     backgroundOval.setColor(ContextCompat.getColor(context, R.color.calendar_selected_day_bg_dark));
                     frameDayBackgroundContainer.setBackground(backgroundOval);
                     // Цвет текста на выбранном фоне (темный)

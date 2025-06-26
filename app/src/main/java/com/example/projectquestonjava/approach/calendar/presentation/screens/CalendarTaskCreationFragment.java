@@ -61,8 +61,8 @@ public class CalendarTaskCreationFragment extends BaseFragment {
     private ImageButton buttonDeleteSelectedTags, buttonAddTag;
     private TextView textViewNoTags;
     private ProgressBar progressBarTagsLoading;
-    private View mainContentContainer; // Для управления enabled состоянием контейнера
-    private ProgressBar fabProgressBar; // Прогресс-бар для FAB, если нужен
+    private View mainContentContainer;
+    private ProgressBar fabProgressBar;
 
 
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy", new Locale("ru"));
@@ -191,7 +191,6 @@ public class CalendarTaskCreationFragment extends BaseFragment {
 
             // Error Snackbar (будет управляться MainActivity через SnackbarManager)
             if (state.getError() != null) {
-                // viewModel.showSnackbar(state.getError()); // Убираем, т.к. SnackbarManager
                 viewModel.clearError();
             }
 
@@ -200,9 +199,6 @@ public class CalendarTaskCreationFragment extends BaseFragment {
             if (fab != null) {
                 fab.setText(viewModel.getSaveButtonText());
                 fab.setEnabled(isEnabled); // FAB активен, если не идет загрузка
-                // Если в state.isLoading() также учитывается сохранение, то это ок.
-                // Если нет, то нужен отдельный флаг isSaving.
-                // Пока предполагаем, что state.isLoading() достаточно.
             }
         });
     }
@@ -244,7 +240,7 @@ public class CalendarTaskCreationFragment extends BaseFragment {
                 requireContext(),
                 (view, year, month, dayOfMonth) -> {
                     viewModel.setDueDate(LocalDate.of(year, month + 1, dayOfMonth));
-                    viewModel.closeDateDialog(); // Закрываем после выбора
+                    viewModel.closeDateDialog();
                 },
                 initialDate.getYear(),
                 initialDate.getMonthValue() - 1,
@@ -259,7 +255,7 @@ public class CalendarTaskCreationFragment extends BaseFragment {
                 requireContext(),
                 (view, hourOfDay, minute) -> {
                     viewModel.setDueTime(LocalTime.of(hourOfDay, minute));
-                    viewModel.closeTimeDialog(); // Закрываем после выбора
+                    viewModel.closeTimeDialog();
                 },
                 initialTime.getHour(),
                 initialTime.getMinute(),
@@ -287,11 +283,11 @@ public class CalendarTaskCreationFragment extends BaseFragment {
                 .setTitle("Выберите повторение")
                 .setSingleChoiceItems(ruleLabels, checkedItem, (dialog, which) -> {
                     String selectedRule = (which == ruleLabels.length - 1) ? null : rules[which];
-                    viewModel.setRecurrenceRule(selectedRule); // ViewModel закроет диалог
+                    viewModel.setRecurrenceRule(selectedRule);
                     dialog.dismiss();
                 })
                 .setNegativeButton("Отмена", (dialog, which) -> viewModel.closeRecurrenceDialog())
-                .setOnDismissListener(dialog -> viewModel.closeRecurrenceDialog()) // Закрываем также при свайпе
+                .setOnDismissListener(dialog -> viewModel.closeRecurrenceDialog())
                 .show();
     }
 

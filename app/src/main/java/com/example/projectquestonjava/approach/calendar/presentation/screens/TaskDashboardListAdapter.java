@@ -74,10 +74,9 @@ public class TaskDashboardListAdapter extends ListAdapter<CalendarTaskSummary, T
         private final View viewPriorityIndicator;
         private final CheckBox checkboxTaskDone;
         private final FrameLayout pomodoroCounterContainer;
-        private final ImageView iconTaskRecurrence; // imageViewPomodoroTimerIcon был для фона, теперь не нужен
+        private final ImageView iconTaskRecurrence;
         private final ChipGroup chipGroupTaskTags;
-        private final Space spacerTagsEnd; // ИЗМЕНЕН ID
-        // private final LinearLayout layoutTaskTimePriority; // Не используется напрямую
+        private final Space spacerTagsEnd;
 
         public TaskViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -89,11 +88,9 @@ public class TaskDashboardListAdapter extends ListAdapter<CalendarTaskSummary, T
             checkboxTaskDone = itemView.findViewById(R.id.checkbox_task_done);
             pomodoroCounterContainer = itemView.findViewById(R.id.pomodoro_counter_container);
             textPomodoroCount = itemView.findViewById(R.id.text_pomodoro_count);
-            // imageViewPomodoroTimerIcon = itemView.findViewById(R.id.imageView_pomodoro_timer_icon); // Удалено или переименовано
             iconTaskRecurrence = itemView.findViewById(R.id.icon_task_recurrence);
             chipGroupTaskTags = itemView.findViewById(R.id.chip_group_task_tags);
-            spacerTagsEnd = itemView.findViewById(R.id.spacer_tags_dashboard_end); // ИЗМЕНЕН ID
-            // layoutTaskTimePriority = itemView.findViewById(R.id.layout_task_time_priority);
+            spacerTagsEnd = itemView.findViewById(R.id.spacer_tags_dashboard_end);
         }
 
         public void bind(CalendarTaskSummary task, OnTaskItemClickListener listener) {

@@ -1,4 +1,4 @@
-package com.example.projectquestonjava.feature.gamification.presentation.viewmodels; // Уточни пакет
+package com.example.projectquestonjava.feature.gamification.presentation.viewmodels;
 
 import androidx.annotation.Nullable;
 import com.example.projectquestonjava.feature.gamification.data.model.VirtualGarden;

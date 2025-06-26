@@ -1,4 +1,4 @@
-package com.example.projectquestonjava.feature.gamification.presentation.viewmodels; // или ваш пакет
+package com.example.projectquestonjava.feature.gamification.presentation.viewmodels;
 
 import com.example.projectquestonjava.feature.gamification.presentation.viewmodels.ChallengeCardInfo; // Убедитесь, что он импортирован
 import java.util.Collections;

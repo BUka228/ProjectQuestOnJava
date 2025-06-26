@@ -14,7 +14,7 @@ import com.example.projectquestonjava.R;
 import com.example.projectquestonjava.approach.calendar.domain.model.TaskFilterOption;
 import com.example.projectquestonjava.approach.calendar.domain.model.TaskSortOption;
 import com.example.projectquestonjava.approach.calendar.presentation.viewmodels.CalendarPlanningViewModel;
-import com.example.projectquestonjava.core.utils.Logger; // Предполагаем, что логгер есть
+import com.example.projectquestonjava.core.utils.Logger;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -27,7 +27,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import javax.inject.Inject; // Для логгера
+import javax.inject.Inject;
 import dagger.hilt.android.AndroidEntryPoint;
 
 @AndroidEntryPoint
@@ -123,8 +123,8 @@ public class PlanningSortFilterBottomSheetFragment extends BottomSheetDialogFrag
         buttonSortStatus = view.findViewById(R.id.button_sort_status_planning);
         toggleSortCreated = view.findViewById(R.id.toggle_sort_created_planning);
 
-        chipGroupFiltersStatus = view.findViewById(R.id.chipGroup_filters_status_challenges); // ID изменен на корректный
-        chipGroupFiltersPriority = view.findViewById(R.id.chipGroup_filters_priority_planning); // Новый ChipGroup
+        chipGroupFiltersStatus = view.findViewById(R.id.chipGroup_filters_status_challenges);
+        chipGroupFiltersPriority = view.findViewById(R.id.chipGroup_filters_priority_planning);
 
         // Фильтры статуса
         filterChipMap.put(TaskFilterOption.ALL, view.findViewById(R.id.chip_filter_all_planning));
@@ -154,9 +154,9 @@ public class PlanningSortFilterBottomSheetFragment extends BottomSheetDialogFrag
 
         buttonSortStatus.setOnClickListener(v -> {
             if (!isUpdatingSortFromVm) {
-                uncheckOtherSortGroups(null, buttonSortStatus); // Передаем null, так как это не ToggleGroup
+                uncheckOtherSortGroups(null, buttonSortStatus);
                 viewModel.updateSortOption(TaskSortOption.STATUS);
-                updateButtonSortStatusSelection(true); // Визуально выделяем кнопку
+                updateButtonSortStatusSelection(true);
             }
         });
     }
@@ -207,11 +207,11 @@ public class PlanningSortFilterBottomSheetFragment extends BottomSheetDialogFrag
     }
 
     private void updateSortSelectionInDialog(TaskSortOption selectedSort) {
-        uncheckOtherSortGroups(null, buttonSortStatus); // Сначала все сбрасываем
+        uncheckOtherSortGroups(null, buttonSortStatus);
         if (selectedSort == TaskSortOption.STATUS) {
             updateButtonSortStatusSelection(true);
         } else {
-            updateButtonSortStatusSelection(false); // Убедимся, что кнопка статуса сброшена
+            updateButtonSortStatusSelection(false);
             switch (selectedSort) {
                 case TIME_ASC: toggleSortTime.check(R.id.button_sort_time_asc_planning); break;
                 case TIME_DESC: toggleSortTime.check(R.id.button_sort_time_desc_planning); break;
@@ -219,7 +219,7 @@ public class PlanningSortFilterBottomSheetFragment extends BottomSheetDialogFrag
                 case PRIORITY_ASC: toggleSortPriority.check(R.id.button_sort_priority_asc_planning); break;
                 case CREATED_NEWEST: toggleSortCreated.check(R.id.button_sort_created_newest_planning); break;
                 case CREATED_OLDEST: toggleSortCreated.check(R.id.button_sort_created_oldest_planning); break;
-                default: // Если какой-то другой или null, ничего не выбираем в группах
+                default:
                     toggleSortTime.clearChecked();
                     toggleSortPriority.clearChecked();
                     toggleSortCreated.clearChecked();
@@ -242,7 +242,7 @@ public class PlanningSortFilterBottomSheetFragment extends BottomSheetDialogFrag
                 if (option != TaskFilterOption.ALL) {
                     chip.setEnabled(!isAllSelected);
                 } else {
-                    chip.setEnabled(true); // "Все" всегда доступен
+                    chip.setEnabled(true);
                 }
             }
         }

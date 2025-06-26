@@ -38,11 +38,11 @@ public class UserAuthRepositoryImpl implements UserAuthRepository {
     public ListenableFuture<UserAuth> getUserById(int userId) {
         logger.debug(TAG, "Getting user by id=" + userId);
         return Futures.catchingAsync(
-                userAuthDao.getUserById(userId), // DAO возвращает ListenableFuture<UserAuth>
+                userAuthDao.getUserById(userId),
                 Exception.class,
                 e -> {
                     logger.error(TAG, "Error getting user by id=" + userId, e);
-                    return null; // Возвращаем null в случае ошибки
+                    return null;
                 },
                 ioExecutor
         );

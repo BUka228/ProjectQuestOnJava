@@ -58,9 +58,6 @@ public class GetTasksForMonthUseCase {
             return Transformations.map(tasksWithDetailsLiveData, tasksWithDetails -> {
                 // Это преобразование может быть ресурсоемким, лучше вынести на ioExecutor,
                 // но Transformations.map выполняется на главном потоке.
-                // Если нужно, можно использовать MediatorLiveData или кастомный LiveData с Executor.
-                // Для простоты пока оставим так, но с комментарием.
-                // TODO: Consider moving mapping to a background thread if performance issues arise.
                 if (tasksWithDetails == null) return Collections.emptyList();
                 try {
                     return CalendarExtensions.toTaskSummaries(tasksWithDetails, priorityResolver, dateTimeUtils);

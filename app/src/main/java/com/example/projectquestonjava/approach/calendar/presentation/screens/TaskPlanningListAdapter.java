@@ -68,7 +68,6 @@ public class TaskPlanningListAdapter extends ListAdapter<CalendarTaskSummary, Ta
         private final ChipGroup chipGroupTags;
         private final Space spacerTagsEnd;
         private final FrameLayout pomodoroContainer;
-        // private final LinearLayout layoutTaskLeftPanel; // Не используется напрямую в bind, но есть в XML
 
         public PlanningTaskViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -80,7 +79,6 @@ public class TaskPlanningListAdapter extends ListAdapter<CalendarTaskSummary, Ta
             chipGroupTags = itemView.findViewById(R.id.chip_group_task_tags_planning);
             spacerTagsEnd = itemView.findViewById(R.id.spacer_tags_planning_end);
             pomodoroContainer = itemView.findViewById(R.id.pomodoro_counter_container_planning);
-            // layoutTaskLeftPanel = itemView.findViewById(R.id.layout_task_left_panel_planning);
         }
 
         public void bind(final CalendarTaskSummary task, final OnPlanningTaskItemClickListener listener, CalendarPlanningViewModel viewModel) {
@@ -92,8 +90,7 @@ public class TaskPlanningListAdapter extends ListAdapter<CalendarTaskSummary, Ta
             textTaskMinute.setText(String.format(Locale.getDefault(), "%02d", dueTime.getMinute()));
 
             // Устанавливаем цвет текста для времени такой же, как у заголовка (onSurface)
-            int onSurfaceColor = ContextCompat.getColor(context, R.color.onSurfaceDark); // Или R.color.onSurfaceLight для светлой темы
-            // Это можно улучшить, получая цвет из атрибута темы ?attr/colorOnSurface
+            int onSurfaceColor = ContextCompat.getColor(context, R.color.onSurfaceDark);
             textTaskHour.setTextColor(onSurfaceColor);
             textTaskMinute.setTextColor(onSurfaceColor);
 

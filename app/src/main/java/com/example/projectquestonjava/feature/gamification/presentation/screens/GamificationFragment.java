@@ -1,4 +1,4 @@
-package com.example.projectquestonjava.feature.gamification.presentation.screens; // Уточни пакет
+package com.example.projectquestonjava.feature.gamification.presentation.screens;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;

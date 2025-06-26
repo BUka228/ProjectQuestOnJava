@@ -5,6 +5,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 @Qualifier
-@Retention(RetentionPolicy.RUNTIME) // RUNTIME для Hilt
+@Retention(RetentionPolicy.RUNTIME)
 public @interface IODispatcher {
 }

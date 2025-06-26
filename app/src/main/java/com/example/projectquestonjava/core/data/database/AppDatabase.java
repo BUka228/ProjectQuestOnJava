@@ -3,8 +3,6 @@ package com.example.projectquestonjava.core.data.database;
 import androidx.room.Database;
 import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
-
-// Импорты всех ваших Java Entities (убедитесь, что они созданы)
 import com.example.projectquestonjava.approach.calendar.data.model.CalendarParams;
 import com.example.projectquestonjava.approach.eatTheFrog.data.model.FrogParams;
 import com.example.projectquestonjava.approach.eisenhower.data.model.EisenhowerParams;
@@ -37,8 +35,6 @@ import com.example.projectquestonjava.feature.statistics.data.model.GlobalStatis
 import com.example.projectquestonjava.feature.statistics.data.model.TaskHistory;
 import com.example.projectquestonjava.feature.statistics.data.model.TaskStatistics;
 import com.example.projectquestonjava.feature.statistics.data.model.WorkspaceStatistics;
-
-// Импорты всех ваших Java DAO
 import com.example.projectquestonjava.approach.calendar.data.dao.CalendarTaskDao;
 import com.example.projectquestonjava.approach.eatTheFrog.data.dao.FrogParamsDao;
 import com.example.projectquestonjava.approach.eisenhower.data.dao.EisenhowerParamsDao;

@@ -1,4 +1,3 @@
-// File: A:\Progects\ProjectQuestOnJava\app\src\main\java\com\example\projectquestonjava\app\MainActivity.java
 package com.example.projectquestonjava.app;
 
 import android.content.Context;
@@ -6,9 +5,6 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-// Эти импорты ImageView и TextView здесь не нужны, если кастомный заголовок инфлейтится из XML
-// import android.widget.ImageView;
-// import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -16,16 +12,12 @@ import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-// ViewModelProvider здесь не нужен, если MainActivity не использует свои ViewModel
-// import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.NavDestination;
 import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 import com.example.projectquestonjava.R;
-// TestDataInitializer и Executor для него больше не нужны здесь
-// import com.example.projectquestonjava.core.data.initializers.TestDataInitializer;
 import com.example.projectquestonjava.core.managers.SnackbarManager;
 import com.example.projectquestonjava.core.managers.SnackbarMessage;
 import com.example.projectquestonjava.core.utils.Logger;
@@ -35,16 +27,10 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
-// FutureCallback и Futures больше не нужны здесь
-// import com.google.common.util.concurrent.FutureCallback;
-// import com.google.common.util.concurrent.Futures;
-// import com.google.common.util.concurrent.ListenableFuture;
-// import com.google.common.util.concurrent.MoreExecutors;
 
 import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
-// import java.util.concurrent.Executor; // Не нужен здесь
 import javax.inject.Inject;
 import dagger.hilt.android.AndroidEntryPoint;
 import lombok.Getter;
@@ -220,7 +206,7 @@ public class MainActivity extends AppCompatActivity {
     public void setCustomFab(View customFabView) {logger.warn(TAG, "setCustomFab called, but not implemented in MainActivity XML version.");}
 
     public static void deleteAllDatabases(Context context) {
-        // Логика удаления баз данных (остается без изменений)
+        // Логика удаления баз данных
         File dbDir = new File(context.getApplicationInfo().dataDir, "databases");
         if (dbDir.exists() && dbDir.isDirectory()) {
             String[] children = dbDir.list();

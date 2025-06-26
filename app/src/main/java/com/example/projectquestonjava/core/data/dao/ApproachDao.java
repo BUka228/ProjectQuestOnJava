@@ -23,7 +23,7 @@ public interface ApproachDao {
     List<Approach> getAllApproachesSync();
 
     @Insert
-    long insertApproach(Approach approach); // Оставим этот как есть, т.к. вставка обычно одноразовая
+    long insertApproach(Approach approach);
 
     @Insert
     void insertAll(List<Approach> approaches);

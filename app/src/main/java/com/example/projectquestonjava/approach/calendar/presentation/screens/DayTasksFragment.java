@@ -5,7 +5,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.GradientDrawable; // <-- Импорт
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -114,7 +114,7 @@ public class DayTasksFragment extends Fragment implements TaskDashboardListAdapt
 
             @Override
             public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
-                int position = viewHolder.getAdapterPosition(); // Используем getBindingAdapterPosition
+                int position = viewHolder.getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION) {
                     CalendarTaskSummary task = adapter.getCurrentList().get(position);
                     if (direction == ItemTouchHelper.LEFT) {
@@ -190,18 +190,6 @@ public class DayTasksFragment extends Fragment implements TaskDashboardListAdapt
 
                 backgroundDrawable.draw(c); // Рисуем фон
 
-                // Теперь рисуем сам контент (иконку и текст) поверх этого фона
-                // Это упрощенный вариант, так как layout_swipe_background_dashboard имеет RelativeLayout.
-                // Для точного позиционирования, как в Compose, потребуется более сложная логика измерения и отрисовки
-                // или использование отдельного View для фона и отдельного для контента.
-                // Пока оставим отрисовку itemView поверх, а фон будет под ним.
-
-                // Вместо отрисовки swipeBackgroundContentView целиком, рисуем только его фон.
-                // Контент (иконка и текст) теперь будет рисоваться с помощью super.onChildDraw
-                // поверх скругленного цветного фона, который мы только что нарисовали.
-                // Но для этого нужно, чтобы itemView был прозрачным, если он перекрывает наш фон.
-                // Альтернативно, мы можем не вызывать super, а рисовать контент (иконку и текст) здесь же.
-                // Это сложнее, так как нужно правильно позиционировать.
 
                 // --- Вариант 2: Рисуем контент из swipeBackgroundContentView поверх ---
                 if (Math.abs(dX) > 0) {
@@ -219,17 +207,7 @@ public class DayTasksFragment extends Fragment implements TaskDashboardListAdapt
                     } else if (dX < 0) { // Свайп влево
                         c.clipRect(itemView.getRight() + dX, itemView.getTop(), itemView.getRight(), itemView.getBottom());
                     }
-                    // Рисуем сам swipeBackgroundContentView (который теперь содержит логику видимости start/end action)
-                    // Важно, чтобы фон у корневого элемента в view_swipe_background_dashboard.xml был прозрачным,
-                    // если мы хотим, чтобы наш скругленный backgroundDrawable был виден.
-                    // Или, если rootBackgroundLayout - это тот самый фон, то можно установить ему наш drawable.
-                    // ((GradientDrawable) rootBackgroundLayout.getBackground().mutate()).setColor(backgroundColor); // НЕПРАВИЛЬНО, так как rootBackgroundLayout может иметь свой drawable
-                    // Вместо этого, мы нарисовали backgroundDrawable ПЕРЕД этим.
 
-                    // Теперь просто рисуем контент поверх уже нарисованного фона.
-                    // Контент должен быть спозиционирован внутри itemView.
-                    // Мы можем просто нарисовать swipeBackgroundContentView поверх, если его фон прозрачный.
-                    // Или рисовать только нужные его части (startActionLayout или endActionLayout)
                     if (dX > 0) {
                         // Позиционируем startActionLayout
                         startActionLayout.setAlpha(Math.min(1f, Math.abs(dX) / (float)(startActionLayout.getWidth() + itemView.getContext().getResources().getDimensionPixelSize(R.dimen.padding_large_for_swipe))));
@@ -247,15 +225,13 @@ public class DayTasksFragment extends Fragment implements TaskDashboardListAdapt
                     c.restore();
                 }
 
-                // Важно: вызываем super.onChildDraw ПОСЛЕ нашей отрисовки фона,
-                // чтобы сам элемент списка (itemView) рисовался поверх.
+
                 super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive);
             }
         };
         new ItemTouchHelper(itemTouchCallback).attachToRecyclerView(recyclerViewTasks);
     }
 
-    // ... остальные методы без изменений ...
     @Override
     public void onTaskClick(CalendarTaskSummary task) {
         sharedViewModel.showTaskDetailsBottomSheet(task);

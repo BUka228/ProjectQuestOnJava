@@ -1,4 +1,4 @@
-package com.example.projectquestonjava.feature.gamification.presentation.adapters; // Уточните пакет
+package com.example.projectquestonjava.feature.gamification.presentation.adapters;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;

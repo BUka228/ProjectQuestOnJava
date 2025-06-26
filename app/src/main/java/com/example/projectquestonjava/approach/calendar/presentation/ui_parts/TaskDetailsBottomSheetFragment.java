@@ -25,16 +25,15 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
-import androidx.fragment.app.Fragment; // Импорт для Fragment
+import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.navigation.fragment.NavHostFragment; // Для навигации
 import com.example.projectquestonjava.R;
 import com.example.projectquestonjava.approach.calendar.domain.model.CalendarTaskSummary;
-import com.example.projectquestonjava.approach.calendar.presentation.screens.CalendarDashboardFragment; // Для instanceof
-import com.example.projectquestonjava.approach.calendar.presentation.screens.CalendarPlanningFragment; // Для instanceof
-import com.example.projectquestonjava.approach.calendar.presentation.screens.TaskPlanningListAdapter; // Для интерфейса
+import com.example.projectquestonjava.approach.calendar.presentation.screens.CalendarDashboardFragment;
+import com.example.projectquestonjava.approach.calendar.presentation.screens.CalendarPlanningFragment;
+import com.example.projectquestonjava.approach.calendar.presentation.screens.TaskPlanningListAdapter;
 import com.example.projectquestonjava.approach.calendar.presentation.viewmodels.CalendarDashboardViewModel;
-import com.example.projectquestonjava.approach.calendar.presentation.viewmodels.CalendarPlanningViewModel; // Импорт
+import com.example.projectquestonjava.approach.calendar.presentation.viewmodels.CalendarPlanningViewModel;
 import com.example.projectquestonjava.core.data.model.core.Tag;
 import com.example.projectquestonjava.core.data.model.enums.Priority;
 import com.example.projectquestonjava.core.data.model.enums.TaskStatus;
@@ -45,16 +44,16 @@ import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
-import dagger.hilt.android.AndroidEntryPoint; // Добавил, если используется Hilt
+import dagger.hilt.android.AndroidEntryPoint;
 
-@AndroidEntryPoint // Добавил, если используется Hilt
+@AndroidEntryPoint
 public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
 
     private static final String ARG_TASK_ID_FOR_DETAILS = "arg_task_id_for_details";
     private static final String ARG_IS_DASHBOARD_VIEW = "arg_is_dashboard_view";
 
     private CalendarDashboardViewModel dashboardViewModel;
-    private CalendarPlanningViewModel planningViewModel; // Добавлено поле
+    private CalendarPlanningViewModel planningViewModel;
 
     private long currentTaskId = -1L;
     private boolean isDashboardSource = true;
@@ -91,7 +90,6 @@ public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
         if (!isDashboardSource && parent instanceof TaskPlanningListAdapter.OnPlanningTaskItemClickListener) {
             planningTaskClickListener = (TaskPlanningListAdapter.OnPlanningTaskItemClickListener) parent;
         }
-        // Для dashboardClickListener аналогично, если бы он был нужен для прямых вызовов
     }
 
 
@@ -303,9 +301,7 @@ public class TaskDetailsBottomSheetFragment extends BottomSheetDialogFragment {
             if (isDashboardSource && dashboardViewModel != null) {
                 dashboardViewModel.handleSwipeAction(summary.getId(), CalendarDashboardViewModel.SwipeDirection.LEFT);
             } else if (!isDashboardSource && planningViewModel != null) {
-                // Для планировщика, возможно, нужно показать диалог подтверждения перед удалением
-                // Или вызвать метод ViewModel, который это сделает.
-                // Для простоты пока прямой вызов:
+
                 planningViewModel.deleteTask(summary.getId());
             }
             dismiss();

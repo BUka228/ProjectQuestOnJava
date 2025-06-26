@@ -27,10 +27,10 @@ import javax.inject.Inject;
 public class CreateCalendarTaskUseCase {
     private static final String TAG = "CreateCalendarTaskUseCase";
 
-    private final TaskRepository taskRepository; // Должен иметь метод insertTaskSync
-    private final CalendarParamsRepository calendarParamsRepository; // Должен иметь метод insertParamsSync
-    private final TaskTagRepository taskTagRepository; // Должен иметь метод insertAllTaskTagSync
-    private final GlobalStatisticsRepository globalStatisticsRepository; // Должен иметь метод incrementTotalTasksSync
+    private final TaskRepository taskRepository;
+    private final CalendarParamsRepository calendarParamsRepository;
+    private final TaskTagRepository taskTagRepository;
+    private final GlobalStatisticsRepository globalStatisticsRepository;
     private final TaskFactory taskFactory;
     private final CalendarParamsFactory calendarParamsFactory;
     private final UnitOfWork unitOfWork;
@@ -66,7 +66,7 @@ public class CreateCalendarTaskUseCase {
     }
 
     public ListenableFuture<Long> execute(TaskInput taskInput) {
-        return Futures.submit(() -> { // Внешний вызов асинхронен
+        return Futures.submit(() -> {
             logger.debug(TAG, "execute started for task: " + taskInput.getTitle());
             try {
                 int userId = userSessionManager.getUserIdSync();
@@ -81,27 +81,26 @@ public class CreateCalendarTaskUseCase {
                 }
                 logger.debug(TAG, "Creating task '" + taskInput.getTitle() + "' for userId=" + userId + ", workspaceId=" + workspaceId);
 
-                // Вся работа с БД выполняется СИНХРОННО внутри этого Callable,
-                // который сам выполняется на ioExecutor благодаря внешнему Futures.submit()
+
                 return unitOfWork.withTransaction((Callable<Long>) () -> {
                     logger.debug(TAG, "Transaction started.");
                     // 1. Task
                     Task taskToInsert = taskFactory.create(taskInput, workspaceId, userId);
                     logger.debug(TAG, "Task object created. Attempting insertTaskSync...");
-                    long taskId = taskRepository.insertTaskSync(taskToInsert); // ИСПОЛЬЗУЕМ СИНХРОННЫЙ МЕТОД
+                    long taskId = taskRepository.insertTaskSync(taskToInsert);
                     logger.info(TAG, "Task inserted (SYNC) with id=" + taskId);
 
 
                     // 2. Global Stats
                     logger.debug(TAG, "Attempting to increment global total tasks (SYNC)...");
-                    globalStatisticsRepository.incrementTotalTasksSync(); // ИСПОЛЬЗУЕМ СИНХРОННЫЙ МЕТОД (void)
+                    globalStatisticsRepository.incrementTotalTasksSync();
                     logger.info(TAG, "Incremented global total tasks (SYNC).");
 
 
                     // 3. Calendar Params
                     CalendarParams calendarParams = calendarParamsFactory.create(taskId, taskInput.getRecurrenceRule());
                     logger.debug(TAG, "CalendarParams created. Attempting insertParamsSync for taskId=" + taskId);
-                    calendarParamsRepository.insertParamsSync(calendarParams); // ИСПОЛЬЗУЕМ СИНХРОННЫЙ МЕТОД (long или void)
+                    calendarParamsRepository.insertParamsSync(calendarParams);
                     logger.info(TAG, "CalendarParams inserted (SYNC) for taskId=" + taskId);
 
 
@@ -111,7 +110,7 @@ public class CreateCalendarTaskUseCase {
                                 .map(tag -> new TaskTagCrossRef(taskId, tag.getId()))
                                 .collect(Collectors.toList());
                         logger.debug(TAG, "Tag cross refs created ("+crossRefs.size()+"). Attempting insertAllTaskTagSync for taskId=" + taskId);
-                        taskTagRepository.insertAllTaskTagSync(crossRefs); // ИСПОЛЬЗUЕМ СИНХРОННЫЙ МЕТОД (void)
+                        taskTagRepository.insertAllTaskTagSync(crossRefs);
                         logger.info(TAG, "Inserted " + crossRefs.size() + " tag cross refs (SYNC) for taskId=" + taskId);
                     } else {
                         logger.debug(TAG, "No tags selected for task " + taskId);

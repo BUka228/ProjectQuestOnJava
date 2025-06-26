@@ -1,18 +1,17 @@
 package com.example.projectquestonjava.app;
 
 import android.app.Application;
-import androidx.annotation.NonNull; // Для NonNull в FutureCallback
+import androidx.annotation.NonNull;
 import com.example.projectquestonjava.core.data.initializers.TestDataInitializer;
 import com.example.projectquestonjava.core.di.IODispatcher;
-import com.example.projectquestonjava.core.utils.Logger; // Наш интерфейс
+import com.example.projectquestonjava.core.utils.Logger;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors; // Для directExecutor
+import com.google.common.util.concurrent.MoreExecutors;
 import java.util.concurrent.Executor;
 import javax.inject.Inject;
 import dagger.hilt.android.HiltAndroidApp;
-// import org.slf4j.LoggerFactory; // Если используется SLF4J напрямую
 
 @HiltAndroidApp
 public class MyApplication extends Application {
@@ -21,22 +20,18 @@ public class MyApplication extends Application {
     TestDataInitializer testDataInitializer;
 
     @Inject
-    @IODispatcher // Убедись, что аннотация правильная
-    Executor ioExecutor; // Нужен для выполнения ListenableFuture
+    @IODispatcher
+    Executor ioExecutor;
 
     @Inject
-    Logger logger; // Наш логгер
-
+    Logger logger;
     @Override
     public void onCreate() {
         super.onCreate();
 
-        // Инициализация нашего логгера (если он требует этого, например, Logback)
-        // org.slf4j.LoggerFactory.getLogger(MyApplication.class).info("MyApplication onCreate - Logback possibly initialized here.");
+        // Инициализация нашего логгера
         logger.info("MyApplication", "onCreate - Application starting.");
 
-
-        // --- ПЕРЕМЕЩАЕМ ИНИЦИАЛИЗАЦИЮ ТЕСТОВЫХ ДАННЫХ СЮДА ---
         logger.info("MyApplication", "onCreate: Initializing test data from Application class...");
         ListenableFuture<Void> initFuture = testDataInitializer.initializeTestDataIfEmpty();
         Futures.addCallback(initFuture, new FutureCallback<Void>() {
@@ -47,8 +42,7 @@ public class MyApplication extends Application {
             @Override
             public void onFailure(@NonNull Throwable t) {
                 logger.error("MyApplication", "onCreate: Error initializing test data (from Application)", t);
-                // Здесь Snackbar не показать, так как нет Activity. Только логирование.
             }
-        }, MoreExecutors.directExecutor()); // Коллбэк можно выполнить в том же потоке, если он простой
+        }, MoreExecutors.directExecutor());
     }
 }

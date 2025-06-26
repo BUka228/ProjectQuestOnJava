@@ -1,4 +1,4 @@
-package com.example.projectquestonjava.feature.gamification.presentation.viewmodels; // или другой подходящий пакет
+package com.example.projectquestonjava.feature.gamification.presentation.viewmodels;
 
 import androidx.annotation.DrawableRes;
 import androidx.annotation.Nullable;

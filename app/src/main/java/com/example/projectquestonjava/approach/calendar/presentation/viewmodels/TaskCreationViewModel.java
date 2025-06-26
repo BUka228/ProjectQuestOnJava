@@ -103,8 +103,7 @@ public class TaskCreationViewModel extends ViewModel {
         this.logger = logger;
         this.snackbarManager = snackbarManager;
 
-        // --- ИСПРАВЛЕНИЕ ИНИЦИАЛИЗАЦИИ taskId ---
-        Long parsedTaskId = null; // Временная переменная
+        Long parsedTaskId = null;
         Object taskIdObject = savedStateHandle.get("taskId");
         if (taskIdObject instanceof Long) {
             parsedTaskId = (Long) taskIdObject;
@@ -119,10 +118,8 @@ public class TaskCreationViewModel extends ViewModel {
             logger.warn(TAG, "Unexpected type for taskId in SavedStateHandle: " + taskIdObject.getClass().getName());
             // parsedTaskId остается null
         }
-        // Если taskIdObject был null (ключ отсутствует или значение null), parsedTaskId останется null
 
         this.taskId = parsedTaskId; // Однократное присвоение final переменной
-        // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
 
         this.isEditMode = (this.taskId != null && this.taskId != -1L);
         logger.debug(TAG, "ViewModel initialized. Parsed TaskId: " + this.taskId + ", isEditMode: " + this.isEditMode);
@@ -216,7 +213,6 @@ public class TaskCreationViewModel extends ViewModel {
 
     private void updateSelectedTagsFromLoadedList(List<Tag> allTags, TaskInput currentLoadedInput) {
         TaskCreationState currentUiState = _uiStateLiveData.getValue();
-        // Убеждаемся, что обновляем теги для ПРАВИЛЬНОЙ задачи
         if (currentUiState == null || !Objects.equals(currentLoadedInput.getId(), this.taskId)) {
             logger.warn(TAG, "Skipping updateSelectedTags: currentLoadedInput.id ("+currentLoadedInput.getId()+") != this.taskId ("+this.taskId+")");
             return;

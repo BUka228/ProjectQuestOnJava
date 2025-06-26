@@ -17,10 +17,10 @@ public interface TagDao {
     ListenableFuture<Long> insertTag(Tag tag);
 
     @Delete
-    ListenableFuture<Void> deleteTag(Tag tag); // Изменено на Void
+    ListenableFuture<Void> deleteTag(Tag tag);
 
     @Delete
-    ListenableFuture<Void> deleteTags(List<Tag> tags); // Изменено на Void
+    ListenableFuture<Void> deleteTags(List<Tag> tags);
 
     @Query("SELECT * FROM tags ORDER BY name ASC")
     LiveData<List<Tag>> getAllTags();

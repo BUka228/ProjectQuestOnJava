@@ -43,11 +43,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.inject.Inject;
 
-// Enum'ы и UiState должны быть определены, как мы это делали ранее.
-// enum ChallengeSortOption { ... }
-// enum ChallengeFilterOption { ... }
-// class ChallengesScreenUiState { ... }
-// class ChallengesDisplaySettings { ... }
+
 
 @HiltViewModel
 public class ChallengesViewModel extends ViewModel {

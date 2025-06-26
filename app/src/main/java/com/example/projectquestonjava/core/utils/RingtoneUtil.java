@@ -34,7 +34,7 @@ public class RingtoneUtil {
     private final Logger logger;
     private final File customRingtonesDir;
     private static final String TAG = "RingtoneUtil";
-    private final Executor ioExecutor; // Для файловых операций
+    private final Executor ioExecutor;
 
     @Inject
     public RingtoneUtil(

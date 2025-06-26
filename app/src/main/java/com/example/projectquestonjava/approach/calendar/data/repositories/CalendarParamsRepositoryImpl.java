@@ -11,7 +11,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Executor; // Нужен Executor
+import java.util.concurrent.Executor;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 

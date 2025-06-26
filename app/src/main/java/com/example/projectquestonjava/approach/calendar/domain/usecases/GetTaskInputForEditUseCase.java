@@ -50,7 +50,6 @@ public class GetTaskInputForEditUseCase {
         this.logger = logger;
     }
 
-    // Вместо Result<TaskInput> используем ListenableFuture<TaskInput>
     public ListenableFuture<TaskInput> execute(long taskId) throws ExecutionException, InterruptedException {
         return Futures.submit(() -> {
             try {
@@ -64,11 +63,6 @@ public class GetTaskInputForEditUseCase {
                 }
                 logger.debug(TAG, "Fetching task " + taskId + " for edit in workspace " + workspaceId + " (user " + userId + ")");
 
-                // Используем Futures.allAsList для параллельного выполнения, если это возможно
-                // и если TaskRepository.getTaskWithTagsById и CalendarParamsRepository.getParamsByTaskId
-                // действительно асинхронны (возвращают ListenableFuture).
-                // Если они блокирующие, то вызов в submit уже достаточен.
-                // Для ListenableFuture, возвращаемых DAO, они уже асинхронны.
 
                 ListenableFuture<TaskWithTags> taskWithTagsFuture = taskRepository.getTaskWithTagsById(taskId); // userId неявно в TaskRepository
                 ListenableFuture<CalendarParams> paramsFuture = calendarParamsRepository.getParamsByTaskId(taskId);

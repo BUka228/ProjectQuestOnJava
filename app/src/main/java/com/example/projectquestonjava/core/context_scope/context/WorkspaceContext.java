@@ -68,6 +68,6 @@ public interface WorkspaceContext {
 
     @FunctionalInterface
     interface WorkspaceIdCallable<T> {
-        T call(long workspaceId) throws Exception; // Callable может бросать Exception
+        T call(long workspaceId) throws Exception;
     }
 }

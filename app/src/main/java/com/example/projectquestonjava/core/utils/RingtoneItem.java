@@ -1,4 +1,4 @@
-package com.example.projectquestonjava.core.utils; // Убедитесь, что пакет соответствует вашей структуре
+package com.example.projectquestonjava.core.utils;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable; // Для nullable URI

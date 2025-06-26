@@ -47,7 +47,6 @@ public class TestDataInitializer {
     private static final PlantType TEST_INITIAL_PLANT_TYPE = PlantType.SUNFLOWER;
 
     private static final long REWARD_ID_SURPRISE_201 = 201L;
-    // ... (остальные константы наград)
 
     private final AppDatabase appDatabase;
     private final UserSessionManager userSessionManager;

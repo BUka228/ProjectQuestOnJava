@@ -33,7 +33,7 @@ import com.example.projectquestonjava.approach.calendar.presentation.ui_parts.Ta
 import com.example.projectquestonjava.approach.calendar.presentation.viewmodels.CalendarDashboardViewModel;
 import com.example.projectquestonjava.core.data.model.core.Tag;
 import com.example.projectquestonjava.core.ui.BaseFragment;
-import com.example.projectquestonjava.core.utils.Logger; // Импорт нашего логгера
+import com.example.projectquestonjava.core.utils.Logger;
 import com.example.projectquestonjava.feature.gamification.data.model.Gamification;
 import com.example.projectquestonjava.utils.dialogs.DeleteConfirmationDialogFragment;
 import com.google.android.material.button.MaterialButton;
@@ -53,14 +53,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
-import javax.inject.Inject; // Для логгера
+import javax.inject.Inject;
 
 import dagger.hilt.android.AndroidEntryPoint;
 
 @AndroidEntryPoint
 public class CalendarDashboardFragment extends BaseFragment implements TaskDashboardListAdapter.OnTaskItemClickListener {
 
-    private static final String TAG = "CalDashboardFrag"; // TAG для логгера
+    private static final String TAG = "CalDashboardFrag";
 
     private CalendarDashboardViewModel viewModel;
     private ProgressBar progressBarDashboardTasks;
@@ -82,7 +82,7 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
     private ProgressBar toolbarLevelProgressBarAction;
     private TextView toolbarLevelTextAction;
 
-    @Inject // Внедряем логгер
+    @Inject
     Logger logger;
 
     @Override
@@ -98,13 +98,10 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
                     logger.debug(TAG, "MenuProvider: Found filterSortMenuItem with ActionView.");
                     View actionView = filterSortMenuItem.getActionView();
                     filterIndicatorDotView = actionView.findViewById(R.id.filter_indicator_dot_view);
-                    // Устанавливаем OnClickListener на сам ActionView
                     actionView.setOnClickListener(v -> {
                         logger.info(TAG, "Filter/Sort ActionView directly clicked! Showing BottomSheet..."); // <--- ИЗМЕНЕННЫЙ ЛОГ
-                        // --- ВЫЗЫВАЕМ ЛОГИКУ ПОКАЗА BOTTOMSHEET НАПРЯМУЮ ---
                         SortFilterBottomSheetDialogFragment.newInstance()
                                 .show(getChildFragmentManager(), "DashboardSortFilterSheet");
-                        // --- КОНЕЦ ПРЯМОГО ВЫЗОВА ---
                     });
                     logger.debug(TAG, "MenuProvider: Filter/Sort ActionView and listener set up.");
                 } else if (filterSortMenuItem != null) {
@@ -157,7 +154,7 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState); // Вызывает setupToolbar и setupFab
+        super.onViewCreated(view, savedInstanceState);
         logger.debug(TAG, "onViewCreated called");
         viewModel = new ViewModelProvider(this).get(CalendarDashboardViewModel.class);
 
@@ -257,11 +254,9 @@ public class CalendarDashboardFragment extends BaseFragment implements TaskDashb
             }
             toolbarLevelProgressBarAction.setVisibility(View.VISIBLE);
             toolbarLevelTextAction.setVisibility(View.VISIBLE);
-            // logger.debug(TAG, "updateLevelIndicator: Level " + gamification.getLevel() + ", Progress " + toolbarLevelProgressBarAction.getProgress());
         } else {
             toolbarLevelProgressBarAction.setVisibility(View.GONE);
             toolbarLevelTextAction.setText("Ур. -");
-            // logger.debug(TAG, "updateLevelIndicator: Gamification data is null.");
         }
     }
 

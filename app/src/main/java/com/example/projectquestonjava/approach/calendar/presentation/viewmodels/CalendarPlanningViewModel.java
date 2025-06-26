@@ -22,7 +22,7 @@ import com.example.projectquestonjava.approach.calendar.extensions.CalendarExten
 import com.example.projectquestonjava.core.data.model.enums.Priority;
 import com.example.projectquestonjava.core.data.model.enums.TaskStatus;
 import com.example.projectquestonjava.core.di.IODispatcher;
-import com.example.projectquestonjava.core.di.MainExecutor; // Импорт для mainExecutor
+import com.example.projectquestonjava.core.di.MainExecutor;
 import com.example.projectquestonjava.core.domain.repository.PriorityResolver;
 import com.example.projectquestonjava.core.domain.usecases.DeleteTaskUseCase;
 import com.example.projectquestonjava.core.managers.SnackbarManager;
@@ -115,7 +115,7 @@ public class CalendarPlanningViewModel extends ViewModel {
             SnackbarManager snackbarManager,
             DateTimeUtils dateTimeUtils,
             @IODispatcher Executor ioExecutor,
-            @MainExecutor Executor mainExecutor, // Внедряем mainExecutor
+            @MainExecutor Executor mainExecutor,
             Logger logger) {
         this.getCalendarMonthDataUseCase = getCalendarMonthDataUseCase;
         this.calendarRepository = calendarRepository;

@@ -32,7 +32,7 @@ public class CalendarParams {
     private final boolean isAllDay;
 
     @ColumnInfo(name = "recurrence_rule")
-    private final String recurrenceRule; // Может быть null
+    private final String recurrenceRule;
 
     public CalendarParams(long taskId, String eventId, boolean isAllDay, String recurrenceRule) {
         this.taskId = taskId;

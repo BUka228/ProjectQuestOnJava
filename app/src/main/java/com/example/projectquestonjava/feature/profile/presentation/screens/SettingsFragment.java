@@ -1,4 +1,3 @@
-// -------- A:\Progects\ProjectQuestOnJava\app\src\main\java\com\example\projectquestonjava\feature\profile\presentation\screens\SettingsFragment.java --------
 package com.example.projectquestonjava.feature.profile.presentation.screens;
 
 import android.content.Intent;

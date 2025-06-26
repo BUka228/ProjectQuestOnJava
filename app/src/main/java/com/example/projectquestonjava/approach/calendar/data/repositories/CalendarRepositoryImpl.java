@@ -18,7 +18,6 @@ import com.example.projectquestonjava.feature.statistics.data.model.TaskStatisti
 import com.example.projectquestonjava.feature.statistics.domain.repository.TaskStatisticsRepository;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-// MoreExecutors не используется напрямую здесь, но может использоваться в Futures.transform
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -42,7 +41,7 @@ public class CalendarRepositoryImpl implements CalendarRepository {
     private final UserSessionManager userSessionManager;
     private final DateTimeUtils dateTimeUtils;
     private final Executor ioExecutor;
-    private final Logger logger; // Уже есть
+    private final Logger logger;
 
     @Inject
     public CalendarRepositoryImpl(
@@ -80,8 +79,6 @@ public class CalendarRepositoryImpl implements CalendarRepository {
 
             LiveData<List<TaskWithTags>> tasksWithTagsLiveData = taskDao.getTasksWithTagsForWorkspaceInDateRange(workspaceId, userId, boundaries.first(), boundaries.second());
 
-            // Логирование результата от DAO ПЕРЕД combineWithStatsAndParamsLiveData
-            // Оборачиваем в еще один switchMap или map, чтобы залогировать tasksWithTags
             return Transformations.switchMap(tasksWithTagsLiveData, tasksWithTags -> {
                 if (tasksWithTags == null) {
                     logger.warn(TAG, "getTasksForDay: tasksWithTagsLiveData returned null list for userId=" + userId + ", wsId=" + workspaceId + ", day=" + day.toLocalDate());
@@ -181,14 +178,6 @@ public class CalendarRepositoryImpl implements CalendarRepository {
 
     private LiveData<List<CalendarTaskWithTagsAndPomodoro>> combineWithStatsAndParamsLiveData(LiveData<List<TaskWithTags>> tasksWithTagsLiveDataInput) {
         MediatorLiveData<List<CalendarTaskWithTagsAndPomodoro>> resultLiveData = new MediatorLiveData<>();
-        // resultLiveData.setValue(Collections.emptyList()); // <--- УБИРАЕМ ЭТУ СТРОКУ ИЛИ УСТАНАВЛИВАЕМ ПОЗЖЕ
-
-        // Вместо немедленной установки пустого списка, установим его, только если tasksWithTagsLiveDataInitial уже пуст
-        // или после того, как combinedSources не сможет выдать данные.
-        // Лучше, если CombinedLiveDataSources сам будет управлять начальным состоянием или если мы его не будем пересоздавать каждый раз.
-
-        // Оставим так: MediatorLiveData не будет иметь значения, пока один из источников не сработает.
-        // LiveDataToFutureConverter должен будет дождаться первого реального значения.
 
         resultLiveData.addSource(tasksWithTagsLiveDataInput, tasksWithTags -> {
             if (tasksWithTags == null) {
@@ -210,29 +199,6 @@ public class CalendarRepositoryImpl implements CalendarRepository {
             // Передаем tasksWithTags (актуальный список), а не tasksWithTagsLiveDataInput
             CombinedLiveDataSources combinedSources = new CombinedLiveDataSources(tasksWithTags, statsLiveData, paramsLiveData, logger);
 
-            // Важно: правильно управлять подпиской/отпиской от combinedSources
-            // Если resultLiveData уже имеет combinedSources как источник, его нужно удалить перед добавлением нового.
-            // Но т.к. мы внутри addSource для tasksWithTagsLiveDataInput, этот блок выполняется при каждом новом tasksWithTags.
-            // Простой addSource может привести к множественным подпискам на combinedSources, если MediatorLiveData это не обрабатывает.
-
-            // Правильнее было бы так:
-            // 1. Иметь один экземпляр CombinedLiveDataSources.
-            // 2. При обновлении tasksWithTagsLiveDataInput, обновлять данные внутри этого экземпляра CombinedLiveDataSources.
-            // Но это усложняет CombinedLiveDataSources.
-
-            // Текущий вариант: при каждом новом списке tasksWithTags создается новый CombinedLiveDataSources
-            // и подписывается на него. Старые подписки должны быть удалены.
-            // Однако, MediatorLiveData.addSource(source, observer) при повторном вызове с тем же source
-            // просто заменяет observer. Если source - новый объект, то добавляется новый источник.
-
-            // Попробуем так: всегда удаляем предыдущий (если он был) и добавляем новый.
-            // Это не идеально, но может сработать.
-            // Чтобы это работало, нам нужен способ хранить ссылку на предыдущий combinedSources, добавленный в resultLiveData.
-            // Это становится слишком сложно для этой структуры.
-
-            // Упрощенный вариант: Пусть resultLiveData просто слушает последний созданный combinedSources.
-            // Если tasksWithTagsLiveDataInput часто меняется, это может быть неэффективно.
-            // Но для одного запроса getTasksForDay это должно сработать.
             resultLiveData.addSource(combinedSources, data -> { // CombinedLiveDataSources - это LiveData
                 if (data != null) {
                     logger.debug(TAG, "combineWithStatsAndParamsLiveData (outer): CombinedData received from CombinedLiveDataSources. Processing...");
@@ -249,7 +215,7 @@ public class CalendarRepositoryImpl implements CalendarRepository {
 
     // Вспомогательный класс для объединения источников в MediatorLiveData
     private static class CombinedLiveDataSources extends MediatorLiveData<CombinedData> {
-        private List<TaskWithTags> tasksWithTags; // Не final, если tasksWithTagsLiveData может эмитить новые списки
+        private List<TaskWithTags> tasksWithTags;
         private List<TaskStatistics> stats;
         private List<CalendarParams> params;
         private final Logger logger;
@@ -264,22 +230,16 @@ public class CalendarRepositoryImpl implements CalendarRepository {
 
             addSource(statsSource, s -> {
                 logger.debug("CombinedLiveDataSources", "StatsSource updated. Count: " + (s != null ? s.size() : "null"));
-                this.stats = s; // Присваиваем полю класса
+                this.stats = s;
                 tryUpdateValue();
             });
             addSource(paramsSource, p -> {
                 logger.debug("CombinedLiveDataSources", "ParamsSource updated. Count: " + (p != null ? p.size() : "null"));
-                this.params = p; // Присваиваем полю класса
+                this.params = p;
                 tryUpdateValue();
             });
             tryUpdateValue(); // Попытка обновить сразу
         }
-
-        // Если tasksWithTagsLiveData в combineWithStatsAndParamsLiveData обновляется,
-        // то и tasksWithTags здесь нужно обновлять.
-        // Это можно сделать, передавая LiveData<List<TaskWithTags>> сюда и подписываясь на него.
-        // Но тогда этот класс становится еще сложнее.
-        // Пока предполагаем, что экземпляр CombinedLiveDataSources создается заново при обновлении tasksWithTags.
 
         private void tryUpdateValue() {
             logger.debug("CombinedLiveDataSources", "tryUpdateValue. Tasks set: " + (tasksWithTags != null) +

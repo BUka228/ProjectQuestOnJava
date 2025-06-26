@@ -11,7 +11,7 @@ import com.example.projectquestonjava.feature.gamification.domain.model.RewardTy
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.time.LocalDateTime; // Для дат челленджей
+import java.time.LocalDateTime;
 
 @Singleton
 public class DatabaseInitializer {
@@ -23,9 +23,8 @@ public class DatabaseInitializer {
     private static final long BADGE_ID_STREAK_7 = 1L;
     private static final long BADGE_ID_STREAK_14 = 2L;
     private static final long BADGE_ID_STREAK_30 = 3L;
-    private static final long BADGE_ID_POMODORO_5 = 4L; // Новый значок
-    private static final long BADGE_ID_LEVEL_5 = 5L;    // Новый значок
-    // ... остальные ID значков ...
+    private static final long BADGE_ID_POMODORO_5 = 4L;
+    private static final long BADGE_ID_LEVEL_5 = 5L;
     private static final long BADGE_ID_CHALLENGE_VETERAN_250 = 8L;
     private static final long BADGE_ID_CHALLENGE_CONQUEROR_1000 = 9L;
     private static final long BADGE_ID_CHALLENGE_HERO_WEEK = 10L;
@@ -39,9 +38,8 @@ public class DatabaseInitializer {
     private static final int BADGE_DRAWABLE_STREAK_7 = R.drawable.streak_7;
     private static final int BADGE_DRAWABLE_STREAK_14 = R.drawable.streak_14;
     private static final int BADGE_DRAWABLE_STREAK_30 = R.drawable.streak_30;
-    private static final int BADGE_DRAWABLE_POMODORO_5 = R.drawable.timer; // Используем существующую иконку
-    private static final int BADGE_DRAWABLE_LEVEL_5 = R.drawable.star;     // Используем существующую иконку
-    // ... остальные ресурсы значков ...
+    private static final int BADGE_DRAWABLE_POMODORO_5 = R.drawable.timer;
+    private static final int BADGE_DRAWABLE_LEVEL_5 = R.drawable.star;
     private static final int BADGE_DRAWABLE_CHALLENGE_VETERAN_250 = R.drawable.badge;
     private static final int BADGE_DRAWABLE_CHALLENGE_CONQUEROR_1000 = R.drawable.badge;
     private static final int BADGE_DRAWABLE_CHALLENGE_HERO_WEEK = R.drawable.badge;
@@ -57,7 +55,7 @@ public class DatabaseInitializer {
     private static final long REWARD_ID_DAY_4 = 4L;
     private static final long REWARD_ID_DAY_5 = 5L;
     private static final long REWARD_ID_DAY_6 = 6L;
-    private static final long REWARD_ID_DAY_7_BADGE = 7L; // Основная награда за 7-й день - значок
+    private static final long REWARD_ID_DAY_7_BADGE = 7L;
     private static final long REWARD_ID_DAY_7_FALLBACK_COINS = 8L;
     // --- ID Наград ---
     // Ежедневные
@@ -85,12 +83,12 @@ public class DatabaseInitializer {
 
 
     // --- ID Испытаний ---
-    private static final long CHALLENGE_ID_C1 = 1L; // Первые шаги
-    private static final long CHALLENGE_ID_C2_DAILY_FOCUS = 2L; // Новый: Ежедневный фокус
-    private static final long CHALLENGE_ID_C3_WEEKLY_MARATHON = 3L; // Новый: Недельный марафон
-    private static final long CHALLENGE_ID_C4_7_DAY_STREAK = 4L; // (уже было, переименовал для ясности)
-    private static final long CHALLENGE_ID_C5_POMODORO_STARTER = 5L; // Новый: 5 Pomodoro
-    private static final long CHALLENGE_ID_C6_LEVEL_5_ACHIEVER = 6L; // Новый: Достичь 5 уровня
+    private static final long CHALLENGE_ID_C1 = 1L;
+    private static final long CHALLENGE_ID_C2_DAILY_FOCUS = 2L;
+    private static final long CHALLENGE_ID_C3_WEEKLY_MARATHON = 3L;
+    private static final long CHALLENGE_ID_C4_7_DAY_STREAK = 4L;
+    private static final long CHALLENGE_ID_C5_POMODORO_STARTER = 5L;
+    private static final long CHALLENGE_ID_C6_LEVEL_5_ACHIEVER = 6L;
     // ... остальные ID испытаний ...
     private static final long CHALLENGE_ID_C143 = 143L;
 

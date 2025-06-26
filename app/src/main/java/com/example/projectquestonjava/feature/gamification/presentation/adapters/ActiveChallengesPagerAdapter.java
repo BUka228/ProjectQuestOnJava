@@ -1,4 +1,4 @@
-package com.example.projectquestonjava.feature.gamification.presentation.adapters; // Уточни пакет
+package com.example.projectquestonjava.feature.gamification.presentation.adapters;
 
 import android.content.Context;
 import android.content.res.ColorStateList;

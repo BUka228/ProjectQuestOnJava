@@ -1,4 +1,4 @@
-package com.example.projectquestonjava.feature.pomodoro.presentation.ui_elements; // Пример
+package com.example.projectquestonjava.feature.pomodoro.presentation.ui_elements;
 
 import android.app.Dialog;
 import android.os.Bundle;

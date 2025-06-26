@@ -15,21 +15,18 @@ public class PlanningUiState {
     @Nullable
     private String successMessage;
 
-    // Метод copy, имитирующий Kotlin data class copy
     public PlanningUiState copy(
-            @Nullable Boolean isLoading, // Используем Boolean, чтобы можно было передать null (не менять)
-            @Nullable String error,     // String уже nullable
-            @Nullable String successMessage // String уже nullable
+            @Nullable Boolean isLoading,
+            @Nullable String error,
+            @Nullable String successMessage
     ) {
         return new PlanningUiState(
                 isLoading != null ? isLoading : this.isLoading,
-                error, // Если null, то поле будет null
-                successMessage // Если null, то поле будет null
+                error,
+                successMessage
         );
     }
 
-    // Перегрузка copy для случая, когда нужно изменить только одно поле, передав null для остальных.
-    // Это не обязательно, но может быть удобно.
     public PlanningUiState copyWithLoading(boolean isLoading) {
         return new PlanningUiState(isLoading, this.error, this.successMessage);
     }

@@ -49,20 +49,13 @@ public class SwipeToDeleteMoveCallback extends ItemTouchHelper.SimpleCallback {
 
     @Override
     public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
-        int position = viewHolder.getAdapterPosition(); // Используем getBindingAdapterPosition
+        int position = viewHolder.getAdapterPosition();
         if (position != RecyclerView.NO_POSITION) {
             if (direction == ItemTouchHelper.LEFT) {
                 listener.onTaskDeleteRequested(position);
             } else if (direction == ItemTouchHelper.RIGHT) {
                 listener.onTaskMoveRequested(position);
             }
-            // Важно: Адаптер должен быть уведомлен, чтобы элемент вернулся на место,
-            // если удаление/перемещение не происходит немедленно (например, ждем подтверждения).
-            // Если viewModel.deleteTask/requestMoveTask обновляют LiveData,
-            // которое слушает адаптер, то notifyItemChanged может быть не нужен.
-            // Но для надежности можно его оставить, или управлять этим во Fragment/ViewModel.
-            // Пока закомментируем, т.к. адаптер должен обновиться через LiveData.
-            // recyclerView.getAdapter().notifyItemChanged(position);
         }
     }
 
@@ -73,7 +66,6 @@ public class SwipeToDeleteMoveCallback extends ItemTouchHelper.SimpleCallback {
 
         View itemView = viewHolder.itemView;
 
-        // Используем кастомный макет для фона свайпа, как на дашборде
         View swipeBackgroundContentView = LayoutInflater.from(itemView.getContext())
                 .inflate(R.layout.view_swipe_background_dashboard, (ViewGroup) itemView.getParent(), false);
         LinearLayout startActionLayout = swipeBackgroundContentView.findViewById(R.id.layout_swipe_action_start_to_end);
@@ -82,7 +74,6 @@ public class SwipeToDeleteMoveCallback extends ItemTouchHelper.SimpleCallback {
         LinearLayout endActionLayout = swipeBackgroundContentView.findViewById(R.id.layout_swipe_action_end_to_start);
         ImageView endActionIcon = swipeBackgroundContentView.findViewById(R.id.imageView_swipe_action_end);
         TextView endActionText = swipeBackgroundContentView.findViewById(R.id.textView_swipe_action_end);
-        // View rootBackgroundLayout = swipeBackgroundContentView.findViewById(R.id.layout_swipe_background); // Не используем напрямую для цвета
 
 
         int itemHeight = itemView.getBottom() - itemView.getTop();

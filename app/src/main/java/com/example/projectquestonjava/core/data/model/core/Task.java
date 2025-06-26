@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
                         entity = UserAuth.class,
                         parentColumns = "id",
                         childColumns = "user_id",
-                        onDelete = ForeignKey.RESTRICT // Задачи пользователя не должны удаляться при удалении пользователя, если есть другие связи
+                        onDelete = ForeignKey.RESTRICT
                 )
         },
         indices = {

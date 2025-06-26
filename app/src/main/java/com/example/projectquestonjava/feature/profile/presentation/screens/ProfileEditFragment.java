@@ -1,4 +1,4 @@
-package com.example.projectquestonjava.feature.profile.presentation.screens; // Уточни пакет
+package com.example.projectquestonjava.feature.profile.presentation.screens;
 
 import android.content.Context;
 import android.net.Uri;

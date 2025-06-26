@@ -28,7 +28,7 @@ public class GetCalendarMonthDataUseCase {
     private final PriorityResolver priorityResolver;
     private final WorkspaceSessionManager workspaceSessionManager;
     private final DateTimeUtils dateTimeUtils;
-    private final Executor ioExecutor; // Для выполнения маппинга в фоне
+    private final Executor ioExecutor;
     private final Logger logger;
 
     @Inject
@@ -62,14 +62,13 @@ public class GetCalendarMonthDataUseCase {
 
             // Используем MediatorLiveData для асинхронного маппинга, если tasksWithDetailsLiveData обновляется
             MediatorLiveData<CalendarMonthData> resultLiveData = new MediatorLiveData<>();
-            resultLiveData.setValue(CalendarMonthData.EMPTY); // Начальное значение
+            resultLiveData.setValue(CalendarMonthData.EMPTY);
 
             resultLiveData.addSource(tasksWithDetailsLiveData, tasksWithDetails -> {
                 if (tasksWithDetails == null) {
                     resultLiveData.setValue(CalendarMonthData.EMPTY);
                     return;
                 }
-                // Выполняем маппинг в фоновом потоке
                 ioExecutor.execute(() -> {
                     try {
                         List<CalendarTaskSummary> taskSummaries = CalendarExtensions.toTaskSummaries(tasksWithDetails, priorityResolver, dateTimeUtils);
