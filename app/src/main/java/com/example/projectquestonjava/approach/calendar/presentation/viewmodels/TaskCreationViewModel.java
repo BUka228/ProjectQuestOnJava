@@ -393,7 +393,9 @@ public class TaskCreationViewModel extends ViewModel {
         updateUiState(state -> state.copy(null, null, null, null, true, null, null, null));
         TaskInput taskInputToSave = currentState.getTaskInput();
 
-        logger.debug(TAG, "Saving task (Edit mode: " + isEditMode + "): " + taskInputToSave.getTitle());
+        logger.info(TAG, "Saving task (Edit mode: " + isEditMode + "): " + taskInputToSave.getTitle() + 
+                   ", DueDate: " + taskInputToSave.getDueDate() + 
+                   ", RecurrenceRule: " + taskInputToSave.getRecurrenceRule());
 
         ListenableFuture<?> finalFuture;
         final TaskCreationEvent successEvent;

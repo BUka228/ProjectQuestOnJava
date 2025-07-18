@@ -367,6 +367,28 @@ public class CalendarDashboardViewModel extends ViewModel {
     }
     public void clearTagFilters() { _selectedTagsLiveData.setValue(Collections.emptySet()); }
 
+    public void setFilterToAll() {
+        _filterOptionsLiveData.setValue(Collections.singleton(TaskFilterOption.ALL));
+    }
+
+    public void removeAllFilterAndToggle(TaskFilterOption option) {
+        Set<TaskFilterOption> currentOptions = new HashSet<>(Objects.requireNonNull(_filterOptionsLiveData.getValue()));
+        // Убираем "Все" если оно было выбрано
+        currentOptions.remove(TaskFilterOption.ALL);
+        
+        // Переключаем выбранную опцию
+        if (currentOptions.contains(option)) {
+            currentOptions.remove(option);
+        } else {
+            currentOptions.add(option);
+        }
+        
+        // Если ничего не выбрано, возвращаем "Все"
+        Set<TaskFilterOption> newOptions = currentOptions.isEmpty() ? 
+            Collections.singleton(TaskFilterOption.ALL) : currentOptions;
+        _filterOptionsLiveData.setValue(newOptions);
+    }
+
     public void onPageChanged(int page) {
         if (Objects.equals(_currentPageLiveData.getValue(), page)) return;
         if (page >= 0 && page < pageDates.size()) {

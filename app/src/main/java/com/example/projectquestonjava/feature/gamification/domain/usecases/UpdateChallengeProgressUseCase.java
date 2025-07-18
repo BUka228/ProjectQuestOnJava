@@ -100,15 +100,29 @@ public class UpdateChallengeProgressUseCase {
 
     private ApplyRewardUseCase.RewardApplicationResult updateProgressAndCheckCompletionSync(long gamificationId, long challengeId, ChallengeRule rule) throws Exception {
         GamificationChallengeProgress progress = challengeRepository.getProgressForRuleSync(challengeId, rule.getId());
-        logger.debug(TAG, "SYNC updateProgressAndCheckCompletionSync for rule " + rule.getId() + ". Current progress: " + (progress != null ? progress.getProgress() : "null") + ", Completed: " + (progress != null && progress.isCompleted()));
+        logger.info(TAG, "SYNC updateProgressAndCheckCompletionSync for rule " + rule.getId() + 
+                   ". Current progress: " + (progress != null ? progress.getProgress() : "null") + 
+                   ", Completed: " + (progress != null && progress.isCompleted()) +
+                   ", Target: " + rule.getTarget() +
+                   ", Period: " + rule.getPeriod());
 
-        if (progress != null && progress.isCompleted() && isProgressValidForPeriod(progress, rule)) {
-            logger.debug(TAG, "SYNC Rule " + rule.getId() + " (Challenge " + challengeId + ") already completed for this period. No update.");
+        // Проверяем, завершено ли правило для текущего периода
+        boolean isAlreadyCompletedThisPeriod = progress != null && progress.isCompleted() && isProgressValidForPeriod(progress, rule);
+        logger.info(TAG, "SYNC Rule " + rule.getId() + " isAlreadyCompletedThisPeriod: " + isAlreadyCompletedThisPeriod + 
+                   " (isProgressValidForPeriod: " + (progress != null ? isProgressValidForPeriod(progress, rule) : "N/A") + ")");
+
+        if (isAlreadyCompletedThisPeriod) {
+            logger.info(TAG, "SYNC Rule " + rule.getId() + " (Challenge " + challengeId + ") already completed for this period. No update.");
             return new ApplyRewardUseCase.RewardApplicationResult(0, 0);
         }
 
-        int currentProgressValue = (progress != null && isProgressValidForPeriod(progress, rule)) ? progress.getProgress() : 0;
-        int newProgressValue = currentProgressValue + 1; // Предполагаем, что каждое применимое событие увеличивает прогресс на 1
+        // Определяем текущий прогресс
+        boolean isProgressValid = progress != null && isProgressValidForPeriod(progress, rule);
+        int currentProgressValue = isProgressValid ? progress.getProgress() : 0;
+        logger.info(TAG, "SYNC Rule " + rule.getId() + " currentProgressValue: " + currentProgressValue + 
+                   " (isProgressValid: " + isProgressValid + ")");
+
+        int newProgressValue = currentProgressValue + 1;
         boolean isRuleCompletedNow = newProgressValue >= rule.getTarget();
 
         GamificationChallengeProgress progressToUpdate = new GamificationChallengeProgress(
@@ -116,7 +130,8 @@ public class UpdateChallengeProgressUseCase {
         );
 
         challengeRepository.insertOrUpdateProgressSync(progressToUpdate);
-        logger.info(TAG, "SYNC Progress updated for rule " + rule.getId() + ". New value: " + newProgressValue + ", Completed: " + isRuleCompletedNow);
+        logger.info(TAG, "SYNC Progress updated for rule " + rule.getId() + ". New value: " + newProgressValue + 
+                   "/" + rule.getTarget() + ", Completed: " + isRuleCompletedNow);
 
         if (isRuleCompletedNow) {
             logger.info(TAG, "SYNC Rule " + rule.getId() + " completed. Checking overall challenge " + challengeId + " completion.");
@@ -140,18 +155,43 @@ public class UpdateChallengeProgressUseCase {
 
         boolean allRulesAreCompletedThisPeriod = allRules.stream().allMatch(rule -> {
             GamificationChallengeProgress progressForRule = progressMap.get(rule.getId());
-            boolean ruleCompleted = progressForRule != null && progressForRule.isCompleted() && isProgressValidForPeriod(progressForRule, rule);
-            logger.debug(TAG, "SYNC Challenge " + challengeId + ", Rule " + rule.getId() + ": isCompletedThisPeriod = " + ruleCompleted);
+            boolean ruleCompleted = progressForRule != null && progressForRule.isCompleted();
+            
+            // Для периодических челленджей дополнительно проверяем период
+            if (ruleCompleted && (rule.getPeriod() == ChallengePeriod.DAILY || 
+                                 rule.getPeriod() == ChallengePeriod.WEEKLY || 
+                                 rule.getPeriod() == ChallengePeriod.MONTHLY)) {
+                ruleCompleted = isProgressValidForPeriod(progressForRule, rule);
+            }
+            
+            logger.debug(TAG, "SYNC Challenge " + challengeId + ", Rule " + rule.getId() + ": isCompletedThisPeriod = " + ruleCompleted + 
+                         " (progress: " + (progressForRule != null ? progressForRule.getProgress() : "null") + 
+                         ", completed: " + (progressForRule != null && progressForRule.isCompleted()) + ")");
             return ruleCompleted;
         });
 
         if (allRulesAreCompletedThisPeriod) {
             logger.info(TAG, "SYNC Challenge " + challengeId + " ALL RULES COMPLETED by user " + gamificationId + "!");
-            challengeRepository.updateChallengeStatusSync(challengeId, ChallengeStatus.COMPLETED);
+            
             Challenge challenge = challengeRepository.getChallengeByIdSync(challengeId);
             if (challenge == null) throw new IllegalStateException("Challenge " + challengeId + " not found after completion.");
+            
+            logger.info(TAG, "SYNC Challenge " + challengeId + " details: name='" + challenge.getName() + 
+                       "', period=" + challenge.getPeriod() + ", rewardId=" + challenge.getRewardId());
+            
+            // Для ежедневных, недельных и месячных челленджей НЕ меняем статус на COMPLETED
+            // Они должны оставаться ACTIVE для повторного выполнения в следующем периоде
+            if (challenge.getPeriod() == ChallengePeriod.ONCE || challenge.getPeriod() == ChallengePeriod.EVENT) {
+                challengeRepository.updateChallengeStatusSync(challengeId, ChallengeStatus.COMPLETED);
+                logger.info(TAG, "SYNC Challenge " + challengeId + " status set to COMPLETED (ONCE/EVENT challenge)");
+            } else {
+                logger.info(TAG, "SYNC Challenge " + challengeId + " status remains ACTIVE (periodic challenge)");
+            }
+            
             Reward reward = rewardRepository.getRewardByIdSync(challenge.getRewardId());
             if (reward == null) throw new IllegalStateException("Reward " + challenge.getRewardId() + " not found.");
+            
+            logger.info(TAG, "SYNC Applying reward: " + reward.getName() + " (Type: " + reward.getRewardType() + ", Value: " + reward.getRewardValue() + ")");
 
             ApplyRewardUseCase.RewardApplicationResult rewardDelta = applyRewardUseCase.execute(gamificationId, reward);
             logger.info(TAG, "SYNC Awarded reward '" + reward.getName() + "' for challenge " + challengeId + ". Delta: XP=" + rewardDelta.getDeltaXp() + ", Coins=" + rewardDelta.getDeltaCoins());
@@ -226,7 +266,12 @@ public class UpdateChallengeProgressUseCase {
             return true; // Для этих периодов прогресс не сбрасывается автоматически датой
         }
         LocalDateTime now = LocalDateTime.now(); // Локальное время устройства
-        LocalDateTime lastUpdated = progress.getLastUpdated(); // Время из БД, предполагаем UTC
+        LocalDateTime lastUpdated = progress.getLastUpdated(); // Время из БД
+
+        logger.info(TAG, "SYNC isProgressValidForPeriod check: rule=" + rule.getId() + 
+                   ", period=" + rule.getPeriod() + 
+                   ", now=" + now + 
+                   ", lastUpdated=" + lastUpdated);
 
         // Конвертируем lastUpdated в локальную зону для сравнения дат
         LocalDateTime lastUpdatedLocal = lastUpdated.atZone(ZoneOffset.UTC)
@@ -235,19 +280,30 @@ public class UpdateChallengeProgressUseCase {
         LocalDate nowDateLocal = now.toLocalDate();
         LocalDate lastUpdateDateLocal = lastUpdatedLocal.toLocalDate();
 
+        logger.info(TAG, "SYNC Date comparison: nowDate=" + nowDateLocal + 
+                   ", lastUpdateDate=" + lastUpdateDateLocal + 
+                   " (converted from " + lastUpdated + " to " + lastUpdatedLocal + ")");
 
+        boolean result;
         switch (rule.getPeriod()) {
             case DAILY:
-                return lastUpdateDateLocal.isEqual(nowDateLocal);
+                // Для ежедневных челленджей прогресс валиден только если он был обновлен сегодня
+                result = lastUpdateDateLocal.isEqual(nowDateLocal);
+                break;
             case WEEKLY:
                 WeekFields weekFields = WeekFields.of(Locale.getDefault()); // Или конкретная локаль
-                return lastUpdatedLocal.getYear() == now.getYear() &&
+                result = lastUpdatedLocal.getYear() == now.getYear() &&
                         lastUpdatedLocal.get(weekFields.weekOfWeekBasedYear()) == now.get(weekFields.weekOfWeekBasedYear());
+                break;
             case MONTHLY:
-                return lastUpdatedLocal.getYear() == now.getYear() &&
+                result = lastUpdatedLocal.getYear() == now.getYear() &&
                         lastUpdatedLocal.getMonth() == now.getMonth();
+                break;
             default:
-                return true; // Неизвестный или необрабатываемый период
+                result = true; // Неизвестный или необрабатываемый период
         }
+        
+        logger.info(TAG, "SYNC isProgressValidForPeriod result: " + result);
+        return result;
     }
 }

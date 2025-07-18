@@ -129,7 +129,15 @@ public class SortFilterBottomSheetDialogFragment extends BottomSheetDialogFragme
         for (Map.Entry<TaskFilterOption, Chip> entry : filterChipMap.entrySet()) {
             entry.getValue().setOnClickListener(v -> {
                 if (!isUpdatingFiltersFromVm) { // Проверяем флаг
-                    viewModel.toggleFilterOption(entry.getKey());
+                    TaskFilterOption clickedOption = entry.getKey();
+                    
+                    // Если нажали на "Все", сбрасываем все остальные фильтры
+                    if (clickedOption == TaskFilterOption.ALL) {
+                        viewModel.setFilterToAll();
+                    } else {
+                        // Если нажали на любой другой фильтр, сначала убираем "Все", затем переключаем выбранный
+                        viewModel.removeAllFilterAndToggle(clickedOption);
+                    }
                 }
             });
             // Настройка внешнего вида чипов (checkedIcon и т.д.)

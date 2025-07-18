@@ -69,7 +69,6 @@ public class DatabaseInitializer {
     private static final long REWARD_ID_SURPRISE_230 = 230L;
     // Испытания
     private static final long REWARD_ID_CHALLENGE_C1 = 301L; // Первые шаги
-    private static final long REWARD_ID_CHALLENGE_C2 = 302L; // Ежедневный фокус (XP)
     private static final long REWARD_ID_CHALLENGE_C3 = 303L; // Недельный марафон (Монеты)
     private static final long REWARD_ID_CHALLENGE_C4_BADGE = 304L; // За 7 дней стрика (уже было)
     private static final long REWARD_ID_CHALLENGE_C4_FALLBACK = 305L; // (уже было)
@@ -84,7 +83,6 @@ public class DatabaseInitializer {
 
     // --- ID Испытаний ---
     private static final long CHALLENGE_ID_C1 = 1L;
-    private static final long CHALLENGE_ID_C2_DAILY_FOCUS = 2L;
     private static final long CHALLENGE_ID_C3_WEEKLY_MARATHON = 3L;
     private static final long CHALLENGE_ID_C4_7_DAY_STREAK = 4L;
     private static final long CHALLENGE_ID_C5_POMODORO_STARTER = 5L;
@@ -152,7 +150,6 @@ public class DatabaseInitializer {
 
         // Испытания
         db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_CHALLENGE_C1 + ", 'Карманные деньги', 'Награда за первую задачу.', '" + RewardType.COINS.name() + "', 'BASE*15*1.05');");
-        db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_CHALLENGE_C2 + ", 'Ежедневный опыт', 'Бонус за выполнение 3 задач за день.', '" + RewardType.EXPERIENCE.name() + "', 'BASE*25*1.05');");
         db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_CHALLENGE_C3 + ", 'Недельный бонус', 'Награда за выполнение 15 задач за неделю.', '" + RewardType.COINS.name() + "', 'BASE*100*1.1');");
         db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_CHALLENGE_C4_BADGE + ", 'Значок ''Первая Неделя''', 'За 7 дней стрика!', '" + RewardType.BADGE.name() + "', '" + BADGE_ID_STREAK_7 + "');");
         db.execSQL("INSERT OR IGNORE INTO reward (id, name, description, reward_type, reward_value) VALUES (" + REWARD_ID_CHALLENGE_C4_FALLBACK + ", 'Повторный успех (7 дней)', 'У тебя уже есть значок за 7 дней! Вот монеты.', '" + RewardType.COINS.name() + "', 'BASE*50*1.1');");
@@ -197,11 +194,7 @@ public class DatabaseInitializer {
         db.execSQL("INSERT OR IGNORE INTO Challenge (id, name, description, start_date, end_date, reward_id, status, period) VALUES (" + CHALLENGE_ID_C1 + ", 'Первые шаги', 'Заверши свою первую задачу', " + minDateString + ", " + maxDateString + ", " + REWARD_ID_CHALLENGE_C1 + ", '" + ChallengeStatus.ACTIVE.name() + "', '" + ChallengePeriod.ONCE.name() + "');");
         db.execSQL("INSERT OR IGNORE INTO challenge_rule (challenge_id, type, target, period, condition_json) VALUES (" + CHALLENGE_ID_C1 + ", '" + ChallengeType.TASK_COMPLETION.name() + "', 1, '" + ChallengePeriod.ONCE.name() + "', NULL);");
 
-        // 2. Ежедневный фокус (DAILY)
-        db.execSQL("INSERT OR IGNORE INTO Challenge (id, name, description, start_date, end_date, reward_id, status, period) VALUES (" + CHALLENGE_ID_C2_DAILY_FOCUS + ", 'Ежедневный фокус', 'Выполни 3 задачи сегодня', " + minDateString + ", " + maxDateString + ", " + REWARD_ID_CHALLENGE_C2 + ", '" + ChallengeStatus.ACTIVE.name() + "', '" + ChallengePeriod.DAILY.name() + "');");
-        db.execSQL("INSERT OR IGNORE INTO challenge_rule (challenge_id, type, target, period, condition_json) VALUES (" + CHALLENGE_ID_C2_DAILY_FOCUS + ", '" + ChallengeType.TASK_COMPLETION.name() + "', 3, '" + ChallengePeriod.DAILY.name() + "', NULL);");
-
-        // 3. Недельный марафон (WEEKLY)
+        // 2. Недельный марафон (WEEKLY)
         db.execSQL("INSERT OR IGNORE INTO Challenge (id, name, description, start_date, end_date, reward_id, status, period) VALUES (" + CHALLENGE_ID_C3_WEEKLY_MARATHON + ", 'Недельный марафон', 'Заверши 15 задач за неделю', " + minDateString + ", " + maxDateString + ", " + REWARD_ID_CHALLENGE_C3 + ", '" + ChallengeStatus.ACTIVE.name() + "', '" + ChallengePeriod.WEEKLY.name() + "');");
         db.execSQL("INSERT OR IGNORE INTO challenge_rule (challenge_id, type, target, period, condition_json) VALUES (" + CHALLENGE_ID_C3_WEEKLY_MARATHON + ", '" + ChallengeType.TASK_COMPLETION.name() + "', 15, '" + ChallengePeriod.WEEKLY.name() + "', NULL);");
 

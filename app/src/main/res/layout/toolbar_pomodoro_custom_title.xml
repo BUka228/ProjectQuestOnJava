@@ -42,6 +42,7 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical">
             <ImageView
+                android:id="@+id/imageView_pomodoro_timer_icon"
                 android:layout_width="18dp"
                 android:layout_height="18dp"
                 app:srcCompat="@drawable/timer"

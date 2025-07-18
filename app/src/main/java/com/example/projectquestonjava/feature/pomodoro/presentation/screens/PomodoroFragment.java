@@ -161,7 +161,7 @@ public class PomodoroFragment extends BaseFragment {
     @Override
     protected void setupToolbar() {
         MainActivity mainActivity = getMainActivity();
-        if (mainActivity != null && getContext() != null) {
+        if (mainActivity != null && getContext() != null && customToolbarTitleView == null) {
             LayoutInflater inflater = LayoutInflater.from(getContext());
             customToolbarTitleView = inflater.inflate(R.layout.toolbar_pomodoro_custom_title, mainActivity.getToolbar(), false);
 
@@ -169,16 +169,36 @@ public class PomodoroFragment extends BaseFragment {
             toolbarSessionCount = customToolbarTitleView.findViewById(R.id.textView_toolbar_pomodoro_session_count);
             View completedCountContainer = customToolbarTitleView.findViewById(R.id.frameLayout_toolbar_pomodoro_completed_count_container);
             toolbarCompletedCountValue = completedCountContainer.findViewById(R.id.textView_toolbar_pomodoro_completed_count_value);
-            toolbarCompletedCountIcon = completedCountContainer.findViewById(R.id.imageView_pomodoro_timer_icon); // ID иконки таймера
+            toolbarCompletedCountIcon = completedCountContainer.findViewById(R.id.imageView_pomodoro_timer_icon);
 
             mainActivity.setCustomToolbarTitleView(customToolbarTitleView);
-            viewModel.uiStateLiveData.observe(getViewLifecycleOwner(), this::updateToolbarContent);
+            
+            // Обновляем toolbar с текущим состоянием, если оно уже доступно
+            if (viewModel != null) {
+                PomodoroUiState currentState = viewModel.uiStateLiveData.getValue();
+                if (currentState != null) {
+                    updateToolbarContent(currentState);
+                } else {
+                    // Если состояние еще не готово, устанавливаем значения по умолчанию
+                    toolbarPhaseName.setText("Фокус");
+                    toolbarSessionCount.setVisibility(View.GONE);
+                    View container = customToolbarTitleView.findViewById(R.id.frameLayout_toolbar_pomodoro_completed_count_container);
+                    if (container != null) {
+                        container.setVisibility(View.GONE);
+                    }
+                }
+            }
         }
     }
 
 
     private void updateToolbarContent(PomodoroUiState uiState) {
         if (customToolbarTitleView == null || uiState == null) return;
+        
+        // Дополнительная проверка, что все элементы toolbar доступны
+        if (toolbarPhaseName == null || toolbarSessionCount == null || toolbarCompletedCountValue == null) {
+            return;
+        }
 
         SessionType phaseType = uiState.currentPhaseType;
         String phaseName = "";
@@ -193,26 +213,31 @@ public class PomodoroFragment extends BaseFragment {
 
         if (uiState.timerState instanceof TimerState.Idle || uiState.isTimeSetupMode) {
             toolbarSessionCount.setVisibility(View.GONE);
-            customToolbarTitleView.findViewById(R.id.frameLayout_toolbar_pomodoro_completed_count_container).setVisibility(View.GONE);
+            View completedCountContainer = customToolbarTitleView.findViewById(R.id.frameLayout_toolbar_pomodoro_completed_count_container);
+            if (completedCountContainer != null) {
+                completedCountContainer.setVisibility(View.GONE);
+            }
         } else {
             toolbarSessionCount.setVisibility(View.VISIBLE);
             toolbarSessionCount.setText(String.format(Locale.getDefault(), "Подход %d/%d",
                     uiState.currentFocusSessionDisplayIndex, uiState.totalFocusSessionsInTask));
 
             View completedCountContainer = customToolbarTitleView.findViewById(R.id.frameLayout_toolbar_pomodoro_completed_count_container);
-            if (uiState.totalFocusSessionsInTask > 0) { // Показываем, если есть фокус-сессии
-                completedCountContainer.setVisibility(View.VISIBLE);
-                int completedFocusSessions = uiState.currentFocusSessionDisplayIndex;
+            if (completedCountContainer != null) {
+                if (uiState.totalFocusSessionsInTask > 0) { // Показываем, если есть фокус-сессии
+                    completedCountContainer.setVisibility(View.VISIBLE);
+                    int completedFocusSessions = uiState.currentFocusSessionDisplayIndex;
 
-                // Корректировка отображаемого количества выполненных сессий
-                // Если текущая фаза - фокус и она не завершена (не WaitingForConfirmation),
-                // то эта фокус-сессия еще не считается выполненной для счетчика.
-                if (phaseType.isFocus() && !(uiState.timerState instanceof TimerState.WaitingForConfirmation)) {
-                    completedFocusSessions = Math.max(0, completedFocusSessions - 1);
+                    // Корректировка отображаемого количества выполненных сессий
+                    // Если текущая фаза - фокус и она не завершена (не WaitingForConfirmation),
+                    // то эта фокус-сессия еще не считается выполненной для счетчика.
+                    if (phaseType != null && phaseType.isFocus() && !(uiState.timerState instanceof TimerState.WaitingForConfirmation)) {
+                        completedFocusSessions = Math.max(0, completedFocusSessions - 1);
+                    }
+                    toolbarCompletedCountValue.setText(String.valueOf(completedFocusSessions));
+                } else {
+                    completedCountContainer.setVisibility(View.GONE);
                 }
-                toolbarCompletedCountValue.setText(String.valueOf(completedFocusSessions));
-            } else {
-                completedCountContainer.setVisibility(View.GONE);
             }
         }
     }
@@ -379,6 +404,9 @@ public class PomodoroFragment extends BaseFragment {
     private void setupObservers() {
         viewModel.uiStateLiveData.observe(getViewLifecycleOwner(), uiState -> {
             if (uiState == null) return;
+
+            // Обновляем toolbar при каждом изменении состояния
+            updateToolbarContent(uiState);
 
             if (errorMessageCardView != null) {
                 errorMessageCardView.setVisibility(uiState.errorMessage != null ? View.VISIBLE : View.GONE);
@@ -591,6 +619,20 @@ public class PomodoroFragment extends BaseFragment {
             colorAnimation.setDuration(300);
             colorAnimation.addUpdateListener(animator -> textView.setTextColor((int) animator.getAnimatedValue()));
             colorAnimation.start();
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Убеждаемся, что toolbar настроен правильно при каждом возврате на экран
+        if (customToolbarTitleView == null) {
+            setupToolbar();
+        }
+        // Обновляем toolbar с текущим состоянием
+        PomodoroUiState currentState = viewModel != null ? viewModel.uiStateLiveData.getValue() : null;
+        if (currentState != null) {
+            updateToolbarContent(currentState);
         }
     }
 

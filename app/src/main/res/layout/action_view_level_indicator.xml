@@ -3,7 +3,7 @@
     android:layout_width="wrap_content"
     android:layout_height="38dp"
     android:minWidth="80dp"
-    android:background="?attr/colorSurface"
+    android:background="@drawable/rounded_background_surface_variant"
     android:paddingHorizontal="10dp"
     android:paddingVertical="6dp"
     android:clickable="true"

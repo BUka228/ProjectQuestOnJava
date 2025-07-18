@@ -54,12 +54,19 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import com.example.projectquestonjava.core.utils.Logger;
 import dagger.hilt.android.AndroidEntryPoint;
+import javax.inject.Inject;
 
 @AndroidEntryPoint
 public class StatisticsFragment extends BaseFragment {
 
+    private static final String TAG = "StatisticsFragment";
+
     private StatisticsViewModel viewModel;
+    
+    @Inject
+    Logger logger;
 
     // Period Selector Views
     private MaterialButtonToggleGroup toggleButtonGroupPeriod;
@@ -476,9 +483,17 @@ public class StatisticsFragment extends BaseFragment {
             toolbar.setTitle("Статистика");
             toolbar.setNavigationIcon(R.drawable.arrow_back_ios_new);
             toolbar.setNavigationOnClickListener(v -> {
-                if (!NavHostFragment.findNavController(this).popBackStack()) {
-                    // Если не удалось вернуться назад, возможно, это корневой экран
-                    // requireActivity().finish(); // Закрыть Activity
+                try {
+                    // Проверяем, что фрагмент еще связан с FragmentManager
+                    if (isAdded() && getParentFragmentManager() != null) {
+                        if (!NavHostFragment.findNavController(this).popBackStack()) {
+                            // Если не удалось вернуться назад, возможно, это корневой экран
+                            // requireActivity().finish(); // Закрыть Activity
+                        }
+                    }
+                } catch (IllegalStateException e) {
+                    // Фрагмент не связан с FragmentManager, игнорируем
+                    logger.error(TAG, "Navigation attempted when fragment not associated with FragmentManager", e);
                 }
             });
             toolbar.getMenu().clear();
