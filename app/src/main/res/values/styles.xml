@@ -452,5 +452,19 @@
         <item name="cornerSize">28dp</item> <!-- Пример скругления -->
     </style>
 
+    <!-- Стиль для MaterialToolbar -->
+    <style name="Widget.App.Toolbar" parent="Widget.Material3.Toolbar">
+        <item name="android:background">?attr/colorSurfaceContainer</item>
+        <item name="titleTextColor">?attr/colorOnSurface</item>
+        <item name="subtitleTextColor">?attr/colorOnSurfaceVariant</item>
+        <item name="android:elevation">0dp</item>
+    </style>
+
+    <!-- Стиль для AppBarLayout -->
+    <style name="Widget.App.AppBarLayout" parent="Widget.Material3.AppBarLayout">
+        <item name="android:background">?attr/colorSurfaceContainer</item>
+        <item name="elevation">0dp</item>
+    </style>
+
 
 </resources>

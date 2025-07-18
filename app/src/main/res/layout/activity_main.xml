@@ -11,12 +11,13 @@
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout_main"
+        style="@style/Widget.App.AppBarLayout"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:elevation="0dp"> <!-- Убираем тень у AppBarLayout -->
+        android:layout_height="wrap_content"> <!-- Убираем тень у AppBarLayout -->
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar_main"
+            style="@style/Widget.App.Toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             app:title="" /> <!-- Title будет устанавливаться программно или через NavGraph label -->

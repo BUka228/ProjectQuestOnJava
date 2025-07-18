@@ -111,6 +111,12 @@ public class ChallengesViewModel extends ViewModel {
     }
 
     private void scheduleDataProcessing() {
+        // Проверяем, что executor не завершен
+        if (debounceExecutor.isShutdown() || debounceExecutor.isTerminated()) {
+            logger.debug(TAG, "Executor is shutdown, skipping data processing");
+            return;
+        }
+        
         if (scheduledLoadTask != null && !scheduledLoadTask.isDone()) {
             scheduledLoadTask.cancel(false);
         }
@@ -324,6 +330,12 @@ public class ChallengesViewModel extends ViewModel {
     }
 
     private void triggerLoadWithDebounce() {
+        // Проверяем, что executor не завершен
+        if (debounceExecutor.isShutdown() || debounceExecutor.isTerminated()) {
+            logger.debug(TAG, "Executor is shutdown, skipping triggerLoadWithDebounce");
+            return;
+        }
+        
         // Отменяем предыдущую запланированную задачу, если она есть
         if (scheduledLoadTask != null && !scheduledLoadTask.isDone()) {
             scheduledLoadTask.cancel(false); // false - не прерывать, если уже выполняется
@@ -473,13 +485,23 @@ public class ChallengesViewModel extends ViewModel {
     @Override
     protected void onCleared() {
         super.onCleared();
+        
+        // Отменяем запланированную задачу
+        if (scheduledLoadTask != null && !scheduledLoadTask.isDone()) {
+            scheduledLoadTask.cancel(true);
+        }
+        
+        // Завершаем executor
         if (debounceExecutor != null && !debounceExecutor.isShutdown()) {
             debounceExecutor.shutdownNow();
         }
-        // Отписка от MediatorLiveData не обязательна, если его источники управляются LifecycleOwner'ом
-        // Но если источники были observeForever, то от них нужно отписаться.
-        // В нашем случае, allChallengesDetailsLiveData - это LiveData от репозитория,
-        // а триггеры - MutableLiveData, управляемые этой ViewModel.
+        
+        // Очищаем MediatorLiveData от всех источников
+        loadDataMediator.removeSource(allChallengesDetailsLiveData);
+        loadDataMediator.removeSource(_selectedPeriodTrigger);
+        loadDataMediator.removeSource(_sortOptionTrigger);
+        loadDataMediator.removeSource(_filterOptionsTrigger);
+        
         logger.debug(TAG, "ChallengesViewModel cleared.");
     }
 }

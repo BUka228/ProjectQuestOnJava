@@ -61,6 +61,8 @@
         <item name="extendedFloatingActionButtonStyle">@style/Widget.App.ExtendedFloatingActionButton</item>
         <item name="floatingActionButtonStyle">@style/Widget.App.FloatingActionButton</item>
         <item name="chipStyle">@style/Widget.App.Chip</item>
+        <item name="toolbarStyle">@style/Widget.App.Toolbar</item>
+        <item name="appBarLayoutStyle">@style/Widget.App.AppBarLayout</item>
     </style>
 
     <style name="Theme.ProgressQuest" parent="Base.Theme.ProgressQuest" />
