@@ -23,6 +23,8 @@ public class SettingsUiState {
     private final boolean showSuccess;
     @Getter
     private final boolean shouldNavigateBack;
+    @Getter
+    private final boolean shouldNavigateToPomodoroScreen;
     private final boolean isLoading;
     @Nullable
     private final String playingRingtoneUri; // URI рингтона, который сейчас проигрывается
@@ -34,6 +36,7 @@ public class SettingsUiState {
             @Nullable String errorMessage,
             boolean showSuccess,
             boolean shouldNavigateBack,
+            boolean shouldNavigateToPomodoroScreen,
             boolean isLoading,
             @Nullable String playingRingtoneUri
     ) {
@@ -43,13 +46,14 @@ public class SettingsUiState {
         this.errorMessage = errorMessage;
         this.showSuccess = showSuccess;
         this.shouldNavigateBack = shouldNavigateBack;
+        this.shouldNavigateToPomodoroScreen = shouldNavigateToPomodoroScreen;
         this.isLoading = isLoading;
         this.playingRingtoneUri = playingRingtoneUri;
     }
 
     // Конструктор по умолчанию
     public SettingsUiState() {
-        this(new PomodoroSettings(), Collections.emptyList(), Collections.emptyList(), null, false, false, false, null);
+        this(new PomodoroSettings(), Collections.emptyList(), Collections.emptyList(), null, false, false, false, false, null);
     }
 
     @Nullable public String getErrorMessage() { return errorMessage; }
@@ -66,6 +70,7 @@ public class SettingsUiState {
             @Nullable String errorMessage, // Может быть null для сброса
             @Nullable Boolean showSuccess,
             @Nullable Boolean shouldNavigateBack,
+            @Nullable Boolean shouldNavigateToPomodoroScreen,
             @Nullable Boolean isLoading,
             @Nullable String playingRingtoneUri, // Может быть null для сброса
             boolean explicitlyClearError, // Флаг для явной очистки ошибки
@@ -78,6 +83,7 @@ public class SettingsUiState {
                 explicitlyClearError ? null : (errorMessage != null ? errorMessage : this.errorMessage), // !== null для String, чтобы не сбросить если передали null как "не менять"
                 explicitlyClearSuccess ? false : (showSuccess != null ? showSuccess : this.showSuccess),
                 shouldNavigateBack != null ? shouldNavigateBack : this.shouldNavigateBack,
+                shouldNavigateToPomodoroScreen != null ? shouldNavigateToPomodoroScreen : this.shouldNavigateToPomodoroScreen,
                 isLoading != null ? isLoading : this.isLoading,
                 playingRingtoneUri != null ? playingRingtoneUri : this.playingRingtoneUri // !== null для String
         );
@@ -90,35 +96,39 @@ public class SettingsUiState {
             @Nullable String errorMessage,
             @Nullable Boolean showSuccess,
             @Nullable Boolean shouldNavigateBack,
+            @Nullable Boolean shouldNavigateToPomodoroScreen,
             @Nullable Boolean isLoading,
             @Nullable String playingRingtoneUri
     ) {
         return copy(currentSettings, systemRingtones, customRingtones, errorMessage, showSuccess,
-                shouldNavigateBack, isLoading, playingRingtoneUri, errorMessage == null && this.errorMessage != null, showSuccess == null && this.showSuccess);
+                shouldNavigateBack, shouldNavigateToPomodoroScreen, isLoading, playingRingtoneUri, errorMessage == null && this.errorMessage != null, showSuccess == null && this.showSuccess);
     }
 
 
     // Более удобные методы для частичного обновления
     public SettingsUiState withLoading(boolean isLoading) {
-        return copy(null,null,null,null,null,null, isLoading, null, false,false);
+        return copy(null,null,null,null,null,null,null, isLoading, null, false,false);
     }
     public SettingsUiState withError(@Nullable String error) {
-        return copy(null,null,null, error, null,null,null, null, error == null && this.errorMessage != null, false);
+        return copy(null,null,null, error, null,null,null,null, null, error == null && this.errorMessage != null, false);
     }
     public SettingsUiState withSuccess(boolean success, @Nullable String messageIfSuccess) {
-        return copy(null,null,null, success ? null : this.errorMessage, success, null,null, null, success, success ? false : this.showSuccess);
+        return copy(null,null,null, success ? null : this.errorMessage, success, null,null,null, null, success, success ? false : this.showSuccess);
     }
     public SettingsUiState withNavigation(boolean navigate) {
-        return copy(null,null,null,null,null,navigate,null, null, false,false);
+        return copy(null,null,null,null,null,navigate,null,null, null, false,false);
+    }
+    public SettingsUiState withNavigateToPomodoroScreen(boolean navigate) {
+        return copy(null,null,null,null,null,null,navigate,null, null, false,false);
     }
     public SettingsUiState withPlayingRingtone(@Nullable String uri) {
-        return copy(null,null,null,null,null,null,null, uri, false,false);
+        return copy(null,null,null,null,null,null,null,null, uri, false,false);
     }
     public SettingsUiState withSettings(PomodoroSettings settings) {
-        return copy(settings, null, null, null, null, null, null, null, false, false);
+        return copy(settings, null, null, null, null, null, null, null, null, false, false);
     }
     public SettingsUiState withCustomRingtones(List<RingtoneItem> ringtones) {
-        return copy(null, null, ringtones, null, null, null, null, null, false, false);
+        return copy(null, null, ringtones, null, null, null, null, null, null, false, false);
     }
 
     @Override
@@ -128,6 +138,7 @@ public class SettingsUiState {
         SettingsUiState that = (SettingsUiState) o;
         return showSuccess == that.showSuccess &&
                 shouldNavigateBack == that.shouldNavigateBack &&
+                shouldNavigateToPomodoroScreen == that.shouldNavigateToPomodoroScreen &&
                 isLoading == that.isLoading &&
                 Objects.equals(currentSettings, that.currentSettings) &&
                 Objects.equals(systemRingtones, that.systemRingtones) &&
@@ -139,6 +150,6 @@ public class SettingsUiState {
     @Override
     public int hashCode() {
         return Objects.hash(currentSettings, systemRingtones, customRingtones, errorMessage,
-                showSuccess, shouldNavigateBack, isLoading, playingRingtoneUri);
+                showSuccess, shouldNavigateBack, shouldNavigateToPomodoroScreen, isLoading, playingRingtoneUri);
     }
 }

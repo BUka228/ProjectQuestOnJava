@@ -28,6 +28,7 @@ import com.example.projectquestonjava.approach.calendar.presentation.viewmodels.
 import com.example.projectquestonjava.approach.calendar.presentation.viewmodels.TaskCreationViewModel;
 import com.example.projectquestonjava.core.data.model.core.Tag;
 import com.example.projectquestonjava.core.ui.BaseFragment;
+import com.example.projectquestonjava.core.utils.Logger;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
@@ -53,6 +54,7 @@ import dagger.hilt.android.AndroidEntryPoint;
 public class CalendarTaskCreationFragment extends BaseFragment {
 
     private TaskCreationViewModel viewModel;
+    @javax.inject.Inject Logger logger;
 
     private TextInputLayout textInputLayoutTitle, textInputLayoutDescription;
     private TextInputEditText editTextTitle, editTextDescription;
@@ -184,7 +186,14 @@ public class CalendarTaskCreationFragment extends BaseFragment {
             // Events
             if (state.getEvent() != null) {
                 if (state.getEvent() == TaskCreationEvent.TASK_CREATED || state.getEvent() == TaskCreationEvent.TASK_UPDATED) {
-                    NavHostFragment.findNavController(this).popBackStack();
+                    // Проверяем, что фрагмент все еще присоединен к FragmentManager
+                    if (isAdded() && getParentFragmentManager() != null) {
+                        try {
+                            NavHostFragment.findNavController(this).popBackStack();
+                        } catch (IllegalStateException e) {
+                            logger.error("CalendarTaskCreationFragment", "NavController not available during event handling", e);
+                        }
+                    }
                     viewModel.clearEvent(); // Очищаем событие после обработки
                 }
             }
@@ -328,7 +337,17 @@ public class CalendarTaskCreationFragment extends BaseFragment {
         if (toolbar != null) {
             toolbar.setTitle(viewModel.getScreenTitle()); // Заголовок из ViewModel
             toolbar.setNavigationIcon(R.drawable.arrow_back_ios_new);
-            toolbar.setNavigationOnClickListener(v -> NavHostFragment.findNavController(this).popBackStack());
+            toolbar.setNavigationOnClickListener(v -> {
+                // Проверяем, что фрагмент все еще присоединен к FragmentManager
+                if (isAdded() && getParentFragmentManager() != null) {
+                    try {
+                        NavHostFragment.findNavController(this).popBackStack();
+                    } catch (IllegalStateException e) {
+                        // Если NavController недоступен, просто завершаем активность или ничего не делаем
+                        logger.error("CalendarTaskCreationFragment", "NavController not available", e);
+                    }
+                }
+            });
             toolbar.getMenu().clear(); // Очищаем меню от предыдущего фрагмента
         }
     }

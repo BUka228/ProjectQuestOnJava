@@ -31,6 +31,7 @@ import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.projectquestonjava.R;
 import com.example.projectquestonjava.core.ui.BaseFragment;
+import com.example.projectquestonjava.core.utils.Logger;
 import com.example.projectquestonjava.core.utils.RingtoneItem;
 import com.example.projectquestonjava.feature.pomodoro.domain.model.PomodoroSettings;
 import com.example.projectquestonjava.feature.pomodoro.presentation.adapters.RingtoneDropdownAdapter;
@@ -55,6 +56,7 @@ import dagger.hilt.android.AndroidEntryPoint;
 public class TimerSettingsFragment extends BaseFragment {
 
     private SettingsViewModel viewModel;
+    @javax.inject.Inject Logger logger;
 
     // Views для DurationSetting (работа)
     private View workDurationIncludeView; // View самого <include>
@@ -312,8 +314,26 @@ public class TimerSettingsFragment extends BaseFragment {
                 viewModel.clearSuccessMessage(); // Говорим ViewModel, что сообщение показано (или будет показано MainActivity)
             }
             if (uiState.isShouldNavigateBack()) {
-                NavHostFragment.findNavController(this).popBackStack();
+                // Проверяем, что фрагмент все еще присоединен к FragmentManager
+                if (isAdded() && getParentFragmentManager() != null) {
+                    try {
+                        NavHostFragment.findNavController(this).popBackStack();
+                    } catch (IllegalStateException e) {
+                        logger.error("TimerSettingsFragment", "NavController not available during back navigation", e);
+                    }
+                }
                 viewModel.onNavigatedBack();
+            }
+            if (uiState.isShouldNavigateToPomodoroScreen()) {
+                // Переходим на экран Pomodoro после сохранения настроек
+                if (isAdded() && getParentFragmentManager() != null) {
+                    try {
+                        NavHostFragment.findNavController(this).navigate(R.id.action_global_to_pomodoroFragment);
+                    } catch (IllegalStateException e) {
+                        logger.error("TimerSettingsFragment", "NavController not available during Pomodoro navigation", e);
+                    }
+                }
+                viewModel.onNavigatedToPomodoro();
             }
         });
     }

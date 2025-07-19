@@ -67,7 +67,7 @@ public class SettingsViewModel extends ViewModel {
                 List<RingtoneItem> customRingtones = this.ringtoneUtil.loadCustomRingtones();
                 updateUiState(s -> s.copy(
                         currentSettings, systemRingtones, customRingtones,
-                        null, null, null, false, // isLoading = false
+                        null, null, null, null, false, // isLoading = false
                         s.getPlayingRingtoneUri(), // Сохраняем текущий играющий рингтон
                         true, false // Явно очищаем ошибку, не трогаем флаг успеха
                 ));
@@ -107,7 +107,7 @@ public class SettingsViewModel extends ViewModel {
                         List<RingtoneItem> updatedCustom = new ArrayList<>(state.getCustomRingtones());
                         updatedCustom.add(newRingtone);
                         return state.copy(null, null, updatedCustom, null,
-                                true, null, false, null, false, true);
+                                true, null, null, false, null, false, true);
                     });
                     snackbarManager.showMessage("Рингтон добавлен");
                 } else {
@@ -118,7 +118,7 @@ public class SettingsViewModel extends ViewModel {
             @Override
             public void onFailure(@NonNull Throwable t) {
                 logger.error(TAG, "Failed to add custom ringtone", t);
-                updateUiState(s -> s.copy(null,null,null, "Не удалось добавить рингтон", null, null, false, null, true, false));
+                updateUiState(s -> s.copy(null,null,null, "Не удалось добавить рингтон", null, null, null, false, null, true, false));
             }
         }, ioExecutor);
     }
@@ -143,7 +143,7 @@ public class SettingsViewModel extends ViewModel {
                             settingsToUpdate = settingsToUpdate.copyBreakSoundUri(null);
                         }
                         return state.copy(settingsToUpdate, null, updatedCustom, null,
-                                true, null, false, state.getPlayingRingtoneUri(), false, true);
+                                true, null, null, false, state.getPlayingRingtoneUri(), false, true);
                     });
                     snackbarManager.showMessage("Рингтон удален");
                 } else {
@@ -154,7 +154,7 @@ public class SettingsViewModel extends ViewModel {
             @Override
             public void onFailure(@NonNull Throwable t) {
                 logger.error(TAG, "Failed to remove custom ringtone", t);
-                updateUiState(s -> s.copy(null,null,null, "Ошибка удаления: " + t.getMessage(), null, null, false, null, true, false));
+                updateUiState(s -> s.copy(null,null,null, "Ошибка удаления: " + t.getMessage(), null, null, null, false, null, true, false));
             }
         }, ioExecutor);
     }
@@ -186,7 +186,7 @@ public class SettingsViewModel extends ViewModel {
         // При простом обновлении настроек в UI, флаги error/success/navigate не меняем,
         // но флаг isLoading тоже не трогаем (он для фоновых операций)
         updateUiState(s -> s.copy(settings, null, null, null,
-                null, null, null, s.getPlayingRingtoneUri(),
+                null, null, null, null, s.getPlayingRingtoneUri(),
                 true, true)); // Очищаем предыдущие ошибки/успехи
     }
 
@@ -202,7 +202,7 @@ public class SettingsViewModel extends ViewModel {
             @Override
             public void onSuccess(Void result) {
                 logger.info(TAG, "Settings saved successfully.");
-                updateUiState(s -> s.withLoading(false).withSuccess(true, "Настройки сохранены").withNavigation(true));
+                updateUiState(s -> s.withLoading(false).withSuccess(true, "Настройки сохранены").withNavigateToPomodoroScreen(true));
                 // snackbarManager.showMessage("Настройки сохранены"); // Управляется через successMessage в UiState
             }
             @Override
@@ -223,6 +223,10 @@ public class SettingsViewModel extends ViewModel {
 
     public void onNavigatedBack() {
         updateUiState(s -> s.withNavigation(false).withSuccess(false, null));
+    }
+
+    public void onNavigatedToPomodoro() {
+        updateUiState(s -> s.withNavigateToPomodoroScreen(false).withSuccess(false, null));
     }
 
     public void clearError() {
